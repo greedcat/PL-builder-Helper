@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Packing List Builder</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+</head>
+
+<body>
+<div class="card">
+  <h1>Packing List Builder</h1>
+  <p class="subtitle">Upload an Excel file to generate a formatted packing list</p>
+
+  <form id="plForm">
+
+    <div class="form-group">
+      <label>Source Excel File</label>
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">📂</div>
+        <div class="drop-text"><strong>Click to browse</strong> or drag &amp; drop</div>
+        <div id="fileBadge" style="display:none"></div>
+        <input type="file" id="excelFile" accept=".xlsx,.xls">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>
+        config.properties
+        <span style="font-weight:400;color:#aaa;margin-left:6px;">— optional, overrides built-in keywords</span>
+      </label>
+      <div class="drop-zone" id="cfgDropZone" style="padding:14px 16px;">
+        <div class="drop-text" id="cfgDropText"><strong>Click to browse</strong> or drag &amp; drop config.properties</div>
+        <div id="cfgBadge" style="display:none"></div>
+        <input type="file" id="cfgFile" accept=".properties,.txt">
+      </div>
+      <div id="cfgPanel"></div>
+    </div>
+
+    <div class="form-group">
+      <label for="cName">Client Name</label>
+      <input type="text" id="cName" placeholder="e.g. ABC Trading Co." required>
+    </div>
+
+    <div class="form-group">
+      <label for="containerName">Container #</label>
+      <input type="text" id="containerName" placeholder="e.g. MSCU1234567" required>
+    </div>
+
+    <button type="submit" class="btn" id="submitBtn">Generate Packing List</button>
+  </form>
+
+  <div id="status"></div>
+</div>
+
+<!-- load order matters: each file depends on those above it -->
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/detect.js"></script>
+<script src="js/columns.js"></script>
+<script src="js/process.js"></script>
+<script src="js/writer.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PL Builder Helper</title>
+
+  <!-- Shared libraries (loaded once for all tools) -->
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── App Header ──────────────────────────────────────────── */
+    .app-header {
+      background: #0f3460;
+      color: #fff;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .app-title {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      padding: 16px 0;
+    }
+
+    /* ── Tab Navigation ──────────────────────────────────────── */
+    .tab-nav { display: flex; }
+
+    .tab-btn {
+      padding: 16px 20px;
+      background: transparent;
+      color: rgba(255,255,255,0.65);
+      border: none;
+      border-bottom: 3px solid transparent;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover { color: rgba(255,255,255,0.9); }
+    .tab-btn.active { color: #fff; border-bottom-color: #4f8ef7; }
+
+    /* ── Tab Panels ──────────────────────────────────────────── */
+    .tab-panel { display: none; padding: 40px 16px; }
+    .tab-panel.active { display: block; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       TAB 1 — FBA PO Builder
+    ══════════════════════════════════════════════════════════ */
+    #tab-fba-po h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #0f3460;
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    #tab-fba-po .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 28px 32px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    #tab-fba-po .inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    #tab-fba-po label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    #tab-fba-po textarea {
+      width: 100%;
+      height: 140px;
+      padding: 10px 12px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      resize: vertical;
+      line-height: 1.6;
+      transition: border-color 0.2s;
+    }
+
+    #tab-fba-po textarea:focus { outline: none; border-color: #0f3460; }
+
+    #tab-fba-po .hint { font-size: 0.74rem; color: #9ca3af; margin-top: 4px; }
+
+    #tab-fba-po .controls { display: flex; gap: 10px; margin-bottom: 24px; }
+
+    #tab-fba-po button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    #tab-fba-po button:active { transform: scale(0.97); }
+
+    #btnGenerate { background: #0f3460; color: #fff; flex: 1; }
+    #btnGenerate:hover { background: #16213e; }
+    #btnClear, #btnCopy { background: #f3f4f6; color: #555; }
+    #btnClear:hover, #btnCopy:hover { background: #e5e7eb; }
+    #btnCopy.copied { background: #d1fae5; color: #065f46; }
+
+    .fba-error { font-size: 0.85rem; color: #dc2626; margin-top: 10px; display: none; }
+
+    .fba-output-section { display: none; }
+    .fba-output-section.visible { display: block; }
+
+    .fba-output-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .fba-output-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+    }
+
+    .fba-output-count { font-size: 0.78rem; color: #9ca3af; }
+
+    #fbaOutput {
+      width: 100%;
+      min-height: 120px;
+      padding: 12px 14px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      background: #f9fafb;
+      line-height: 1.8;
+    }
+
+    .line-item { display: flex; gap: 8px; padding: 2px 0; }
+    .line-num  { color: #9ca3af; user-select: none; min-width: 24px; text-align: right; }
+    .line-fba  { color: #0f3460; font-weight: 600; }
+    .line-po   { color: #c05621; }
+    .line-sep  { color: #9ca3af; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       TAB 2 — Packing List Builder
+    ══════════════════════════════════════════════════════════ */
+    #tab-packing-list .pl-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 32px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    #tab-packing-list h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0f3460;
+      margin-bottom: 6px;
+    }
+
+    #tab-packing-list .subtitle {
+      font-size: 0.88rem;
+      color: #9ca3af;
+      margin-bottom: 28px;
+    }
+
+    #tab-packing-list .form-group { margin-bottom: 20px; }
+
+    #tab-packing-list label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    #tab-packing-list .drop-zone {
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    #tab-packing-list .drop-zone:hover,
+    #tab-packing-list .drop-zone.active { border-color: #0f3460; background: #f0f4ff; }
+
+    #tab-packing-list .drop-icon { font-size: 2rem; margin-bottom: 6px; }
+    #tab-packing-list .drop-text { font-size: 0.92rem; color: #555; }
+    #tab-packing-list input[type="file"] { display: none; }
+
+    #tab-packing-list input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    #tab-packing-list input[type="text"]:focus { outline: none; border-color: #0f3460; }
+
+    #tab-packing-list .btn {
+      width: 100%;
+      padding: 12px;
+      background: #0f3460;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 4px;
+    }
+
+    #tab-packing-list .btn:hover { background: #16213e; }
+    #tab-packing-list .btn:disabled { background: #9ca3af; cursor: default; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid #93c5fd;
+      border-top-color: #1e40af;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+
+    /* ══════════════════════════════════════════════════════════
+       TAB 3 — Excel Group & Sum
+    ══════════════════════════════════════════════════════════ */
+    #tab-excel-groupby .gb-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    #tab-excel-groupby h1 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #1a1a2e;
+    }
+
+    #tab-excel-groupby .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.08);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    #tab-excel-groupby .drop-zone {
+      border: 2px dashed #4f8ef7;
+      border-radius: 8px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: background .2s;
+      color: #555;
+    }
+
+    #tab-excel-groupby .drop-zone:hover,
+    #tab-excel-groupby .drop-zone.drag-over { background: #eef4ff; }
+
+    #tab-excel-groupby .drop-zone input { display: none; }
+    #tab-excel-groupby .drop-zone .icon { font-size: 2.5rem; }
+    #tab-excel-groupby .drop-zone p { margin-top: 8px; font-size: .95rem; }
+    #tab-excel-groupby .drop-zone small { color: #888; }
+
+    #tab-excel-groupby .gb-controls {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-top: 16px;
+    }
+
+    #tab-excel-groupby .field { display: flex; flex-direction: column; gap: 4px; }
+
+    #tab-excel-groupby label {
+      font-size: .78rem;
+      font-weight: 700;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    #tab-excel-groupby select,
+    #tab-excel-groupby .tag-input-wrap {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: .92rem;
+      background: #fafafa;
+      min-width: 160px;
+    }
+
+    #tab-excel-groupby select:focus { outline: 2px solid #4f8ef7; border-color: transparent; }
+
+    #tab-excel-groupby .tag-input-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-items: center;
+      min-height: 38px;
+      cursor: text;
+      min-width: 220px;
+      max-width: 420px;
+    }
+
+    #tab-excel-groupby .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #4f8ef7;
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+
+    #tab-excel-groupby .tag .remove {
+      cursor: pointer;
+      font-size: .9rem;
+      background: none;
+      border: none;
+      color: #fff;
+      padding: 0;
+      line-height: 1;
+    }
+
+    #tab-excel-groupby .tag-input-wrap select.tag-picker {
+      border: none;
+      background: transparent;
+      padding: 2px 4px;
+      font-size: .88rem;
+      min-width: 110px;
+      flex: 1;
+    }
+
+    #tab-excel-groupby .tag-input-wrap select.tag-picker:focus { outline: none; }
+
+    #tab-excel-groupby button {
+      padding: 9px 22px;
+      background: #4f8ef7;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: .95rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background .2s;
+      align-self: flex-end;
+    }
+
+    #tab-excel-groupby button:hover { background: #2d6fe0; }
+    #tab-excel-groupby button:disabled { background: #aac4f5; cursor: default; }
+    #gb-export-btn:hover { background: #218838 !important; }
+
+    #gb-status { color: #888; font-size: .88rem; margin-top: 10px; min-height: 1.2em; }
+    #gb-status.error { color: #d32f2f; }
+
+    #tab-excel-groupby .table-wrap { overflow-x: auto; max-height: 420px; }
+    #tab-excel-groupby table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+
+    #tab-excel-groupby thead th {
+      background: #4f8ef7;
+      color: #fff;
+      padding: 9px 12px;
+      text-align: left;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    #tab-excel-groupby td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #e8e8e8;
+      white-space: nowrap;
+    }
+
+    #tab-excel-groupby td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    #tab-excel-groupby tbody tr:hover { background: #f5f8ff; }
+
+    #tab-excel-groupby .total-row td {
+      font-weight: 700;
+      background: #eef4ff;
+      border-top: 2px solid #4f8ef7;
+    }
+
+    #tab-excel-groupby .badge {
+      display: inline-block;
+      background: #e8f0fe;
+      color: #2d6fe0;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: .78rem;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    #tab-excel-groupby .section-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #tab-excel-groupby .section-header strong { font-size: 1rem; }
+  </style>
+</head>
+<body>
+
+  <!-- ── App Header ─────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="app-title">PL Builder Helper</div>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="fba-po">FBA PO Builder</button>
+      <button class="tab-btn" data-tab="packing-list">Packing List Builder</button>
+      <button class="tab-btn" data-tab="excel-groupby">Excel Group &amp; Sum</button>
+    </nav>
+  </header>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 1 — FBA PO Builder
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-fba-po">
+    <h1>FBA PO Builder</h1>
+    <div class="card">
+      <div class="inputs">
+        <div>
+          <label for="fbaInput">FBA</label>
+          <textarea id="fbaInput" placeholder="Enter FBA values&#10;One per line"></textarea>
+          <div class="hint">One value per line</div>
+        </div>
+        <div>
+          <label for="poInput">PO</label>
+          <textarea id="poInput" placeholder="Enter PO values&#10;One per line"></textarea>
+          <div class="hint">One value per line</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="btnGenerate">Generate</button>
+        <button id="btnCopy">Copy</button>
+        <button id="btnClear">Clear</button>
+      </div>
+
+      <div class="fba-error" id="fbaErrorMsg"></div>
+
+      <div class="fba-output-section" id="fbaOutputSection">
+        <div class="fba-output-header">
+          <span class="fba-output-label">Output</span>
+          <span class="fba-output-count" id="fbaLineCount"></span>
+        </div>
+        <div id="fbaOutput"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 2 — Packing List Builder
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-packing-list">
+    <div class="pl-card">
+      <h1>Packing List Builder</h1>
+      <p class="subtitle">Upload an Excel file to generate a formatted packing list</p>
+
+      <form id="plForm">
+        <div class="form-group">
+          <label>Source Excel File</label>
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-icon">📂</div>
+            <div class="drop-text"><strong>Click to browse</strong> or drag &amp; drop</div>
+            <div id="fileBadge" style="display:none;align-items:center;gap:6px;background:#e0f2fe;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:.82rem;margin-top:8px;"></div>
+            <input type="file" id="excelFile" accept=".xlsx,.xls">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>
+            config.properties
+            <span style="font-weight:400;color:#aaa;margin-left:6px;">— optional, overrides built-in keywords</span>
+          </label>
+          <div class="drop-zone" id="cfgDropZone" style="padding:14px 16px;">
+            <div class="drop-text" id="cfgDropText"><strong>Click to browse</strong> or drag &amp; drop config.properties</div>
+            <div id="cfgBadge" style="display:none;align-items:center;gap:6px;background:#e0f2fe;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:.82rem;margin-top:8px;"></div>
+            <input type="file" id="cfgFile" accept=".properties,.txt">
+          </div>
+          <div id="cfgPanel"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="cName">Client Name</label>
+          <input type="text" id="cName" placeholder="e.g. ABC Trading Co." required>
+        </div>
+
+        <div class="form-group">
+          <label for="containerName">Container #</label>
+          <input type="text" id="containerName" placeholder="e.g. MSCU1234567" required>
+        </div>
+
+        <button type="submit" class="btn" id="submitBtn">Generate Packing List</button>
+      </form>
+
+      <!-- ui.js writes to id="status"; #plStatus mirrors it visibly -->
+      <div id="status" style="display:none;"></div>
+      <div id="plStatus"></div>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 3 — Excel Group & Sum
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-excel-groupby">
+    <div class="gb-container">
+      <h1>Excel — Group By &amp; Sum</h1>
+
+      <div class="card">
+        <div class="drop-zone" id="gb-drop-zone">
+          <input type="file" id="gb-file-input" accept=".xlsx,.xls,.csv">
+          <div class="icon">📊</div>
+          <p><strong>Click to upload</strong> or drag &amp; drop your Excel / CSV file</p>
+          <small>.xlsx · .xls · .csv</small>
+        </div>
+        <div id="gb-status"></div>
+
+        <div class="gb-controls" id="gb-controls" style="display:none;">
+          <div class="field" id="gb-sheet-select-wrap" style="display:none;">
+            <label for="gb-sheet-select">Sheet</label>
+            <select id="gb-sheet-select"></select>
+          </div>
+          <div class="field">
+            <label>Group By Columns</label>
+            <div class="tag-input-wrap" id="gb-group-tags">
+              <select class="tag-picker" id="gb-group-picker">
+                <option value="">+ add column</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="gb-sum-col">Sum Column</label>
+            <select id="gb-sum-col"><option value="">All numeric</option></select>
+          </div>
+          <button id="gb-run-btn" disabled>Run</button>
+        </div>
+      </div>
+
+      <div class="card" id="gb-preview-card" style="display:none;">
+        <div class="section-header">
+          <strong>Data Preview</strong>
+          <span class="badge" id="gb-preview-count"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead id="gb-preview-head"></thead>
+            <tbody id="gb-preview-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="gb-result-card" style="display:none;">
+        <div class="section-header">
+          <strong id="gb-result-title">Results</strong>
+          <span class="badge" id="gb-row-count"></span>
+          <button id="gb-export-btn" style="margin-left:auto;background:#28a745;padding:7px 16px;">&#8595; Export CSV</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead id="gb-result-head"></thead>
+            <tbody id="gb-result-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── Packing List Builder external scripts ──────────────── -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/detect.js"></script>
+  <script src="js/columns.js"></script>
+  <script src="js/process.js"></script>
+  <script src="js/writer.js"></script>
+  <script src="js/ui.js"></script>
+
+  <script>
+    /* ── Tab switching ──────────────────────────────────────── */
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    /* ── FBA PO Builder ─────────────────────────────────────── */
+    (function () {
+      const fbaInput  = document.getElementById('fbaInput');
+      const poInput   = document.getElementById('poInput');
+      const output    = document.getElementById('fbaOutput');
+      const outputSec = document.getElementById('fbaOutputSection');
+      const lineCount = document.getElementById('fbaLineCount');
+      const errorMsg  = document.getElementById('fbaErrorMsg');
+      const btnCopy   = document.getElementById('btnCopy');
+
+      function parseLines(text) {
+        return text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      }
+
+      function escHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      document.getElementById('btnGenerate').addEventListener('click', () => {
+        errorMsg.style.display = 'none';
+        const fbas = parseLines(fbaInput.value);
+        const pos  = parseLines(poInput.value);
+
+        if (!fbas.length && !pos.length) {
+          errorMsg.textContent = 'Please enter at least one FBA or PO value.';
+          errorMsg.style.display = 'block';
+          outputSec.classList.remove('visible');
+          return;
+        }
+
+        const rawCount = Math.max(fbas.length, pos.length);
+        const seen = new Set();
+        const pairs = [];
+        for (let i = 0; i < rawCount; i++) {
+          const fba = fbas[i] ?? '';
+          const po  = pos[i]  ?? '';
+          const key = `${fba}||${po}`;
+          if (!seen.has(key)) { seen.add(key); pairs.push({ fba, po }); }
+        }
+
+        const count = pairs.length;
+        output.innerHTML = '';
+
+        for (let i = 0; i < count; i++) {
+          const { fba, po } = pairs[i];
+          const row = document.createElement('div');
+          row.className = 'line-item';
+          row.innerHTML =
+            `<span class="line-num">${i + 1}.</span>` +
+            `<span class="line-fba">${escHtml(fba)}</span>` +
+            (fba && po ? `<span class="line-sep"> / </span>` : '') +
+            `<span class="line-po">${escHtml(po)}</span>`;
+          output.appendChild(row);
+        }
+
+        const skipped = rawCount - count;
+        lineCount.textContent = `${count} line${count !== 1 ? 's' : ''}` +
+          (skipped > 0 ? ` (${skipped} duplicate${skipped !== 1 ? 's' : ''} removed)` : '');
+        outputSec.classList.add('visible');
+
+        /* Export output.xlsx */
+        const headers = [['ARN','PRO','BOL List (use , as separator)','Vendor Name',
+          'Pallet Count','Carton Count','Unit Count','PO List (use , as separator) *']];
+        const dataRows = pairs.map((p, i) =>
+          ['', p.fba, '', '', i === 0 ? 1 : '', '', '', p.po]);
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([...headers, ...dataRows]);
+        ws['!cols'] = [14,24,30,20,13,13,11,32].map(wch => ({ wch }));
+        XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+        XLSX.writeFile(wb, 'output.xlsx');
+      });
+
+      document.getElementById('btnClear').addEventListener('click', () => {
+        fbaInput.value = '';
+        poInput.value  = '';
+        output.innerHTML = '';
+        outputSec.classList.remove('visible');
+        errorMsg.style.display = 'none';
+        btnCopy.textContent = 'Copy';
+        btnCopy.classList.remove('copied');
+      });
+
+      btnCopy.addEventListener('click', () => {
+        const fbas = parseLines(fbaInput.value);
+        const pos  = parseLines(poInput.value);
+        if (!fbas.length && !pos.length) return;
+        const count = Math.max(fbas.length, pos.length);
+        const lines = [];
+        for (let i = 0; i < count; i++) {
+          const fba = fbas[i] ?? '';
+          const po  = pos[i]  ?? '';
+          lines.push(fba && po ? `${fba} / ${po}` : fba || po);
+        }
+        navigator.clipboard.writeText(lines.join('\n')).then(() => {
+          btnCopy.textContent = 'Copied!';
+          btnCopy.classList.add('copied');
+          setTimeout(() => { btnCopy.textContent = 'Copy'; btnCopy.classList.remove('copied'); }, 2000);
+        });
+      });
+    })();
+
+
+    /* ── Excel Group & Sum ──────────────────────────────────── */
+    (function () {
+      const PREVIEW_ROWS = 200;
+      let workbook  = null;
+      let sheetData = [];
+      let allCols   = [];
+      let groupCols = [];
+      let exportData = [];
+
+      const dropZone  = document.getElementById('gb-drop-zone');
+      const fileInput = document.getElementById('gb-file-input');
+      const status    = document.getElementById('gb-status');
+
+      dropZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault(); dropZone.classList.remove('drag-over');
+        handleFile(e.dataTransfer.files[0]);
+      });
+      fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+      function handleFile(file) {
+        if (!file) return;
+        status.className = '';
+        status.textContent = `Loading "${file.name}" …`;
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            workbook = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+            populateSheets();
+            status.textContent = `✔ Loaded "${file.name}"`;
+          } catch (err) {
+            status.className = 'error';
+            status.textContent = '✖ Failed to read file: ' + err.message;
+          }
+        };
+        reader.readAsBinaryString(file);
+      }
+
+      const sheetSelectWrap = document.getElementById('gb-sheet-select-wrap');
+      const sheetSelect     = document.getElementById('gb-sheet-select');
+
+      function populateSheets() {
+        sheetSelect.innerHTML = '';
+        workbook.SheetNames.forEach(name => {
+          const opt = document.createElement('option');
+          opt.value = opt.textContent = name;
+          sheetSelect.appendChild(opt);
+        });
+        sheetSelectWrap.style.display = workbook.SheetNames.length > 1 ? 'flex' : 'none';
+        document.getElementById('gb-controls').style.display = 'flex';
+        loadSheet(workbook.SheetNames[0]);
+      }
+
+      sheetSelect.addEventListener('change', () => loadSheet(sheetSelect.value));
+
+      function loadSheet(name) {
+        const ws = workbook.Sheets[name];
+        sheetData = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        if (!sheetData.length) { status.className = 'error'; status.textContent = 'Sheet is empty.'; return; }
+        allCols = Object.keys(sheetData[0]);
+        groupCols = [];
+        populateColumns(allCols);
+        renderPreview();
+        document.getElementById('gb-result-card').style.display = 'none';
+      }
+
+      const groupTagsBox = document.getElementById('gb-group-tags');
+      const groupPicker  = document.getElementById('gb-group-picker');
+      const runBtn       = document.getElementById('gb-run-btn');
+      const sumColSel    = document.getElementById('gb-sum-col');
+
+      function populateColumns(cols) {
+        groupPicker.innerHTML = '<option value="">+ add column</option>';
+        cols.forEach(c => groupPicker.appendChild(new Option(c, c)));
+        sumColSel.innerHTML = '<option value="">All numeric</option>';
+        cols.forEach(c => sumColSel.appendChild(new Option(c, c)));
+        [...groupTagsBox.querySelectorAll('.tag')].forEach(t => t.remove());
+        groupCols = [];
+        runBtn.disabled = true;
+      }
+
+      groupPicker.addEventListener('change', () => {
+        const val = groupPicker.value;
+        if (!val || groupCols.includes(val)) { groupPicker.value = ''; return; }
+        addGroupTag(val);
+        groupPicker.value = '';
+      });
+
+      function addGroupTag(col) {
+        groupCols.push(col);
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.dataset.col = col;
+        tag.innerHTML = `${col} <button class="remove" title="Remove">×</button>`;
+        tag.querySelector('.remove').addEventListener('click', () => {
+          groupCols = groupCols.filter(c => c !== col);
+          tag.remove();
+          runBtn.disabled = groupCols.length === 0;
+        });
+        groupTagsBox.insertBefore(tag, groupPicker);
+        runBtn.disabled = false;
+      }
+
+      function renderPreview() {
+        const previewCard  = document.getElementById('gb-preview-card');
+        const previewHead  = document.getElementById('gb-preview-head');
+        const previewBody  = document.getElementById('gb-preview-body');
+        const previewCount = document.getElementById('gb-preview-count');
+
+        previewHead.innerHTML = '<tr>' + allCols.map(c => `<th>${c}</th>`).join('') + '</tr>';
+        previewBody.innerHTML = '';
+        sheetData.slice(0, PREVIEW_ROWS).forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = allCols.map(c => {
+            const v = row[c];
+            const isNum = typeof v === 'number';
+            return `<td class="${isNum ? 'num' : ''}">${isNum ? fmt(v) : v}</td>`;
+          }).join('');
+          previewBody.appendChild(tr);
+        });
+        previewCount.textContent = sheetData.length <= PREVIEW_ROWS
+          ? `${sheetData.length} rows`
+          : `showing ${PREVIEW_ROWS} of ${sheetData.length} rows`;
+        previewCard.style.display = 'block';
+      }
+
+      runBtn.addEventListener('click', runGroupBy);
+
+      function runGroupBy() {
+        if (!groupCols.length) return;
+        const sumCol = sumColSel.value;
+        const numericCols = sumCol
+          ? [sumCol]
+          : allCols.filter(k =>
+              !groupCols.includes(k) &&
+              sheetData.some(r => typeof r[k] === 'number' || (!isNaN(parseFloat(r[k])) && r[k] !== ''))
+            );
+
+        if (!numericCols.length) {
+          status.className = 'error';
+          status.textContent = '✖ No numeric columns found to sum.';
+          return;
+        }
+
+        const map = new Map();
+        sheetData.forEach(row => {
+          const key = groupCols.map(c => String(row[c] ?? '')).join('\x00');
+          if (!map.has(key)) {
+            const init = {};
+            groupCols.forEach(c => init[c] = row[c] ?? '');
+            numericCols.forEach(c => init[c] = 0);
+            map.set(key, init);
+          }
+          const acc = map.get(key);
+          numericCols.forEach(c => { const v = parseFloat(row[c]); if (!isNaN(v)) acc[c] += v; });
+        });
+
+        const resultRows = [...map.values()].sort((a, b) => {
+          for (const c of groupCols) {
+            const cmp = String(a[c]).localeCompare(String(b[c]));
+            if (cmp !== 0) return cmp;
+          }
+          return 0;
+        });
+
+        const totals = {};
+        groupCols.forEach((c, i) => totals[c] = i === 0 ? 'TOTAL' : '');
+        numericCols.forEach(c => totals[c] = resultRows.reduce((s, r) => s + r[c], 0));
+
+        renderResult(groupCols, numericCols, resultRows, totals);
+        status.className = '';
+        status.textContent = '';
+      }
+
+      function fmt(n) {
+        if (typeof n !== 'number') return n;
+        return n % 1 === 0
+          ? n.toLocaleString()
+          : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      function renderResult(gCols, nCols, rows, totals) {
+        const cols = [...gCols, ...nCols];
+        exportData = [cols, ...rows.map(r => cols.map(c => r[c])), cols.map(c => totals[c])];
+
+        document.getElementById('gb-result-head').innerHTML =
+          '<tr>' + cols.map((c, i) =>
+            `<th${i < gCols.length ? '' : ' style="text-align:right"'}>${c}</th>`
+          ).join('') + '</tr>';
+
+        const tbody = document.getElementById('gb-result-body');
+        tbody.innerHTML = '';
+        rows.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = cols.map((c, i) =>
+            `<td class="${i >= gCols.length ? 'num' : ''}">${i >= gCols.length ? fmt(row[c]) : row[c]}</td>`
+          ).join('');
+          tbody.appendChild(tr);
+        });
+
+        const tr = document.createElement('tr');
+        tr.className = 'total-row';
+        tr.innerHTML = cols.map((c, i) =>
+          `<td class="${i >= gCols.length ? 'num' : ''}">${i >= gCols.length ? fmt(totals[c]) : totals[c]}</td>`
+        ).join('');
+        tbody.appendChild(tr);
+
+        document.getElementById('gb-result-title').textContent = `Grouped by: ${gCols.join(' › ')}`;
+        document.getElementById('gb-row-count').textContent = `${rows.length} groups`;
+        const card = document.getElementById('gb-result-card');
+        card.style.display = 'block';
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      document.getElementById('gb-export-btn').addEventListener('click', () => {
+        if (!exportData.length) return;
+        const csv = exportData.map(row =>
+          row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+        ).join('\r\n');
+        const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'grouped_result.csv';
+        a.click();
+      });
+    })();
+  </script>
+
+  <!-- Mirror ui.js's hidden #status writes → visible #plStatus -->
+  <style>
+    /* !important overrides the inline style.display='block' that ui.js sets */
+    #status { display: none !important; }
+    #plStatus { margin-top: 16px; padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; display: none; }
+    #plStatus.success { background: #d1fae5; color: #065f46; display: block; }
+    #plStatus.error   { background: #fee2e2; color: #991b1b; display: block; }
+    #plStatus.info    { background: #dbeafe; color: #1e40af; display: block; }
+  </style>
+  <script>
+    (function () {
+      const src  = document.getElementById('status');
+      const dest = document.getElementById('plStatus');
+      if (!src || !dest) return;
+      new MutationObserver(() => {
+        dest.className = src.className;
+        dest.innerHTML = src.innerHTML;
+      }).observe(src, { attributes: true, childList: true, subtree: true, characterData: true });
+    })();
+  </script>
+
+</body>
+</html>

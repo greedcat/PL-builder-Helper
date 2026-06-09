@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel Group & Sum</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Segoe UI, sans-serif; background: #f0f2f5; color: #222; }
+  .container { max-width: 1200px; margin: 32px auto; padding: 0 16px; }
+  h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 20px; color: #1a1a2e; }
+
+  .card {
+    background: #fff; border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 24px; margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: .85rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: #4f8ef7; margin-bottom: 14px;
+  }
+
+  /* drop zone */
+  .drop-zone {
+    border: 2px dashed #4f8ef7; border-radius: 8px; padding: 36px 20px;
+    text-align: center; cursor: pointer; transition: background .2s; color: #555;
+  }
+  .drop-zone:hover, .drop-zone.drag-over { background: #eef4ff; }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 2.5rem; }
+  .drop-zone p { margin-top: 8px; font-size: .95rem; }
+  .drop-zone small { color: #888; }
+
+  /* controls row */
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; margin-top: 16px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  label { font-size: .78rem; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: .04em; }
+
+  select, .tag-input-wrap {
+    padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px;
+    font-size: .92rem; background: #fafafa; min-width: 160px;
+  }
+  select:focus { outline: 2px solid #4f8ef7; border-color: transparent; }
+
+  /* multi-select tag box */
+  .tag-input-wrap {
+    display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+    min-height: 38px; cursor: text; min-width: 220px; max-width: 420px;
+  }
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #4f8ef7; color: #fff; border-radius: 4px;
+    padding: 2px 8px; font-size: .82rem; white-space: nowrap;
+  }
+  .tag .remove {
+    cursor: pointer; font-size: .9rem; line-height: 1;
+    background: none; border: none; color: #fff; padding: 0;
+  }
+  .tag-input-wrap select.tag-picker {
+    border: none; background: transparent; padding: 2px 4px;
+    font-size: .88rem; min-width: 110px; flex: 1;
+  }
+  .tag-input-wrap select.tag-picker:focus { outline: none; }
+
+  button {
+    padding: 9px 22px; background: #4f8ef7; color: #fff;
+    border: none; border-radius: 6px; font-size: .95rem;
+    cursor: pointer; font-weight: 600; transition: background .2s; align-self: flex-end;
+  }
+  button:hover { background: #2d6fe0; }
+  button:disabled { background: #aac4f5; cursor: default; }
+
+  #sheet-select-wrap { display: none; }
+
+  /* status */
+  #status { color: #888; font-size: .88rem; margin-top: 10px; min-height: 1.2em; }
+  .error { color: #d32f2f !important; }
+
+  /* tables */
+  .table-wrap { overflow-x: auto; max-height: 420px; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  thead th {
+    background: #4f8ef7; color: #fff; padding: 9px 12px;
+    text-align: left; white-space: nowrap; position: sticky; top: 0; z-index: 1;
+  }
+  td { padding: 7px 12px; border-bottom: 1px solid #e8e8e8; white-space: nowrap; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: #f5f8ff; }
+  .total-row td { font-weight: 700; background: #eef4ff; border-top: 2px solid #4f8ef7; }
+
+  .badge {
+    display: inline-block; background: #e8f0fe; color: #2d6fe0;
+    border-radius: 20px; padding: 2px 10px; font-size: .78rem; font-weight: 600;
+    margin-left: 6px;
+  }
+
+  .section-header {
+    display: flex; align-items: center; margin-bottom: 12px; gap: 8px; flex-wrap: wrap;
+  }
+  .section-header strong { font-size: 1rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Excel — Group By &amp; Sum</h1>
+
+  <!-- ── Upload card ── -->
+  <div class="card">
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+      <div class="icon">📊</div>
+      <p><strong>Click to upload</strong> or drag &amp; drop your Excel / CSV file</p>
+      <small>.xlsx · .xls · .csv</small>
+    </div>
+    <div id="status"></div>
+
+    <!-- controls (hidden until file loaded) -->
+    <div class="controls" id="controls" style="display:none;">
+      <div class="field" id="sheet-select-wrap">
+        <label for="sheet-select">Sheet</label>
+        <select id="sheet-select"></select>
+      </div>
+
+      <!-- multi-column group-by -->
+      <div class="field">
+        <label>Group By Columns</label>
+        <div class="tag-input-wrap" id="group-tags">
+          <select class="tag-picker" id="group-picker">
+            <option value="">+ add column</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="sum-col">Sum Column</label>
+        <select id="sum-col"><option value="">All numeric</option></select>
+      </div>
+
+      <button id="run-btn" disabled>Run</button>
+    </div>
+  </div>
+
+  <!-- ── Raw data preview (shown after upload) ── -->
+  <div class="card" id="preview-card" style="display:none;">
+    <div class="section-header">
+      <strong>Data Preview</strong>
+      <span class="badge" id="preview-count"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead id="preview-head"></thead>
+        <tbody id="preview-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Group-by result ── -->
+  <div class="card" id="result-card" style="display:none;">
+    <div class="section-header">
+      <strong id="result-title">Results</strong>
+      <span class="badge" id="row-count"></span>
+      <button id="export-btn" style="margin-left:auto; background:#28a745; padding:7px 16px;">⬇ Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead id="result-head"></thead>
+        <tbody id="result-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const PREVIEW_ROWS = 200;
+  let workbook  = null;
+  let sheetData = [];
+  let allCols   = [];
+  let groupCols = [];   // ordered list of selected group-by columns
+
+  // ── file drop / click ──────────────────────────────────────────────────────
+  const dropZone  = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const status    = document.getElementById('status');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+  function handleFile(file) {
+    if (!file) return;
+    status.className = '';
+    status.textContent = `Loading "${file.name}" …`;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        workbook = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+        populateSheets();
+        status.textContent = `✔ Loaded "${file.name}"`;
+      } catch(err) {
+        status.className = 'error';
+        status.textContent = '✖ Failed to read file: ' + err.message;
+      }
+    };
+    reader.readAsBinaryString(file);
+  }
+
+  // ── sheet selector ─────────────────────────────────────────────────────────
+  const sheetSelectWrap = document.getElementById('sheet-select-wrap');
+  const sheetSelect     = document.getElementById('sheet-select');
+
+  function populateSheets() {
+    sheetSelect.innerHTML = '';
+    workbook.SheetNames.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = name;
+      sheetSelect.appendChild(opt);
+    });
+    sheetSelectWrap.style.display = workbook.SheetNames.length > 1 ? 'flex' : 'none';
+    document.getElementById('controls').style.display = 'flex';
+    loadSheet(workbook.SheetNames[0]);
+  }
+
+  sheetSelect.addEventListener('change', () => loadSheet(sheetSelect.value));
+
+  function loadSheet(name) {
+    const ws = workbook.Sheets[name];
+    sheetData = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    if (!sheetData.length) { status.className='error'; status.textContent='Sheet is empty.'; return; }
+    allCols = Object.keys(sheetData[0]);
+    groupCols = [];
+    populateColumns(allCols);
+    renderPreview();
+    document.getElementById('result-card').style.display = 'none';
+  }
+
+  // ── multi-select group-by tags ─────────────────────────────────────────────
+  const groupTagsBox = document.getElementById('group-tags');
+  const groupPicker  = document.getElementById('group-picker');
+  const runBtn       = document.getElementById('run-btn');
+  const sumColSel    = document.getElementById('sum-col');
+
+  function populateColumns(cols) {
+    // group picker
+    groupPicker.innerHTML = '<option value="">+ add column</option>';
+    cols.forEach(c => groupPicker.appendChild(new Option(c, c)));
+
+    // sum picker
+    sumColSel.innerHTML = '<option value="">All numeric</option>';
+    cols.forEach(c => sumColSel.appendChild(new Option(c, c)));
+
+    // clear tags
+    [...groupTagsBox.querySelectorAll('.tag')].forEach(t => t.remove());
+    groupCols = [];
+    runBtn.disabled = true;
+  }
+
+  groupPicker.addEventListener('change', () => {
+    const val = groupPicker.value;
+    if (!val || groupCols.includes(val)) { groupPicker.value = ''; return; }
+    addGroupTag(val);
+    groupPicker.value = '';
+  });
+
+  function addGroupTag(col) {
+    groupCols.push(col);
+
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.dataset.col = col;
+    tag.innerHTML = `${col} <button class="remove" title="Remove">×</button>`;
+    tag.querySelector('.remove').addEventListener('click', () => {
+      groupCols = groupCols.filter(c => c !== col);
+      tag.remove();
+      runBtn.disabled = groupCols.length === 0;
+    });
+    groupTagsBox.insertBefore(tag, groupPicker);
+    runBtn.disabled = false;
+  }
+
+  // ── data preview ───────────────────────────────────────────────────────────
+  function renderPreview() {
+    const previewCard  = document.getElementById('preview-card');
+    const previewHead  = document.getElementById('preview-head');
+    const previewBody  = document.getElementById('preview-body');
+    const previewCount = document.getElementById('preview-count');
+
+    previewHead.innerHTML = '<tr>' + allCols.map(c => `<th>${c}</th>`).join('') + '</tr>';
+    previewBody.innerHTML = '';
+
+    const rows = sheetData.slice(0, PREVIEW_ROWS);
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = allCols.map(c => {
+        const v = row[c];
+        const isNum = typeof v === 'number';
+        return `<td class="${isNum ? 'num' : ''}">${isNum ? fmt(v) : v}</td>`;
+      }).join('');
+      previewBody.appendChild(tr);
+    });
+
+    previewCount.textContent =
+      sheetData.length <= PREVIEW_ROWS
+        ? `${sheetData.length} rows`
+        : `showing ${PREVIEW_ROWS} of ${sheetData.length} rows`;
+
+    previewCard.style.display = 'block';
+  }
+
+  // ── run group-by ───────────────────────────────────────────────────────────
+  runBtn.addEventListener('click', runGroupBy);
+
+  function runGroupBy() {
+    if (!groupCols.length) return;
+    const sumCol = sumColSel.value;
+
+    const numericCols = sumCol
+      ? [sumCol]
+      : allCols.filter(k =>
+          !groupCols.includes(k) &&
+          sheetData.some(r => typeof r[k] === 'number' || (!isNaN(parseFloat(r[k])) && r[k] !== ''))
+        );
+
+    if (!numericCols.length) {
+      status.className = 'error';
+      status.textContent = '✖ No numeric columns found to sum.';
+      return;
+    }
+
+    const map = new Map();
+    sheetData.forEach(row => {
+      const key = groupCols.map(c => String(row[c] ?? '')).join('\x00');
+      if (!map.has(key)) {
+        const init = {};
+        groupCols.forEach(c => init[c] = row[c] ?? '');
+        numericCols.forEach(c => init[c] = 0);
+        map.set(key, init);
+      }
+      const acc = map.get(key);
+      numericCols.forEach(c => {
+        const v = parseFloat(row[c]);
+        if (!isNaN(v)) acc[c] += v;
+      });
+    });
+
+    const resultRows = [...map.values()].sort((a, b) => {
+      for (const c of groupCols) {
+        const cmp = String(a[c]).localeCompare(String(b[c]));
+        if (cmp !== 0) return cmp;
+      }
+      return 0;
+    });
+
+    const totals = {};
+    groupCols.forEach((c, i) => totals[c] = i === 0 ? 'TOTAL' : '');
+    numericCols.forEach(c => totals[c] = resultRows.reduce((s, r) => s + r[c], 0));
+
+    renderResult(groupCols, numericCols, resultRows, totals);
+    status.className = '';
+    status.textContent = '';
+  }
+
+  // ── render result table ────────────────────────────────────────────────────
+  let exportData = [];
+
+  function fmt(n) {
+    if (typeof n !== 'number') return n;
+    return n % 1 === 0
+      ? n.toLocaleString()
+      : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function renderResult(gCols, nCols, rows, totals) {
+    const cols = [...gCols, ...nCols];
+    exportData = [cols, ...rows.map(r => cols.map(c => r[c])), cols.map(c => totals[c])];
+
+    document.getElementById('result-head').innerHTML =
+      '<tr>' + cols.map((c, i) => `<th${i < gCols.length ? '' : ' style="text-align:right"'}>${c}</th>`).join('') + '</tr>';
+
+    const tbody = document.getElementById('result-body');
+    tbody.innerHTML = '';
+
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = cols.map((c, i) =>
+        `<td class="${i >= gCols.length ? 'num' : ''}">${i >= gCols.length ? fmt(row[c]) : row[c]}</td>`
+      ).join('');
+      tbody.appendChild(tr);
+    });
+
+    const tr = document.createElement('tr');
+    tr.className = 'total-row';
+    tr.innerHTML = cols.map((c, i) =>
+      `<td class="${i >= gCols.length ? 'num' : ''}">${i >= gCols.length ? fmt(totals[c]) : totals[c]}</td>`
+    ).join('');
+    tbody.appendChild(tr);
+
+    document.getElementById('result-title').textContent =
+      `Grouped by: ${gCols.join(' › ')}`;
+    document.getElementById('row-count').textContent = `${rows.length} groups`;
+    const card = document.getElementById('result-card');
+    card.style.display = 'block';
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── export CSV ─────────────────────────────────────────────────────────────
+  document.getElementById('export-btn').addEventListener('click', () => {
+    if (!exportData.length) return;
+    const csv = exportData.map(row =>
+      row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+    ).join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'grouped_result.csv';
+    a.click();
+  });
+</script>
+</body>
+</html>
