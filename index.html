@@ -339,7 +339,7 @@
       border-radius: 12px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.08);
       padding: 32px;
-      max-width: 640px;
+      max-width: 960px;
       margin: 0 auto;
     }
 
@@ -412,6 +412,94 @@
 
     #tab-packing-list .btn:hover { background: #16213e; }
     #tab-packing-list .btn:disabled { background: #9ca3af; cursor: default; }
+
+    #tab-packing-list .pl-btn-row { display: flex; gap: 10px; }
+    #tab-packing-list .pl-btn-row .btn { margin-top: 0; }
+    #tab-packing-list .pl-btn-row .btn-secondary { flex: 0 0 auto; padding-left: 24px; padding-right: 24px; }
+
+    #tab-packing-list .btn-secondary {
+      padding: 10px 16px;
+      background: #f3f4f6;
+      color: #444;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 4px;
+    }
+    #tab-packing-list .btn-secondary:hover { background: #e5e7eb; }
+
+    #tab-packing-list .pl-row-range {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+    #tab-packing-list .pl-row-range > div { flex: 1; }
+    #tab-packing-list .pl-sublabel {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: normal;
+      color: #9ca3af;
+      margin-bottom: 4px;
+    }
+    #tab-packing-list input[type="number"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    #tab-packing-list input[type="number"]:focus { outline: none; border-color: #0f3460; }
+
+    #tab-packing-list .pl-table-wrap {
+      overflow: auto;
+      max-height: 360px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    #tab-packing-list .pl-table-wrap table {
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    #tab-packing-list .pl-table-wrap th,
+    #tab-packing-list .pl-table-wrap td {
+      padding: 5px 10px;
+      border-bottom: 1px solid #eee;
+      border-right: 1px solid #f3f4f6;
+      text-align: left;
+    }
+    #tab-packing-list .pl-table-wrap thead th {
+      background: #0f3460;
+      color: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    #tab-packing-list .pl-table-wrap td.pl-rownum {
+      background: #f9fafb;
+      color: #9ca3af;
+      text-align: right;
+      position: sticky;
+      left: 0;
+    }
+    #tab-packing-list .pl-table-wrap tr.pl-row-header td { background: #fef9c3; }
+    #tab-packing-list .pl-table-wrap tr.pl-row-data   td { background: #dcfce7; }
+
+    #tab-packing-list .pl-preview h2 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #0f3460;
+      margin: 18px 0 6px;
+    }
 
     .spinner {
       display: inline-block;
@@ -846,12 +934,41 @@
           <input type="text" id="clientContainer" placeholder="e.g. 易达优 EPS&#9;CAAU8049388" required>
         </div>
 
-        <button type="submit" class="btn" id="submitBtn">Generate Packing List</button>
+        <div class="form-group">
+          <label>
+            Data Table Row Range
+            <span style="font-weight:400;color:#aaa;margin-left:6px;">— optional, override auto-detection for exceptions</span>
+          </label>
+          <div class="pl-row-range">
+            <div>
+              <label for="hdrRowInput" class="pl-sublabel">Header row #</label>
+              <input type="number" id="hdrRowInput" min="1" placeholder="auto">
+            </div>
+            <div>
+              <label for="lastRowInput" class="pl-sublabel">Last data row #</label>
+              <input type="number" id="lastRowInput" min="1" placeholder="auto">
+            </div>
+          </div>
+          <button type="button" class="btn-secondary" id="btnViewSheet">View Original Sheet</button>
+          <div id="plOriginalSheet" class="pl-table-wrap" style="display:none;"></div>
+        </div>
+
+        <div class="pl-btn-row">
+          <button type="button" class="btn-secondary" id="btnPreview">Preview</button>
+          <button type="submit" class="btn" id="submitBtn">Generate Packing List</button>
+        </div>
       </form>
 
       <!-- ui.js writes to id="status"; #plStatus mirrors it visibly -->
       <div id="status" style="display:none;"></div>
       <div id="plStatus"></div>
+
+      <div id="plPreview" class="pl-preview" style="display:none;">
+        <h2>Preview — Packing List</h2>
+        <div class="pl-table-wrap" id="plPreviewData"></div>
+        <h2>Preview — Summary</h2>
+        <div class="pl-table-wrap" id="plPreviewSummary"></div>
+      </div>
     </div>
   </div>
 

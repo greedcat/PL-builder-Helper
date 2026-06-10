@@ -21,3 +21,14 @@ function normWeight(s) {
   if (s == null) return '';
   return String(s).normalize('NFKC').toLowerCase().replace(/\s+/g, '').trim();
 }
+
+// Drops the internal _Pallet column and any column that is null in every row.
+function getVisibleColumns(headers, rows) {
+  const cols = headers
+    .map((h, ci) => ({ h, ci }))
+    .filter(({ h, ci }) => h !== '_Pallet' && rows.some(r => r[ci] != null));
+  return {
+    headers: cols.map(x => x.h),
+    rows:    rows.map(r => cols.map(x => r[x.ci])),
+  };
+}

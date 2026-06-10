@@ -15,11 +15,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   }
 
   // Visible columns: drop _Pallet and all-null columns
-  const visCols = dataHeaders
-    .map((h, ci) => ({ h, ci }))
-    .filter(({ h, ci }) => h !== '_Pallet' && dataRows.some(r => r[ci] != null));
-  const visH    = visCols.map(x => x.h);
-  const visRows = dataRows.map(r => visCols.map(x => r[x.ci]));
+  const { headers: visH, rows: visRows } = getVisibleColumns(dataHeaders, dataRows);
 
   // Summary: drop pallet_number column
   const sumVis  = sumHeaders.map((h, i) => ({ h, i })).filter(x => x.h !== 'pallet_number');
