@@ -620,7 +620,7 @@
         <div class="section-header">
           <strong id="gb-result-title">Results</strong>
           <span class="badge" id="gb-row-count"></span>
-          <button id="gb-export-btn" style="margin-left:auto;background:#28a745;padding:7px 16px;">&#8595; Export CSV</button>
+          <button id="gb-export-btn" style="margin-left:auto;background:#28a745;padding:7px 16px;">&#8595; Export XLSX</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -973,14 +973,10 @@
 
       document.getElementById('gb-export-btn').addEventListener('click', () => {
         if (!exportData.length) return;
-        const csv = exportData.map(row =>
-          row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
-        ).join('\r\n');
-        const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'grouped_result.csv';
-        a.click();
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(exportData);
+        XLSX.utils.book_append_sheet(wb, ws, 'Grouped Result');
+        XLSX.writeFile(wb, 'grouped_result.xlsx');
       });
     })();
   </script>
