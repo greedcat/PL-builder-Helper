@@ -9,7 +9,7 @@ const cfgFileInput = document.getElementById('cfgFile');
 const cfgBadge     = document.getElementById('cfgBadge');
 const statusEl     = document.getElementById('status');
 
-renderConfigPanel();
+initConfigFromDB();
 
 // Excel file drop zone
 dropZone.addEventListener('click',     () => fileInput.click());
@@ -59,10 +59,15 @@ function showStatus(msg, type = 'info', spinner = false) {
 
 document.getElementById('plForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const file          = fileInput.files[0];
-  const cName         = document.getElementById('cName').value.trim();
-  const containerName = document.getElementById('containerName').value.trim();
+  const file = fileInput.files[0];
   if (!file) { showStatus('Please select an Excel file.', 'error'); return; }
+
+  const clientContainer = document.getElementById('clientContainer').value;
+  const [cName = '', containerName = ''] = clientContainer.split('\t').map(s => s.trim());
+  if (!cName || !containerName) {
+    showStatus('Please enter Client Name and Container # separated by a tab.', 'error');
+    return;
+  }
 
   const btn    = document.getElementById('submitBtn');
   btn.disabled = true;

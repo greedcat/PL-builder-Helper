@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /tmp)",
+      "Bash(npx -y playwright@latest --version)",
+      "Bash(railway status *)",
+      "Bash(node .seed.js)",
+      "Read(//c/Users/3PL WH/AppData/Local/Temp/**)",
+      "Bash(node test_match.js)",
+      "Bash(node -e ' *)",
+      "Bash(rm -f test_match.js test_match2.js match_helper_standalone.png match_helper_tab.png)",
+      "Bash(jobs -p)",
+      "Bash(xargs -r kill)",
+      "Bash(pkill -f http-server)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\3PL WH\\AppData\\Local\\Temp"
+    ]
+  }
+}

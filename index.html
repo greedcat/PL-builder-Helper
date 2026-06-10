@@ -67,7 +67,7 @@
 
 
     /* ══════════════════════════════════════════════════════════
-       TAB 1 — FBA PO Builder
+       TAB — FBA PO Builder
     ══════════════════════════════════════════════════════════ */
     #tab-fba-po h1 {
       font-size: 1.6rem;
@@ -182,7 +182,157 @@
 
 
     /* ══════════════════════════════════════════════════════════
-       TAB 2 — Packing List Builder
+       TAB 2 — Match Helper
+    ══════════════════════════════════════════════════════════ */
+    #tab-match-helper h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #0f3460;
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    #tab-match-helper .mh-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto 20px;
+    }
+    @media (max-width: 900px) {
+      #tab-match-helper .mh-layout { grid-template-columns: 1fr; }
+    }
+
+    #tab-match-helper .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 28px 32px;
+    }
+
+    #tab-match-helper .mh-layout .card { margin: 0; }
+
+    #tab-match-helper #mhResultsSection {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: none;
+    }
+    #tab-match-helper #mhResultsSection.visible { display: block; }
+
+    #tab-match-helper label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    #tab-match-helper textarea {
+      width: 100%;
+      height: 260px;
+      padding: 10px 12px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      resize: vertical;
+      line-height: 1.6;
+      transition: border-color 0.2s;
+    }
+
+    #tab-match-helper textarea:focus { outline: none; border-color: #0f3460; }
+
+    #tab-match-helper .hint { font-size: 0.74rem; color: #9ca3af; margin-top: 4px; }
+
+    #tab-match-helper .mh-btn-row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      max-width: 1100px;
+      margin: 0 auto 24px;
+    }
+
+    #tab-match-helper button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    #tab-match-helper button:active { transform: scale(0.97); }
+
+    #mhBtnRun { background: #0f3460; color: #fff; padding: 10px 32px; }
+    #mhBtnRun:hover { background: #16213e; }
+    #mhBtnClear { background: #f3f4f6; color: #555; }
+    #mhBtnClear:hover { background: #e5e7eb; }
+
+    #tab-match-helper .mh-alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    #tab-match-helper .mh-alert {
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    #tab-match-helper .mh-alert-success { background: #dcfce7; color: #166534; border-left: 4px solid #16a34a; }
+    #tab-match-helper .mh-alert-warn    { background: #fef9c3; color: #854d0e; border-left: 4px solid #ca8a04; }
+    #tab-match-helper .mh-alert-error   { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; }
+
+    #tab-match-helper .mh-summary { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    #tab-match-helper .mh-chip {
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    #tab-match-helper .mh-chip-blue   { background: #dbeafe; color: #1d4ed8; }
+    #tab-match-helper .mh-chip-green  { background: #dcfce7; color: #166534; }
+    #tab-match-helper .mh-chip-red    { background: #fee2e2; color: #991b1b; }
+    #tab-match-helper .mh-chip-yellow { background: #fef9c3; color: #854d0e; }
+
+    #tab-match-helper .mh-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    #tab-match-helper .mh-section-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+    }
+    #mhCopyBtn { background: #f3f4f6; color: #555; }
+    #mhCopyBtn:hover { background: #e5e7eb; }
+    #mhCopyBtn.copied { background: #d1fae5; color: #065f46; }
+
+    #tab-match-helper .mh-horiz-wrap { overflow-x: auto; }
+    #tab-match-helper .mh-horiz-wrap table { border-collapse: collapse; width: 100%; font-size: 0.9rem; white-space: nowrap; }
+    #tab-match-helper .mh-horiz-wrap thead th {
+      background: #0f3460;
+      color: #fff;
+      padding: 9px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    #tab-match-helper .mh-horiz-wrap td {
+      padding: 8px 14px;
+      border-bottom: 1px solid #eee;
+    }
+    #tab-match-helper .mh-horiz-wrap td.val { font-weight: 700; color: #1d4ed8; text-align: right; font-variant-numeric: tabular-nums; }
+    #tab-match-helper .mh-horiz-wrap td.empty { color: #bbb; text-align: right; }
+
+
+    /* ══════════════════════════════════════════════════════════
+       TAB 1 — Packing List Builder
     ══════════════════════════════════════════════════════════ */
     #tab-packing-list .pl-card {
       background: #fff;
@@ -275,6 +425,147 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Config panel (DEST_LIST / keyword editor) ──────────── */
+    #tab-packing-list #cfgPanel { margin-top: 10px; }
+
+    #tab-packing-list .cfg-db-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    #tab-packing-list .cfg-link-btn {
+      background: none;
+      border: none;
+      color: #0f3460;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 2px 0;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    #tab-packing-list .cfg-link-btn:hover { text-decoration: underline; }
+
+    #tab-packing-list .cfg-link-btn-primary {
+      background: #0f3460;
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 6px;
+    }
+    #tab-packing-list .cfg-link-btn-primary:hover { background: #16213e; text-decoration: none; }
+
+    #tab-packing-list .cfg-db-status { font-size: 0.78rem; color: #6b7280; }
+
+    #tab-packing-list .cfg-db-form {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    #tab-packing-list .cfg-db-form label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    #tab-packing-list .cfg-db-form input {
+      margin-top: 4px;
+      padding: 7px 10px;
+      font-size: 0.85rem;
+    }
+    #tab-packing-list .cfg-db-actions { margin-top: 4px; }
+
+    #tab-packing-list .cfg-section { margin-bottom: 14px; }
+
+    #tab-packing-list .cfg-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #888;
+      letter-spacing: .05em;
+      margin-bottom: 5px;
+    }
+
+    #tab-packing-list .cfg-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+
+    #tab-packing-list .cfg-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 4px;
+      padding: 2px 6px 2px 8px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    #tab-packing-list .cfg-chip-x {
+      background: rgba(0,0,0,0.08);
+      border: none;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      line-height: 1;
+      font-size: 12px;
+      cursor: pointer;
+      color: inherit;
+    }
+    #tab-packing-list .cfg-chip-x:hover { background: rgba(0,0,0,0.2); }
+
+    #tab-packing-list .cfg-add-row {
+      display: flex;
+      gap: 6px;
+    }
+    #tab-packing-list .cfg-add-row input {
+      flex: 1;
+      width: auto;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+      border: 1.5px solid #d1d5db;
+      border-radius: 6px;
+      font-family: inherit;
+    }
+    #tab-packing-list .cfg-add-row input:focus { outline: none; border-color: #0f3460; }
+    #tab-packing-list .cfg-add-btn {
+      background: #eef2ff;
+      color: #1e40af;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #tab-packing-list .cfg-add-btn:hover { background: #dbeafe; }
+
+    #tab-packing-list .cfg-undo-toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1a1a2e;
+      color: #fff;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+    #tab-packing-list .cfg-undo-toast .cfg-link-btn {
+      color: #93c5fd;
+      font-weight: 700;
+    }
+    #tab-packing-list .cfg-undo-toast .cfg-link-btn:hover { color: #fff; }
 
 
     /* ══════════════════════════════════════════════════════════
@@ -469,17 +760,18 @@
   <header class="app-header">
     <div class="app-title">PL Builder Helper</div>
     <nav class="tab-nav">
-      <button class="tab-btn active" data-tab="fba-po">FBA PO Builder</button>
-      <button class="tab-btn" data-tab="packing-list">Packing List Builder</button>
+      <button class="tab-btn active" data-tab="packing-list">Packing List Builder</button>
+      <button class="tab-btn" data-tab="match-helper">Match Helper</button>
       <button class="tab-btn" data-tab="excel-groupby">Excel Group &amp; Sum</button>
+      <button class="tab-btn" data-tab="fba-po">FBA PO Builder</button>
     </nav>
   </header>
 
 
   <!-- ══════════════════════════════════════════════════════════
-       TAB 1 — FBA PO Builder
+       TAB — FBA PO Builder
   ══════════════════════════════════════════════════════════ -->
-  <div class="tab-panel active" id="tab-fba-po">
+  <div class="tab-panel" id="tab-fba-po">
     <h1>FBA PO Builder</h1>
     <div class="card">
       <div class="inputs">
@@ -515,9 +807,9 @@
 
 
   <!-- ══════════════════════════════════════════════════════════
-       TAB 2 — Packing List Builder
+       TAB 1 — Packing List Builder
   ══════════════════════════════════════════════════════════ -->
-  <div class="tab-panel" id="tab-packing-list">
+  <div class="tab-panel active" id="tab-packing-list">
     <div class="pl-card">
       <h1>Packing List Builder</h1>
       <p class="subtitle">Upload an Excel file to generate a formatted packing list</p>
@@ -547,13 +839,11 @@
         </div>
 
         <div class="form-group">
-          <label for="cName">Client Name</label>
-          <input type="text" id="cName" placeholder="e.g. ABC Trading Co." required>
-        </div>
-
-        <div class="form-group">
-          <label for="containerName">Container #</label>
-          <input type="text" id="containerName" placeholder="e.g. MSCU1234567" required>
+          <label for="clientContainer">
+            Client Name &amp; Container #
+            <span style="font-weight:400;color:#aaa;margin-left:6px;">— paste both, separated by a tab</span>
+          </label>
+          <input type="text" id="clientContainer" placeholder="e.g. 易达优 EPS&#9;CAAU8049388" required>
         </div>
 
         <button type="submit" class="btn" id="submitBtn">Generate Packing List</button>
@@ -633,7 +923,46 @@
   </div>
 
 
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 2 — Match Helper
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-match-helper">
+    <h1>Match Helper</h1>
+
+    <div class="mh-layout">
+      <div class="card">
+        <label for="mhExcelInput">1 · Paste Excel Data</label>
+        <textarea id="mhExcelInput" placeholder="Copy your Excel table (Dest + Value columns) and paste here.&#10;&#10;Example:&#10;Dest&#9;Value&#10;YYZ3&#9;5&#10;YOO1&#9;12&#10;HOLD&#9;3"></textarea>
+        <div class="hint">Copy cells from Excel (including header row) and paste with Ctrl+V.</div>
+      </div>
+
+      <div class="card">
+        <label for="mhOrderInput">2 · Order List</label>
+        <textarea id="mhOrderInput" placeholder="One destination per line, in the order you want them to appear."></textarea>
+        <div class="hint">Edit freely — destinations are matched case-insensitively.</div>
+      </div>
+    </div>
+
+    <div class="mh-btn-row">
+      <button id="mhBtnRun">⚡ Match</button>
+      <button id="mhBtnClear">Clear</button>
+    </div>
+
+    <div class="card" id="mhResultsSection">
+      <div id="mhAlerts" class="mh-alerts"></div>
+      <div class="mh-summary" id="mhSummary"></div>
+
+      <div class="mh-section-header">
+        <span class="mh-section-title">Horizontal (copy-friendly)</span>
+        <button id="mhCopyBtn">Copy</button>
+      </div>
+      <div class="mh-horiz-wrap" id="mhHorizTable"></div>
+    </div>
+  </div>
+
+
   <!-- ── Packing List Builder external scripts ──────────────── -->
+  <script src="js/db.js"></script>
   <script src="js/config.js"></script>
   <script src="js/utils.js"></script>
   <script src="js/detect.js"></script>
@@ -750,6 +1079,152 @@
           btnCopy.textContent = 'Copied!';
           btnCopy.classList.add('copied');
           setTimeout(() => { btnCopy.textContent = 'Copy'; btnCopy.classList.remove('copied'); }, 2000);
+        });
+      });
+    })();
+
+
+    /* ── Match Helper ───────────────────────────────────────── */
+    (function () {
+      const excelInput = document.getElementById('mhExcelInput');
+      const orderInput = document.getElementById('mhOrderInput');
+      const alertsEl   = document.getElementById('mhAlerts');
+      const summaryEl  = document.getElementById('mhSummary');
+      const section    = document.getElementById('mhResultsSection');
+      const horizTable = document.getElementById('mhHorizTable');
+      const copyBtn    = document.getElementById('mhCopyBtn');
+
+      const DEFAULT_ORDER = [
+        'YYZ3', 'YOO1', 'XYY1', 'YGK1', 'YYZ4', 'YYZ9', 'YYZ7', 'YXU1',
+        'YHM1', 'YOW1', 'YOW3', '私人地址', 'HOLD', 'YYZ1', 'YYC4/6',
+        'YEG1/2', 'YVR3/4', '自提', '换标', '快递'
+      ];
+      orderInput.value = DEFAULT_ORDER.join('\n');
+
+      function normDest(s) {
+        if (!s) return '';
+        const u = s.toUpperCase();
+        if (u.includes('私仓')) return '私人地址';
+        if (u.includes('HOLD')) return 'HOLD';
+        if (u.includes('UPS'))  return '快递';
+        const clean = u.replace(/[\s\-]/g, '');
+        if (clean.includes('SELFPICKUP')) return '自提';
+        return s.trim();
+      }
+
+      function normOrderItem(s) {
+        if (!s) return '';
+        const low = s.toLowerCase().replace(/[\s\-]/g, '');
+        if (low.includes('hold'))       return 'HOLD';
+        if (low.includes('ups'))        return '快递';
+        if (low.includes('selfpickup')) return '自提';
+        return s.trim();
+      }
+
+      // Parses pasted Excel rows (Dest + Value columns) into { dest, value } rows.
+      function parseTSV(text) {
+        const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) return null;
+
+        const header   = lines[0].split('\t').map(h => h.trim().toLowerCase());
+        const destIdx  = header.findIndex(h => h === 'dest' || h === 'destination' || h === '目的地');
+        const valueIdx = header.findIndex(h => h === 'value' || h === '值' || h === '金额' || h === 'amount');
+
+        if (destIdx === -1 || valueIdx === -1) {
+          return lines.map(l => {
+            const cols = l.split('\t');
+            return { dest: normDest(cols[0]), value: parseFloat(cols[1]) || 0 };
+          }).filter(r => r.dest);
+        }
+
+        return lines.slice(1).map(l => {
+          const cols = l.split('\t');
+          return { dest: normDest(cols[destIdx]), value: parseFloat(cols[valueIdx]) || 0 };
+        }).filter(r => r.dest);
+      }
+
+      function groupByDest(rows) {
+        const map = {};
+        for (const { dest, value } of rows) map[dest] = (map[dest] || 0) + value;
+        return map;
+      }
+
+      let horizData = [];
+
+      document.getElementById('mhBtnRun').addEventListener('click', () => {
+        const excelRaw = excelInput.value.trim();
+        const orderRaw = orderInput.value.trim();
+
+        alertsEl.innerHTML  = '';
+        summaryEl.innerHTML = '';
+
+        if (!excelRaw) { alert('Please paste your Excel data first.'); return; }
+
+        const rows = parseTSV(excelRaw);
+        if (!rows || rows.length === 0) {
+          alertsEl.innerHTML = `<div class="mh-alert mh-alert-error">Could not parse data. Make sure you copy at least two columns (Dest + Value) from Excel, including the header row.</div>`;
+          section.classList.add('visible');
+          return;
+        }
+
+        const grouped = groupByDest(rows);
+        const order = orderRaw.split(/\r?\n/).map(normOrderItem).filter(Boolean);
+
+        const extra  = Object.keys(grouped).filter(d => !order.includes(d));
+        const noData = order.filter(d => !(d in grouped));
+
+        const result = order.map(d => ({ dest: d, value: grouped[d] ?? null }));
+        horizData = result;
+
+        const headers = result.map(r => `<th>${r.dest}</th>`).join('');
+        const cells = result.map(r =>
+          (r.value !== null && r.value !== 0)
+            ? `<td class="val">${r.value.toLocaleString()}</td>`
+            : `<td class="empty">—</td>`
+        ).join('');
+        horizTable.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody><tr>${cells}</tr></tbody></table>`;
+
+        let alertHtml = '';
+        if (extra.length)
+          alertHtml += `<div class="mh-alert mh-alert-error">⚠️ <strong>${extra.length} destination(s) in Excel but NOT in order list:</strong> ${extra.join(', ')}</div>`;
+        if (noData.length)
+          alertHtml += `<div class="mh-alert mh-alert-warn">ℹ️ <strong>${noData.length} destination(s) in order list with no data:</strong> ${noData.join(', ')}</div>`;
+        if (!extra.length && !noData.length)
+          alertHtml += `<div class="mh-alert mh-alert-success">✅ All destinations matched perfectly.</div>`;
+        alertsEl.innerHTML = alertHtml;
+
+        const matched = result.filter(r => r.value !== null && r.value !== 0).length;
+        const total   = result.reduce((s, r) => s + (r.value || 0), 0);
+        summaryEl.innerHTML = `
+          <span class="mh-chip mh-chip-blue">${result.length} destinations</span>
+          <span class="mh-chip mh-chip-green">${matched} with data</span>
+          <span class="mh-chip mh-chip-yellow">${noData.length} empty</span>
+          ${extra.length ? `<span class="mh-chip mh-chip-red">${extra.length} unmatched</span>` : ''}
+          <span class="mh-chip mh-chip-blue">Total: ${total.toLocaleString()}</span>
+        `;
+
+        section.classList.add('visible');
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      document.getElementById('mhBtnClear').addEventListener('click', () => {
+        excelInput.value = '';
+        section.classList.remove('visible');
+        alertsEl.innerHTML  = '';
+        summaryEl.innerHTML = '';
+        horizTable.innerHTML = '';
+        horizData = [];
+        copyBtn.textContent = 'Copy';
+        copyBtn.classList.remove('copied');
+      });
+
+      copyBtn.addEventListener('click', () => {
+        if (!horizData.length) return;
+        const values = horizData.map(r => (r.value !== null && r.value !== 0) ? r.value : '').join('\t');
+        navigator.clipboard.writeText(values).then(() => {
+          copyBtn.textContent = 'Copied!';
+          copyBtn.classList.add('copied');
+          setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 2000);
         });
       });
     })();

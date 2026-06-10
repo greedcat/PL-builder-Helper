@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Match Helper</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+  header {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    color: #fff;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  header h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: .5px; }
+  header span { font-size: 1.5rem; }
+
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 24px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .card h2 { font-size: .85rem; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: #666; margin-bottom: 10px; }
+
+  textarea {
+    width: 100%;
+    border: 2px dashed #d0d5dd;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: .9rem;
+    font-family: monospace;
+    resize: vertical;
+    outline: none;
+    transition: border-color .2s;
+    background: #fafafa;
+  }
+  textarea:focus { border-color: #4f8ef7; background: #fff; }
+  textarea::placeholder { color: #aaa; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+  button {
+    padding: 10px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: .95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+  button:active { transform: scale(.97); }
+  .btn-primary { background: #4f8ef7; color: #fff; }
+  .btn-primary:hover { opacity: .88; }
+  .btn-secondary { background: #e8edf5; color: #333; }
+  .btn-secondary:hover { opacity: .8; }
+  .btn-danger { background: #fee2e2; color: #b91c1c; }
+  .btn-danger:hover { opacity: .8; }
+
+  /* ── Results area ── */
+  #results-section { grid-column: 1 / -1; display: none; }
+  #results-section.visible { display: block; }
+
+  .alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .alert {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: .9rem;
+    font-weight: 500;
+  }
+  .alert-success { background: #dcfce7; color: #166534; border-left: 4px solid #16a34a; }
+  .alert-warn    { background: #fef9c3; color: #854d0e; border-left: 4px solid #ca8a04; }
+  .alert-error   { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; }
+
+  .result-views { display: grid; grid-template-columns: 1fr; gap: 20px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  thead th {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 9px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: .8rem;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+  tbody tr:nth-child(even) { background: #f8f9fb; }
+  tbody tr:hover { background: #eef2ff; }
+  td { padding: 8px 14px; border-bottom: 1px solid #eee; }
+  td.val { font-weight: 700; color: #1d4ed8; text-align: right; font-variant-numeric: tabular-nums; }
+  td.empty { color: #bbb; text-align: right; }
+  tr.warn-row td { background: #fef9c3 !important; }
+
+  /* horizontal scroll table */
+  .horiz-wrap { overflow-x: auto; }
+  .horiz-wrap table { white-space: nowrap; }
+
+  /* copy button on horiz */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .section-header h2 { margin-bottom: 0; }
+  .copy-btn {
+    padding: 10px 28px;
+    font-size: 1rem;
+    background: #e8edf5;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #333;
+  }
+  .copy-btn:hover { background: #d1d9ee; }
+  .copied { background: #dcfce7 !important; color: #166534 !important; }
+
+  /* hint text */
+  .hint { font-size: .78rem; color: #999; margin-top: 6px; }
+
+  /* summary chips */
+  .summary { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip {
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: .8rem;
+    font-weight: 600;
+  }
+  .chip-blue  { background: #dbeafe; color: #1d4ed8; }
+  .chip-green { background: #dcfce7; color: #166534; }
+  .chip-red   { background: #fee2e2; color: #991b1b; }
+  .chip-yellow{ background: #fef9c3; color: #854d0e; }
+</style>
+</head>
+<body>
+
+<header>
+  <span>📦</span>
+  <h1>Match Helper</h1>
+</header>
+
+<div class="layout">
+
+  <!-- ── Excel paste ── -->
+  <div class="card">
+    <h2>1 · Paste Excel Data</h2>
+    <textarea id="excel-input" rows="14"
+      placeholder="Copy your Excel table (Dest + Value columns) and paste here.&#10;&#10;Example:&#10;Dest	Value&#10;YYZ3	5&#10;YOO1	12&#10;HOLD	3"></textarea>
+    <p class="hint">Copy cells from Excel (including header row) and paste with Ctrl+V.</p>
+  </div>
+
+  <!-- ── Order list ── -->
+  <div class="card">
+    <h2>2 · Order List</h2>
+    <textarea id="order-input" rows="14"
+      placeholder="One destination per line, in the order you want them to appear."></textarea>
+    <p class="hint">Edit freely. Destinations are matched case-insensitively.</p>
+  </div>
+
+  <!-- ── Buttons ── -->
+  <div style="grid-column:1/-1; display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:-8px;">
+    <button class="btn-primary" onclick="run()">⚡ Match</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+
+  <!-- ── Results ── -->
+  <div class="card" id="results-section">
+    <div id="alerts" class="alerts"></div>
+    <div class="summary" id="summary"></div>
+
+    <div class="result-views">
+      <!-- horizontal -->
+      <div>
+        <div class="section-header">
+          <h2 style="font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:#666;">Horizontal (copy-friendly)</h2>
+          <button class="copy-btn" id="copy-horiz-btn" onclick="copyHoriz()">Copy</button>
+        </div>
+        <div class="horiz-wrap" id="horiz-table"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── pre-fill order list with DEST_LIST + special categories ────────────────
+const DEFAULT_ORDER = [
+  "YYZ3", "YOO1", "XYY1", "YGK1", "YYZ4", "YYZ9", "YYZ7", "YXU1",
+  "YHM1", "YOW1", "YOW3", "私人地址", "HOLD", "YYZ1", "YYC4/6",
+  "YEG1/2", "YVR3/4", "自提", "换标", "快递"
+];
+document.getElementById("order-input").value = DEFAULT_ORDER.join("\n");
+
+// ── normalise destination string ──────────────────────────────────────────
+function normDest(s) {
+  if (!s) return "";
+  const u = s.toUpperCase();
+  if (u.includes("私仓"))  return "私人地址";
+  if (u.includes("HOLD"))  return "HOLD";
+  if (u.includes("UPS"))   return "快递";
+  const clean = u.replace(/[\s\-]/g, "");
+  if (clean.includes("SELFPICKUP")) return "自提";
+  return s.trim();
+}
+
+function normOrderItem(s) {
+  if (!s) return "";
+  const low = s.toLowerCase().replace(/[\s\-]/g, "");
+  if (low.includes("hold"))        return "HOLD";
+  if (low.includes("ups"))         return "快递";
+  if (low.includes("selfpickup"))  return "自提";
+  return s.trim();
+}
+
+// ── parse TSV pasted from Excel ───────────────────────────────────────────
+function parseTSV(text) {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return null;
+
+  const header = lines[0].split("\t").map(h => h.trim().toLowerCase());
+  const destIdx  = header.findIndex(h => h === "dest" || h === "destination" || h === "目的地");
+  const valueIdx = header.findIndex(h => h === "value" || h === "值" || h === "金额" || h === "amount");
+
+  if (destIdx === -1 || valueIdx === -1) {
+    // no recognised header — treat every line as data
+    return lines.map(l => {
+      const cols = l.split("\t");
+      return { dest: normDest(cols[0]), value: parseFloat(cols[1]) || 0 };
+    }).filter(r => r.dest);
+  }
+
+  return lines.slice(1).map(l => {
+    const cols = l.split("\t");
+    return { dest: normDest(cols[destIdx]), value: parseFloat(cols[valueIdx]) || 0 };
+  }).filter(r => r.dest);
+}
+
+// ── group by dest ─────────────────────────────────────────────────────────
+function groupByDest(rows) {
+  const map = {};
+  for (const { dest, value } of rows) {
+    map[dest] = (map[dest] || 0) + value;
+  }
+  return map;
+}
+
+// ── render ────────────────────────────────────────────────────────────────
+let _horizData = []; // store for copy
+
+function run() {
+  const excelRaw = document.getElementById("excel-input").value.trim();
+  const orderRaw = document.getElementById("order-input").value.trim();
+
+  const alertsEl  = document.getElementById("alerts");
+  const summaryEl = document.getElementById("summary");
+  const section   = document.getElementById("results-section");
+  alertsEl.innerHTML = "";
+  summaryEl.innerHTML = "";
+
+  if (!excelRaw) { alert("Please paste your Excel data first."); return; }
+
+  const rows = parseTSV(excelRaw);
+  if (!rows || rows.length === 0) {
+    alertsEl.innerHTML = `<div class="alert alert-error">Could not parse data. Make sure you copy at least two columns (Dest + Value) from Excel, including the header row.</div>`;
+    section.classList.add("visible");
+    return;
+  }
+
+  const grouped = groupByDest(rows);
+
+  const order = orderRaw.split(/\r?\n/)
+    .map(normOrderItem)
+    .filter(Boolean);
+
+  const extra   = Object.keys(grouped).filter(d => !order.includes(d));
+  const noData  = order.filter(d => !(d in grouped));
+
+  // build result array
+  const result = order.map(d => ({ dest: d, value: grouped[d] ?? null }));
+  _horizData = result;
+
+  // horizontal table
+  const headers = result.map(r => `<th>${r.dest}</th>`).join("");
+  const cells   = result.map(r => {
+    if (r.value !== null && r.value !== 0)
+      return `<td class="val">${r.value.toLocaleString()}</td>`;
+    return `<td class="empty">—</td>`;
+  }).join("");
+  const htHtml = `<table><thead><tr>${headers}</tr></thead><tbody><tr>${cells}</tr></tbody></table>`;
+  document.getElementById("horiz-table").innerHTML = htHtml;
+
+  // alerts
+  let alertHtml = "";
+  if (extra.length)
+    alertHtml += `<div class="alert alert-error">⚠️ <strong>${extra.length} destination(s) in Excel but NOT in order list:</strong> ${extra.join(", ")}</div>`;
+  if (noData.length)
+    alertHtml += `<div class="alert alert-warn">ℹ️ <strong>${noData.length} destination(s) in order list with no data:</strong> ${noData.join(", ")}</div>`;
+  if (!extra.length && !noData.length)
+    alertHtml += `<div class="alert alert-success">✅ All destinations matched perfectly.</div>`;
+  alertsEl.innerHTML = alertHtml;
+
+  // summary chips
+  const matched = result.filter(r => r.value !== null && r.value !== 0).length;
+  const total   = result.reduce((s, r) => s + (r.value || 0), 0);
+  summaryEl.innerHTML = `
+    <span class="chip chip-blue">${result.length} destinations</span>
+    <span class="chip chip-green">${matched} with data</span>
+    <span class="chip chip-yellow">${noData.length} empty</span>
+    ${extra.length ? `<span class="chip chip-red">${extra.length} unmatched</span>` : ""}
+    <span class="chip chip-blue">Total: ${total.toLocaleString()}</span>
+  `;
+
+  section.classList.add("visible");
+  section.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function copyHoriz() {
+  if (!_horizData.length) return;
+  const values = _horizData.map(r => (r.value !== null && r.value !== 0) ? r.value : "").join("\t");
+  navigator.clipboard.writeText(values).then(() => {
+    const btn = document.getElementById("copy-horiz-btn");
+    btn.textContent = "Copied!";
+    btn.classList.add("copied");
+    setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 2000);
+  });
+}
+
+function clearAll() {
+  document.getElementById("excel-input").value = "";
+  document.getElementById("results-section").classList.remove("visible");
+}
+
+// allow Enter on textareas to not submit, and Ctrl+Enter to run
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") run();
+});
+</script>
+</body>
+</html>
