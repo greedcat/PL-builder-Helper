@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Packing List Builder</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<style>
+  .pl-row-range { display: flex; gap: 16px; margin-bottom: 10px; }
+  .pl-row-range > div { flex: 1; }
+  .pl-sublabel { font-size: 0.7rem; font-weight: 600; color: #9ca3af; margin-bottom: 4px; display: block; }
+  input[type="number"] {
+    width: 100%; padding: 9px 12px; border: 1.5px solid #d1d5db;
+    border-radius: 8px; font-size: 0.9rem; font-family: inherit;
+  }
+  input[type="number"]:focus { outline: none; border-color: #0f3460; }
+
+  .pl-btn-row { display: flex; gap: 10px; }
+  .btn-secondary {
+    padding: 10px 16px; background: #f3f4f6; color: #444; border: none;
+    border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+    transition: background 0.2s; margin-top: 4px;
+  }
+  .btn-secondary:hover { background: #e5e7eb; }
+
+  .pl-table-wrap {
+    overflow: auto; max-height: 360px; border: 1px solid #e5e7eb;
+    border-radius: 8px; margin-top: 10px;
+  }
+  .pl-table-wrap table { border-collapse: collapse; font-size: 0.8rem; white-space: nowrap; }
+  .pl-table-wrap th, .pl-table-wrap td {
+    padding: 5px 10px; border-bottom: 1px solid #eee; border-right: 1px solid #f3f4f6; text-align: left;
+  }
+  .pl-table-wrap thead th { background: #0f3460; color: #fff; position: sticky; top: 0; z-index: 1; }
+  .pl-table-wrap td.pl-rownum { background: #f9fafb; color: #9ca3af; text-align: right; position: sticky; left: 0; }
+  .pl-table-wrap tr.pl-row-header td { background: #fef9c3; }
+  .pl-table-wrap tr.pl-row-data   td { background: #dcfce7; }
+
+  .pl-preview h2 {
+    font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #0f3460; margin: 18px 0 6px;
+  }
+</style>
+</head>
+
+<body>
+<div class="card">
+  <h1>Packing List Builder</h1>
+  <p class="subtitle">Upload an Excel file to generate a formatted packing list</p>
+
+  <form id="plForm">
+
+    <div class="form-group">
+      <label>Source Excel File</label>
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">📂</div>
+        <div class="drop-text"><strong>Click to browse</strong> or drag &amp; drop</div>
+        <div id="fileBadge" style="display:none"></div>
+        <input type="file" id="excelFile" accept=".xlsx,.xls">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>
+        config.properties
+        <span style="font-weight:400;color:#aaa;margin-left:6px;">— optional, overrides built-in keywords</span>
+      </label>
+      <div class="drop-zone" id="cfgDropZone" style="padding:14px 16px;">
+        <div class="drop-text" id="cfgDropText"><strong>Click to browse</strong> or drag &amp; drop config.properties</div>
+        <div id="cfgBadge" style="display:none"></div>
+        <input type="file" id="cfgFile" accept=".properties,.txt">
+      </div>
+      <div id="cfgPanel"></div>
+    </div>
+
+    <div class="form-group">
+      <label for="clientContainer">
+        Client Name &amp; Container #
+        <span style="font-weight:400;color:#aaa;margin-left:6px;">— paste both, separated by a tab</span>
+      </label>
+      <input type="text" id="clientContainer" placeholder="e.g. 易达优 EPS&#9;CAAU8049388" required>
+    </div>
+
+    <div class="form-group">
+      <label>
+        Data Table Row Range
+        <span style="font-weight:400;color:#aaa;margin-left:6px;">— optional, override auto-detection for exceptions</span>
+      </label>
+      <div class="pl-row-range">
+        <div>
+          <label for="hdrRowInput" class="pl-sublabel">Header row #</label>
+          <input type="number" id="hdrRowInput" min="1" placeholder="auto">
+        </div>
+        <div>
+          <label for="lastRowInput" class="pl-sublabel">Last data row #</label>
+          <input type="number" id="lastRowInput" min="1" placeholder="auto">
+        </div>
+      </div>
+      <button type="button" class="btn-secondary" id="btnViewSheet">View Original Sheet</button>
+      <div id="plOriginalSheet" class="pl-table-wrap" style="display:none;"></div>
+    </div>
+
+    <div class="pl-btn-row">
+      <button type="button" class="btn-secondary" id="btnPreview">Preview</button>
+      <button type="submit" class="btn" id="submitBtn">Generate Packing List</button>
+    </div>
+  </form>
+
+  <div id="status"></div>
+
+  <div id="plPreview" class="pl-preview" style="display:none;">
+    <h2>Preview — Packing List</h2>
+    <div class="pl-table-wrap" id="plPreviewData"></div>
+    <h2>Preview — Summary</h2>
+    <div class="pl-table-wrap" id="plPreviewSummary"></div>
+  </div>
+</div>
+
+<!-- load order matters: each file depends on those above it -->
+<script src="js/db.js"></script>
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/detect.js"></script>
+<script src="js/columns.js"></script>
+<script src="js/process.js"></script>
+<script src="js/writer.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

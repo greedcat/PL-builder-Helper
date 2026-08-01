@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Container Match Helper</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f0f2f5; color: #1a1a2e; min-height: 100vh; }
+
+  header {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    color: #fff;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  header h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: .5px; }
+  header span { font-size: 1.5rem; }
+
+  .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 24px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .card h2 { font-size: .85rem; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: #666; margin-bottom: 10px; }
+
+  textarea {
+    width: 100%;
+    border: 2px dashed #d0d5dd;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: .9rem;
+    font-family: monospace;
+    resize: vertical;
+    outline: none;
+    transition: border-color .2s;
+    background: #fafafa;
+  }
+  textarea:focus { border-color: #4f8ef7; background: #fff; }
+  textarea::placeholder { color: #aaa; }
+
+  /* drop zone */
+  .drop-zone {
+    border: 2px dashed #4f8ef7; border-radius: 8px; padding: 30px 16px;
+    text-align: center; cursor: pointer; transition: background .2s; color: #555;
+  }
+  .drop-zone:hover, .drop-zone.drag-over { background: #eef4ff; }
+  .drop-zone input { display: none; }
+  .drop-zone .icon { font-size: 2.2rem; }
+  .drop-zone p { margin-top: 6px; font-size: .92rem; }
+  .drop-zone small { color: #888; }
+
+  .file-status { font-size: .85rem; color: #888; margin-top: 8px; min-height: 1.2em; }
+  .file-status.error { color: #d32f2f; }
+  .file-status.ok { color: #16a34a; }
+
+  .field-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+  .field label { font-size: .72rem; font-weight: 700; color: #444; text-transform: uppercase; letter-spacing: .04em; }
+  .field select {
+    padding: 7px 8px; border: 1px solid #ccc; border-radius: 6px;
+    font-size: .88rem; background: #fafafa;
+  }
+  .field select:focus { outline: 2px solid #4f8ef7; border-color: transparent; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
+  button {
+    padding: 10px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: .95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .5; cursor: default; }
+  .btn-primary { background: #4f8ef7; color: #fff; }
+  .btn-primary:hover:not(:disabled) { opacity: .88; }
+  .btn-secondary { background: #e8edf5; color: #333; }
+  .btn-secondary:hover { opacity: .8; }
+  .btn-danger { background: #fee2e2; color: #b91c1c; }
+  .btn-danger:hover { opacity: .8; }
+
+  /* ── Results area ── */
+  #results-section { grid-column: 1 / -1; display: none; }
+  #results-section.visible { display: block; }
+
+  .alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .alert {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: .9rem;
+    font-weight: 500;
+  }
+  .alert-success { background: #dcfce7; color: #166534; border-left: 4px solid #16a34a; }
+  .alert-warn    { background: #fef9c3; color: #854d0e; border-left: 4px solid #ca8a04; }
+  .alert-error   { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; }
+
+  .result-views { display: grid; grid-template-columns: 1fr; gap: 20px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  thead th {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 9px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: .8rem;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+  tbody tr:nth-child(even) { background: #f8f9fb; }
+  tbody tr:hover { background: #eef2ff; }
+  td { padding: 8px 14px; border-bottom: 1px solid #eee; }
+  td.val { font-weight: 700; color: #1d4ed8; text-align: right; font-variant-numeric: tabular-nums; }
+  td.empty { color: #bbb; text-align: right; }
+  tr.warn-row td { background: #fef9c3 !important; }
+
+  /* horizontal scroll table */
+  .horiz-wrap { overflow-x: auto; }
+  .horiz-wrap table { white-space: nowrap; }
+
+  /* copy button on horiz */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .section-header h2 { margin-bottom: 0; }
+  .copy-btn {
+    padding: 10px 28px;
+    font-size: 1rem;
+    background: #e8edf5;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #333;
+  }
+  .copy-btn:hover { background: #d1d9ee; }
+  .copied { background: #dcfce7 !important; color: #166534 !important; }
+
+  /* hint text */
+  .hint { font-size: .78rem; color: #999; margin-top: 6px; }
+
+  /* container selection list */
+  .container-list {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    max-height: 220px; overflow-y: auto;
+    padding: 10px; border: 1px solid #e8edf5; border-radius: 8px; background: #fafbfd;
+  }
+  .container-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 10px; background: #fff; border: 1px solid #e0e4ec; border-radius: 6px;
+    font-size: .85rem; cursor: pointer;
+  }
+  .container-item input { cursor: pointer; }
+  .container-item .client-tag { color: #999; font-size: .78rem; }
+
+  /* summary chips */
+  .summary { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip {
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: .8rem;
+    font-weight: 600;
+  }
+  .chip-blue  { background: #dbeafe; color: #1d4ed8; }
+  .chip-green { background: #dcfce7; color: #166534; }
+  .chip-red   { background: #fee2e2; color: #991b1b; }
+  .chip-yellow{ background: #fef9c3; color: #854d0e; }
+</style>
+</head>
+<body>
+
+<header>
+  <span>🚢</span>
+  <h1>Container Match Helper</h1>
+</header>
+
+<div class="layout">
+
+  <!-- ── Excel upload ── -->
+  <div class="card">
+    <h2>1 · Upload Excel Data</h2>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+      <div class="icon">📊</div>
+      <p><strong>Click to upload</strong> or drag &amp; drop your Excel / CSV file</p>
+      <small>.xlsx · .xls · .csv</small>
+    </div>
+    <div class="file-status" id="file-status"></div>
+
+    <div class="field-row" id="column-controls" style="display:none;">
+      <div class="field" id="sheet-field" style="display:none;">
+        <label for="sheet-select">Sheet</label>
+        <select id="sheet-select"></select>
+      </div>
+      <div class="field">
+        <label for="client-col">Client Column</label>
+        <select id="client-col"></select>
+      </div>
+      <div class="field">
+        <label for="container-col">Container Column</label>
+        <select id="container-col"></select>
+      </div>
+      <div class="field">
+        <label for="dest-col">Destination Column</label>
+        <select id="dest-col"></select>
+      </div>
+      <div class="field">
+        <label for="value-col">Value Column</label>
+        <select id="value-col"></select>
+      </div>
+    </div>
+    <p class="hint">Drop a file with client, container, destination and value (pallet count) columns. Columns are auto-detected but can be changed above.</p>
+  </div>
+
+  <!-- ── Destination order list ── -->
+  <div class="card">
+    <h2>2 · Destination Order List</h2>
+    <textarea id="order-input" rows="14"
+      placeholder="One destination per line, in the order you want them to appear as columns."></textarea>
+    <p class="hint">Edit freely. Destinations are matched case-insensitively.</p>
+    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+      <button class="btn-primary" type="button" id="save-order-btn" onclick="saveOrderList()">💾 Save Order List</button>
+      <span id="save-order-status" class="hint" style="margin:0;"></span>
+    </div>
+  </div>
+
+  <!-- ── Container selection ── -->
+  <div class="card" id="container-select-card" style="grid-column:1/-1; display:none;">
+    <div class="section-header">
+      <h2 style="margin-bottom:0;">3 · Select Containers to Include</h2>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-secondary" type="button" onclick="selectAllContainers()">Select All</button>
+        <button class="btn-secondary" type="button" onclick="selectNoneContainers()">Select None</button>
+      </div>
+    </div>
+    <div class="container-list" id="container-list"></div>
+    <p class="hint">Uncheck any container you want to leave out of the output. All detected containers are selected by default.</p>
+
+    <div style="margin-top:14px;">
+      <label style="font-size:.72rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.04em;">Or Paste A Container List To Filter</label>
+      <textarea id="container-filter-input" rows="4" style="margin-top:4px;"
+        placeholder="One container number per line, e.g.&#10;OOLU9286063&#10;MMPU5012504"></textarea>
+      <div style="display:flex; gap:10px; margin-top:8px; align-items:center; flex-wrap:wrap;">
+        <button class="btn-secondary" type="button" onclick="applyContainerFilter()">Apply Filter</button>
+        <span class="hint" id="container-filter-status" style="margin-top:0;"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Buttons ── -->
+  <div style="grid-column:1/-1; display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin-top:-8px;">
+    <button class="btn-primary" id="match-btn" onclick="run()" disabled>⚡ Match</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear</button>
+  </div>
+
+  <!-- ── Results ── -->
+  <div class="card" id="results-section">
+    <div id="alerts" class="alerts"></div>
+    <div class="summary" id="summary"></div>
+
+    <div class="result-views">
+      <div>
+        <div class="section-header">
+          <h2 style="font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:#666;">Match Helper Rows (copy-friendly)</h2>
+          <button class="copy-btn" id="copy-pivot-btn" onclick="copyPivot()">Copy</button>
+        </div>
+        <div class="horiz-wrap" id="pivot-table"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── pre-fill destination order list ─────────────────────────────────────────
+const DEFAULT_ORDER = [
+  "YYZ3", "YOO1", "XYY1", "YGK1", "YYZ4", "YYZ9", "YYZ7", "YXU1",
+  "YHM1", "YOW1", "YOW3", "私人地址", "HOLD", "YYZ1", "YYC4/6",
+  "YEG1/2", "YVR3/4", "自提", "换标", "快递"
+];
+const ORDER_STORAGE_KEY = "containerMatchHelper.destOrderList";
+const _orderInput = document.getElementById("order-input");
+const _savedOrder = localStorage.getItem(ORDER_STORAGE_KEY);
+_orderInput.value = (_savedOrder && _savedOrder.trim()) ? _savedOrder : DEFAULT_ORDER.join("\n");
+
+// load the shared list from the server (overrides the local copy when available)
+fetch("/api/match-helper/dest-order")
+  .then(r => r.ok ? r.json() : {})
+  .then(cfg => {
+    if (Array.isArray(cfg.destOrder) && cfg.destOrder.length) {
+      _orderInput.value = cfg.destOrder.join("\n");
+      localStorage.setItem(ORDER_STORAGE_KEY, _orderInput.value);
+    }
+  })
+  .catch(() => {}); // offline / server unavailable — keep local copy
+
+// edits are kept locally right away; the Save button pushes to the server
+_orderInput.addEventListener("input", () => {
+  localStorage.setItem(ORDER_STORAGE_KEY, _orderInput.value);
+  document.getElementById("save-order-status").textContent = "Unsaved changes";
+});
+
+function saveOrderList() {
+  const btn    = document.getElementById("save-order-btn");
+  const status = document.getElementById("save-order-status");
+  const list   = _orderInput.value.split("\n").map(s => s.trim()).filter(Boolean);
+  btn.disabled = true;
+  status.textContent = "Saving…";
+  fetch("/api/match-helper/dest-order", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ destOrder: list })
+  })
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(() => { status.textContent = "✅ Saved online"; })
+    .catch(() => { status.textContent = "⚠️ Save failed — saved on this device only"; })
+    .finally(() => { btn.disabled = false; });
+}
+
+// ── state ──────────────────────────────────────────────────────────────────
+let workbook  = null;
+let sheetData = [];
+let allCols   = [];
+let _pivot    = null; // { order, rows } — store for copy
+
+let detectedContainers = [];      // [{ container, client }] in first-seen order
+let selectedContainers  = new Set(); // containers to include in output
+
+// ── column auto-detection helpers ───────────────────────────────────────────
+const CLIENT_HINTS    = ["client", "client name", "客户", "客户名称"];
+const CONTAINER_HINTS = ["container", "container#", "container #", "container no", "container no.", "柜号", "箱号", "集装箱号"];
+const DEST_HINTS      = ["destination", "dest", "目的地"];
+const VALUE_HINTS     = ["value", "值", "金额", "amount", "qty", "quantity", "数量", "pallet", "板数", "skid"];
+
+function guessColumn(cols, hints) {
+  const lower = cols.map(c => String(c).toLowerCase().trim());
+  for (const hint of hints) {
+    const idx = lower.findIndex(c => c === hint);
+    if (idx !== -1) return cols[idx];
+  }
+  for (const hint of hints) {
+    const idx = lower.findIndex(c => c.includes(hint));
+    if (idx !== -1) return cols[idx];
+  }
+  return "";
+}
+
+// Container cells sometimes carry a prefix before the real container number,
+// e.g. "DS-TIIU8097334" — pull out the standard ISO 6346 code (4 letters + 7 digits).
+function normContainer(s) {
+  if (s == null) return "";
+  const str = String(s).trim().toUpperCase();
+  const match = str.match(/[A-Z]{4}\d{7}/);
+  return match ? match[0] : str.replace(/[^A-Z0-9]/g, "");
+}
+
+// ── normalise destination string ────────────────────────────────────────────
+function normDest(s) {
+  if (!s) return "";
+  const u = String(s).toUpperCase();
+  if (u.includes("私仓"))  return "私人地址";
+  if (u.includes("HOLD"))  return "HOLD";
+  if (u.includes("UPS"))   return "快递";
+  const clean = u.replace(/[\s\-]/g, "");
+  if (clean.includes("SELFPICKUP")) return "自提";
+  return String(s).trim();
+}
+
+function normOrderItem(s) {
+  if (!s) return "";
+  const low = s.toLowerCase().replace(/[\s\-]/g, "");
+  if (low.includes("hold"))        return "HOLD";
+  if (low.includes("ups"))         return "快递";
+  if (low.includes("selfpickup"))  return "自提";
+  return s.trim();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+// ── file drop / click ────────────────────────────────────────────────────────
+const dropZone   = document.getElementById("drop-zone");
+const fileInput  = document.getElementById("file-input");
+const fileStatus = document.getElementById("file-status");
+const matchBtn   = document.getElementById("match-btn");
+
+dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault(); dropZone.classList.remove("drag-over");
+  handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
+
+function handleFile(file) {
+  if (!file) return;
+  matchBtn.disabled = true;
+  fileStatus.className = "file-status";
+  fileStatus.textContent = `Loading "${file.name}" …`;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      workbook = XLSX.read(e.target.result, { type: "binary", cellDates: true });
+      populateSheets();
+      fileStatus.className = "file-status ok";
+      fileStatus.textContent = `✔ Loaded "${file.name}"`;
+    } catch (err) {
+      fileStatus.className = "file-status error";
+      fileStatus.textContent = "✖ Failed to read file: " + err.message;
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ── sheet selector ───────────────────────────────────────────────────────────
+const sheetField  = document.getElementById("sheet-field");
+const sheetSelect = document.getElementById("sheet-select");
+
+function populateSheets() {
+  sheetSelect.innerHTML = "";
+  workbook.SheetNames.forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = opt.textContent = name;
+    sheetSelect.appendChild(opt);
+  });
+  sheetField.style.display = workbook.SheetNames.length > 1 ? "flex" : "none";
+  document.getElementById("column-controls").style.display = "flex";
+  loadSheet(workbook.SheetNames[0]);
+}
+
+sheetSelect.addEventListener("change", () => loadSheet(sheetSelect.value));
+
+function loadSheet(name) {
+  const ws = workbook.Sheets[name];
+  sheetData = XLSX.utils.sheet_to_json(ws, { defval: "" });
+  if (!sheetData.length) {
+    fileStatus.className = "file-status error";
+    fileStatus.textContent = "✖ Sheet is empty.";
+    matchBtn.disabled = true;
+    return;
+  }
+  allCols = Object.keys(sheetData[0]);
+  populateColumnPickers();
+  populateContainerList();
+  matchBtn.disabled = false;
+}
+
+// ── column pickers ───────────────────────────────────────────────────────────
+const clientColSel    = document.getElementById("client-col");
+const containerColSel = document.getElementById("container-col");
+const destColSel      = document.getElementById("dest-col");
+const valueColSel     = document.getElementById("value-col");
+
+function populateColumnPickers() {
+  [clientColSel, containerColSel, destColSel, valueColSel].forEach(sel => sel.innerHTML = "");
+  allCols.forEach(c => {
+    clientColSel.appendChild(new Option(c, c));
+    containerColSel.appendChild(new Option(c, c));
+    destColSel.appendChild(new Option(c, c));
+    valueColSel.appendChild(new Option(c, c));
+  });
+
+  clientColSel.value    = guessColumn(allCols, CLIENT_HINTS) || allCols[0];
+  containerColSel.value = guessColumn(allCols, CONTAINER_HINTS) || allCols[0];
+  destColSel.value      = guessColumn(allCols, DEST_HINTS) || allCols[0];
+  valueColSel.value      = guessColumn(allCols, VALUE_HINTS) || allCols[allCols.length > 1 ? 1 : 0];
+}
+
+containerColSel.addEventListener("change", populateContainerList);
+clientColSel.addEventListener("change", populateContainerList);
+
+// ── container selection card ─────────────────────────────────────────────────
+const containerSelectCard = document.getElementById("container-select-card");
+const containerListEl     = document.getElementById("container-list");
+
+function populateContainerList() {
+  const containerCol = containerColSel.value;
+  const clientCol     = clientColSel.value;
+  const clientByContainer = new Map();
+  const order = [];
+
+  for (const raw of sheetData) {
+    const container = normContainer(raw[containerCol]);
+    if (!container) continue;
+    if (!clientByContainer.has(container)) { clientByContainer.set(container, ""); order.push(container); }
+    if (!clientByContainer.get(container)) {
+      const client = String(raw[clientCol] ?? "").trim();
+      if (client) clientByContainer.set(container, client);
+    }
+  }
+
+  detectedContainers = order.map(c => ({ container: c, client: clientByContainer.get(c) }));
+  selectedContainers = new Set(detectedContainers.map(c => c.container));
+  renderContainerList();
+}
+
+function renderContainerList() {
+  containerSelectCard.style.display = detectedContainers.length ? "block" : "none";
+  containerListEl.innerHTML = detectedContainers.map(c => `
+    <label class="container-item">
+      <input type="checkbox" data-container="${escapeHtml(c.container)}" ${selectedContainers.has(c.container) ? "checked" : ""}>
+      ${escapeHtml(c.container)}${c.client ? ` <span class="client-tag">(${escapeHtml(c.client)})</span>` : ""}
+    </label>
+  `).join("");
+}
+
+containerListEl.addEventListener("change", e => {
+  const cb = e.target;
+  if (cb.tagName !== "INPUT") return;
+  const container = cb.dataset.container;
+  if (cb.checked) selectedContainers.add(container);
+  else selectedContainers.delete(container);
+});
+
+function selectAllContainers() {
+  selectedContainers = new Set(detectedContainers.map(c => c.container));
+  renderContainerList();
+}
+
+function selectNoneContainers() {
+  selectedContainers = new Set();
+  renderContainerList();
+}
+
+function applyContainerFilter() {
+  const statusEl = document.getElementById("container-filter-status");
+  const raw = document.getElementById("container-filter-input").value.trim();
+  if (!raw) { statusEl.textContent = ""; return; }
+
+  const wanted      = raw.split(/\r?\n/).map(normContainer).filter(Boolean);
+  const detectedSet = new Set(detectedContainers.map(c => c.container));
+  const found        = wanted.filter(c => detectedSet.has(c));
+  const notFound      = wanted.filter(c => !detectedSet.has(c));
+
+  selectedContainers = new Set(found);
+  renderContainerList();
+
+  statusEl.textContent = notFound.length
+    ? `✔ ${found.length} matched · ✖ ${notFound.length} not found: ${notFound.join(", ")}`
+    : `✔ ${found.length} matched`;
+}
+
+// ── build the client/container × destination pivot ──────────────────────────
+function buildPivot(order) {
+  const clientCol    = clientColSel.value;
+  const containerCol = containerColSel.value;
+  const destCol       = destColSel.value;
+  const valueCol       = valueColSel.value;
+
+  const orderUpper = order.map(o => o.toUpperCase());
+  const rowsMap   = new Map(); // normalized container -> row
+  const rowOrder  = [];
+  const unmatchedDest = new Set();
+
+  for (const raw of sheetData) {
+    const container = normContainer(raw[containerCol]);
+    if (!container || !selectedContainers.has(container)) continue;
+
+    if (!rowsMap.has(container)) {
+      rowsMap.set(container, { client: "", container, values: {} });
+      rowOrder.push(container);
+    }
+    const row = rowsMap.get(container);
+
+    const client = String(raw[clientCol] ?? "").trim();
+    if (!row.client && client) row.client = client;
+
+    const dest  = normDest(raw[destCol]);
+    const value = parseFloat(raw[valueCol]) || 0;
+    if (!dest) continue;
+
+    const idx = orderUpper.indexOf(dest.toUpperCase());
+    if (idx === -1) { unmatchedDest.add(dest); continue; }
+
+    const key = order[idx];
+    row.values[key] = (row.values[key] || 0) + value;
+  }
+
+  return {
+    rows: rowOrder.map(c => rowsMap.get(c)),
+    unmatchedDest: [...unmatchedDest]
+  };
+}
+
+// ── render ────────────────────────────────────────────────────────────────
+function run() {
+  const orderRaw = document.getElementById("order-input").value.trim();
+
+  const alertsEl  = document.getElementById("alerts");
+  const summaryEl = document.getElementById("summary");
+  const section   = document.getElementById("results-section");
+  alertsEl.innerHTML = "";
+  summaryEl.innerHTML = "";
+
+  if (!sheetData.length) { alert("Please upload an Excel file first."); return; }
+
+  const order = orderRaw.split(/\r?\n/).map(normOrderItem).filter(Boolean);
+  const { rows, unmatchedDest } = buildPivot(order);
+  _pivot = { order, rows };
+
+  // pivot table
+  const headerCells = ["CLIENT", "CNTR", ...order].map(h => `<th>${escapeHtml(h)}</th>`).join("");
+  const bodyRows = rows.map(r => {
+    const cells = [
+      `<td>${escapeHtml(r.client)}</td>`,
+      `<td>${escapeHtml(r.container)}</td>`,
+      ...order.map(d => {
+        const v = r.values[d];
+        return v ? `<td class="val">${v.toLocaleString()}</td>` : `<td class="empty"></td>`;
+      })
+    ].join("");
+    return `<tr>${cells}</tr>`;
+  }).join("");
+  document.getElementById("pivot-table").innerHTML =
+    `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
+
+  // alerts
+  let alertHtml = "";
+  if (unmatchedDest.length)
+    alertHtml += `<div class="alert alert-warn">ℹ️ <strong>${unmatchedDest.length} destination value(s) in Excel not in the order list (excluded from table):</strong> ${unmatchedDest.map(escapeHtml).join(", ")}</div>`;
+  if (!unmatchedDest.length)
+    alertHtml += `<div class="alert alert-success">✅ All destination values matched the order list.</div>`;
+  alertsEl.innerHTML = alertHtml;
+
+  // summary chips
+  const total = rows.reduce((s, r) => s + Object.values(r.values).reduce((a, b) => a + b, 0), 0);
+  summaryEl.innerHTML = `
+    <span class="chip chip-blue">${rows.length} containers</span>
+    <span class="chip chip-blue">${order.length} destination columns</span>
+    <span class="chip chip-blue">Total: ${total.toLocaleString()}</span>
+  `;
+
+  section.classList.add("visible");
+  section.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  copyPivot();
+}
+
+// navigator.clipboard requires a secure context (https/localhost) — pages
+// opened directly from disk (file://) silently fail, so fall back to the
+// classic textarea + execCommand('copy') trick in that case.
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+    return navigator.clipboard.writeText(text).catch(() => legacyCopy(text));
+  }
+  return Promise.resolve().then(() => legacyCopy(text));
+}
+
+function legacyCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand("copy"); } catch (e) { /* ignore */ }
+  document.body.removeChild(ta);
+}
+
+function copyPivot() {
+  if (!_pivot || !_pivot.rows.length) return;
+  const { order, rows } = _pivot;
+  const lines = [
+    ["CLIENT", "CNTR", ...order].join("\t"),
+    ...rows.map(r => [r.client, r.container, ...order.map(d => r.values[d] || "")].join("\t"))
+  ];
+  copyToClipboard(lines.join("\r\n")).then(() => {
+    const btn = document.getElementById("copy-pivot-btn");
+    btn.textContent = "Copied!";
+    btn.classList.add("copied");
+    setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 2000);
+  });
+}
+
+function clearAll() {
+  workbook = null;
+  sheetData = [];
+  allCols = [];
+  detectedContainers = [];
+  selectedContainers = new Set();
+  fileInput.value = "";
+  fileStatus.className = "file-status";
+  fileStatus.textContent = "";
+  document.getElementById("column-controls").style.display = "none";
+  containerSelectCard.style.display = "none";
+  containerListEl.innerHTML = "";
+  document.getElementById("container-filter-input").value = "";
+  document.getElementById("container-filter-status").textContent = "";
+  matchBtn.disabled = true;
+  document.getElementById("results-section").classList.remove("visible");
+}
+
+// allow Ctrl+Enter to run
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") run();
+});
+</script>
+</body>
+</html>

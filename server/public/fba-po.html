@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FBA PO Builder</title>
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 32px;
+      letter-spacing: 0.02em;
+      color: #0f3460;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 28px 32px;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    .inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 140px;
+      padding: 10px 12px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      resize: vertical;
+      transition: border-color 0.2s;
+      line-height: 1.6;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #0f3460;
+    }
+
+    .hint {
+      font-size: 0.74rem;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    button {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:active { transform: scale(0.97); }
+
+    #btnGenerate {
+      background: #0f3460;
+      color: #fff;
+      flex: 1;
+    }
+
+    #btnGenerate:hover { background: #16213e; }
+
+    #btnClear {
+      background: #f3f4f6;
+      color: #555;
+    }
+
+    #btnClear:hover { background: #e5e7eb; }
+
+    #btnCopy {
+      background: #f3f4f6;
+      color: #555;
+    }
+
+    #btnCopy:hover { background: #e5e7eb; }
+
+    #btnCopy.copied {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .output-section { display: none; }
+    .output-section.visible { display: block; }
+
+    .output-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .output-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #555;
+    }
+
+    .output-count {
+      font-size: 0.78rem;
+      color: #9ca3af;
+    }
+
+    #output {
+      width: 100%;
+      min-height: 120px;
+      padding: 12px 14px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      background: #f9fafb;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .line-item {
+      display: flex;
+      gap: 8px;
+      padding: 2px 0;
+    }
+
+    .line-num {
+      color: #9ca3af;
+      user-select: none;
+      min-width: 24px;
+      text-align: right;
+    }
+
+    .line-fba { color: #0f3460; font-weight: 600; }
+    .line-po  { color: #c05621; }
+    .line-sep { color: #9ca3af; }
+
+    .error {
+      font-size: 0.85rem;
+      color: #dc2626;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>FBA PO Builder</h1>
+
+  <div class="card">
+    <div class="inputs">
+      <div>
+        <label for="fbaInput">FBA</label>
+        <textarea id="fbaInput" placeholder="Enter FBA values&#10;One per line"></textarea>
+        <div class="hint">One value per line</div>
+      </div>
+      <div>
+        <label for="poInput">PO</label>
+        <textarea id="poInput" placeholder="Enter PO values&#10;One per line"></textarea>
+        <div class="hint">One value per line</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="btnGenerate">Generate</button>
+      <button id="btnCopy">Copy</button>
+      <button id="btnClear">Clear</button>
+    </div>
+
+    <div class="error" id="errorMsg"></div>
+
+    <div class="output-section" id="outputSection">
+      <div class="output-header">
+        <span class="output-label">Output</span>
+        <span class="output-count" id="lineCount"></span>
+      </div>
+      <div id="output"></div>
+    </div>
+  </div>
+
+  <script>
+    const fbaInput   = document.getElementById('fbaInput');
+    const poInput    = document.getElementById('poInput');
+    const output     = document.getElementById('output');
+    const outputSec  = document.getElementById('outputSection');
+    const lineCount  = document.getElementById('lineCount');
+    const errorMsg   = document.getElementById('errorMsg');
+    const btnCopy    = document.getElementById('btnCopy');
+
+    function parseLines(text) {
+      return text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    }
+
+    document.getElementById('btnGenerate').addEventListener('click', () => {
+      errorMsg.style.display = 'none';
+
+      const fbas = parseLines(fbaInput.value);
+      const pos  = parseLines(poInput.value);
+
+      if (!fbas.length && !pos.length) {
+        errorMsg.textContent = 'Please enter at least one FBA or PO value.';
+        errorMsg.style.display = 'block';
+        outputSec.classList.remove('visible');
+        return;
+      }
+
+      const rawCount = Math.max(fbas.length, pos.length);
+
+      // Deduplicate: keep first occurrence of each FBA+PO pair
+      const seen = new Set();
+      const pairs = [];
+      for (let i = 0; i < rawCount; i++) {
+        const fba = fbas[i] ?? '';
+        const po  = pos[i]  ?? '';
+        const key = `${fba}||${po}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          pairs.push({ fba, po });
+        }
+      }
+
+      const count = pairs.length;
+      output.innerHTML = '';
+
+      for (let i = 0; i < count; i++) {
+        const { fba, po } = pairs[i];
+
+        const row = document.createElement('div');
+        row.className = 'line-item';
+        row.innerHTML =
+          `<span class="line-num">${i + 1}.</span>` +
+          `<span class="line-fba">${escapeHtml(fba)}</span>` +
+          (fba && po ? `<span class="line-sep"> / </span>` : '') +
+          `<span class="line-po">${escapeHtml(po)}</span>`;
+        output.appendChild(row);
+      }
+
+      const skipped = rawCount - count;
+      lineCount.textContent = `${count} line${count !== 1 ? 's' : ''}${skipped > 0 ? ` (${skipped} duplicate${skipped !== 1 ? 's' : ''} removed)` : ''}`;
+      outputSec.classList.add('visible');
+
+      // Export to output.xlsx
+      const headers = [['ARN','PRO', 'BOL List (use , as separator)','Vendor Name','Pallet Count','Carton Count','Unit Count','PO List (use , as separator) *']];
+      const dataRows = [];
+      for (let i = 0; i < count; i++) {
+        dataRows.push(['', pairs[i].fba, '', '', i === 0 ? 1 : '', '', '', pairs[i].po]);
+      }
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([...headers, ...dataRows]);
+      ws['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 30 }, { wch: 20 }, { wch: 13 }, { wch: 13 }, { wch: 11 }, { wch: 32 }];
+      XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+      XLSX.writeFile(wb, 'output.xlsx');
+    });
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+      fbaInput.value = '';
+      poInput.value  = '';
+      output.innerHTML = '';
+      outputSec.classList.remove('visible');
+      errorMsg.style.display = 'none';
+      btnCopy.textContent = 'Copy';
+      btnCopy.classList.remove('copied');
+    });
+
+    btnCopy.addEventListener('click', () => {
+      const fbas = parseLines(fbaInput.value);
+      const pos  = parseLines(poInput.value);
+      if (!fbas.length && !pos.length) return;
+
+      const count = Math.max(fbas.length, pos.length);
+      const lines = [];
+      for (let i = 0; i < count; i++) {
+        const fba = fbas[i] ?? '';
+        const po  = pos[i]  ?? '';
+        if (fba && po) lines.push(`${fba} / ${po}`);
+        else           lines.push(fba || po);
+      }
+
+      navigator.clipboard.writeText(lines.join('\n')).then(() => {
+        btnCopy.textContent = 'Copied!';
+        btnCopy.classList.add('copied');
+        setTimeout(() => {
+          btnCopy.textContent = 'Copy';
+          btnCopy.classList.remove('copied');
+        }, 2000);
+      });
+    });
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

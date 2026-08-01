@@ -98,17 +98,6 @@
     display: flex; align-items: center; margin-bottom: 12px; gap: 8px; flex-wrap: wrap;
   }
   .section-header strong { font-size: 1rem; }
-
-  .btn-outline {
-    padding: 6px 14px; background: #fff; color: #4f8ef7;
-    border: 1px solid #4f8ef7; border-radius: 6px; font-size: .82rem;
-    cursor: pointer; font-weight: 600; align-self: auto;
-  }
-  .btn-outline:hover { background: #eef4ff; }
-  .btn-outline.active { background: #4f8ef7; color: #fff; }
-
-  tbody tr.selected-row { background: #fff6d8 !important; outline: 2px solid #f5b301; outline-offset: -2px; }
-  tr.ellipsis-row td { text-align: center; color: #999; letter-spacing: 2px; }
 </style>
 </head>
 <body>
@@ -156,8 +145,6 @@
     <div class="section-header">
       <strong>Data Preview</strong>
       <span class="badge" id="preview-count"></span>
-      <button class="btn-outline" id="select-first-row" style="margin-left:auto;">↑ First Row</button>
-      <button class="btn-outline" id="select-last-row">↓ Last Row</button>
     </div>
     <div class="table-wrap">
       <table>
@@ -305,58 +292,24 @@
     previewHead.innerHTML = '<tr>' + allCols.map(c => `<th>${c}</th>`).join('') + '</tr>';
     previewBody.innerHTML = '';
 
-    const truncated = sheetData.length > PREVIEW_ROWS;
     const rows = sheetData.slice(0, PREVIEW_ROWS);
-
-    const makeRowEl = (row, dataIndex) => {
+    rows.forEach(row => {
       const tr = document.createElement('tr');
-      tr.dataset.rowIndex = dataIndex;
       tr.innerHTML = allCols.map(c => {
         const v = row[c];
         const isNum = typeof v === 'number';
         return `<td class="${isNum ? 'num' : ''}">${isNum ? fmt(v) : v}</td>`;
       }).join('');
-      tr.addEventListener('click', () => tr.classList.toggle('selected-row'));
-      return tr;
-    };
-
-    rows.forEach((row, i) => previewBody.appendChild(makeRowEl(row, i)));
-
-    // always keep the true last row reachable, even past the preview cap
-    if (truncated) {
-      const ellipsis = document.createElement('tr');
-      ellipsis.className = 'ellipsis-row';
-      ellipsis.innerHTML = `<td colspan="${allCols.length}">⋯ ${sheetData.length - PREVIEW_ROWS - 1} more rows ⋯</td>`;
-      previewBody.appendChild(ellipsis);
-      previewBody.appendChild(makeRowEl(sheetData[sheetData.length - 1], sheetData.length - 1));
-    }
+      previewBody.appendChild(tr);
+    });
 
     previewCount.textContent =
       sheetData.length <= PREVIEW_ROWS
         ? `${sheetData.length} rows`
-        : `showing first ${PREVIEW_ROWS} + last row of ${sheetData.length} rows`;
+        : `showing ${PREVIEW_ROWS} of ${sheetData.length} rows`;
 
     previewCard.style.display = 'block';
   }
-
-  // ── select first / last row ────────────────────────────────────────────────
-  function selectRowByIndex(dataIndex) {
-    const previewBody = document.getElementById('preview-body');
-    [...previewBody.querySelectorAll('tr[data-row-index]')].forEach(tr => {
-      const match = Number(tr.dataset.rowIndex) === dataIndex;
-      tr.classList.toggle('selected-row', match);
-      if (match) tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
-  }
-
-  document.getElementById('select-first-row').addEventListener('click', () => {
-    if (!sheetData.length) return;
-    selectRowByIndex(0);
-  });
-  document.getElementById('select-last-row').addEventListener('click', () => {
-    if (!sheetData.length) return;
-    selectRowByIndex(sheetData.length - 1);
-  });
 
   // ── run group-by ───────────────────────────────────────────────────────────
   runBtn.addEventListener('click', runGroupBy);
