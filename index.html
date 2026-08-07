@@ -433,8 +433,8 @@
 
     #cmhMatchBtn { background: #0f3460; color: #fff; padding: 10px 32px; }
     #cmhMatchBtn:hover:not(:disabled) { background: #16213e; }
-    #cmhClearBtn, #cmhSelectAllBtn, #cmhSelectNoneBtn, #cmhApplyFilterBtn { background: #f3f4f6; color: #555; }
-    #cmhClearBtn:hover, #cmhSelectAllBtn:hover, #cmhSelectNoneBtn:hover, #cmhApplyFilterBtn:hover { background: #e5e7eb; }
+    #cmhClearBtn, #cmhApplyFilterBtn, #cmhClearFilterBtn, #cmhAddDestBtn, #cmhResetOrderBtn, #cmhLoadPasteBtn { background: #f3f4f6; color: #555; }
+    #cmhClearBtn:hover, #cmhApplyFilterBtn:hover, #cmhClearFilterBtn:hover, #cmhAddDestBtn:hover, #cmhResetOrderBtn:hover, #cmhLoadPasteBtn:hover { background: #e5e7eb; }
     #cmhCopyBtn { background: #f3f4f6; color: #555; }
     #cmhCopyBtn:hover { background: #e5e7eb; }
     #cmhCopyBtn.copied { background: #d1fae5; color: #065f46; }
@@ -526,6 +526,54 @@
     }
     #tab-container-match-helper .cmh-container-item input { cursor: pointer; }
     #tab-container-match-helper .cmh-container-item .client-tag { color: #999; font-size: .78rem; }
+
+    /* input mode tabs */
+    #tab-container-match-helper .cmh-input-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    #tab-container-match-helper .cmh-input-tab {
+      padding: 7px 16px; border: 1px solid #d0d5dd; border-radius: 8px;
+      background: #fafafa; color: #555; font-size: .85rem; font-weight: 600;
+      cursor: pointer; transition: background .15s, color .15s;
+    }
+    #tab-container-match-helper .cmh-input-tab:hover { background: #eef4ff; }
+    #tab-container-match-helper .cmh-input-tab.active { background: #4f8ef7; border-color: #4f8ef7; color: #fff; }
+
+    /* destination order list */
+    #tab-container-match-helper .cmh-order-list {
+      list-style: none; margin: 0; padding: 10px;
+      display: flex; flex-direction: column; gap: 6px;
+      max-height: 340px; overflow-y: auto;
+      border: 1px solid #e8edf5; border-radius: 8px; background: #fafbfd;
+    }
+    #tab-container-match-helper .cmh-order-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 10px; background: #fff; border: 1px solid #e0e4ec; border-radius: 6px;
+      font-size: .9rem; cursor: grab; user-select: none;
+    }
+    #tab-container-match-helper .cmh-order-item:active { cursor: grabbing; }
+    #tab-container-match-helper .cmh-order-item.dragging { opacity: .45; }
+    #tab-container-match-helper .cmh-order-item.drag-target { border-color: #4f8ef7; box-shadow: 0 0 0 2px rgba(79,142,247,.25); }
+    #tab-container-match-helper .cmh-order-item .drag-handle { color: #bbb; font-size: .95rem; }
+    #tab-container-match-helper .cmh-order-item .order-num {
+      min-width: 22px; text-align: center;
+      font-size: .72rem; font-weight: 700; color: #1d4ed8;
+      background: #dbeafe; border-radius: 10px; padding: 2px 0;
+    }
+    #tab-container-match-helper .cmh-order-item .dest-name { flex: 1; cursor: text; border-radius: 4px; padding: 1px 4px; }
+    #tab-container-match-helper .cmh-order-item .dest-name:hover { background: #eef4ff; }
+    #tab-container-match-helper .cmh-order-item .dest-edit {
+      flex: 1; padding: 2px 6px; border: 1px solid #4f8ef7; border-radius: 4px;
+      font-size: .9rem; outline: none; height: auto;
+    }
+    #tab-container-match-helper .cmh-order-item .remove-btn {
+      border: none; background: none; color: #bbb; cursor: pointer;
+      font-size: .95rem; padding: 2px 6px; border-radius: 4px;
+    }
+    #tab-container-match-helper .cmh-order-item .remove-btn:hover { color: #b91c1c; background: #fee2e2; }
+    #tab-container-match-helper .cmh-order-add-input {
+      flex: 1; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px;
+      font-size: .9rem; background: #fafafa; outline: none; height: auto;
+    }
+    #tab-container-match-helper .cmh-order-add-input:focus { border-color: #4f8ef7; background: #fff; }
 
 
     /* ══════════════════════════════════════════════════════════
@@ -1284,12 +1332,23 @@
 
     <div class="cmh-layout">
       <div class="card">
-        <label>1 · Upload Excel Data</label>
+        <label>1 · Input Data</label>
+        <div class="cmh-input-tabs">
+          <button type="button" class="cmh-input-tab active" id="cmhTabUpload">📂 Upload File</button>
+          <button type="button" class="cmh-input-tab" id="cmhTabPaste">📋 Paste Data</button>
+        </div>
         <div class="cmh-drop-zone" id="cmhDropZone">
           <input type="file" id="cmhFileInput" accept=".xlsx,.xls,.csv">
           <div class="cmh-drop-icon">📊</div>
           <p><strong>Click to upload</strong> or drag &amp; drop your Excel / CSV file</p>
           <small>.xlsx · .xls · .csv</small>
+        </div>
+        <div id="cmhPasteZone" style="display:none;">
+          <textarea id="cmhPasteInput" rows="10" style="height:auto;"
+            placeholder="Paste rows copied from Excel here (first row = headers).&#10;Columns are tab-separated when copied from Excel, e.g.&#10;Client&#9;Container&#9;Destination&#9;Pallets&#10;ACME&#9;OOLU9286063&#9;YYZ3&#9;5"></textarea>
+          <div style="display:flex; gap:10px; margin-top:8px; align-items:center; flex-wrap:wrap;">
+            <button type="button" id="cmhLoadPasteBtn">Load Pasted Data</button>
+          </div>
         </div>
         <div class="cmh-file-status" id="cmhFileStatus"></div>
 
@@ -1319,31 +1378,30 @@
       </div>
 
       <div class="card">
-        <label for="cmhOrderInput">2 · Destination Order List</label>
-        <textarea id="cmhOrderInput" placeholder="One destination per line, in the order you want them to appear as columns."></textarea>
-        <div class="hint">Edit freely. Destinations are matched case-insensitively.</div>
+        <label>2 · Destination Order List</label>
+        <ul class="cmh-order-list" id="cmhOrderList"></ul>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <input type="text" id="cmhNewDestInput" class="cmh-order-add-input" placeholder="New destination, e.g. YVR2">
+          <button type="button" id="cmhAddDestBtn">➕ Add</button>
+        </div>
+        <div class="hint">Drag to reorder · click a name to edit · ✕ removes an item. Matched case-insensitively. Saved on this device automatically.</div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
+          <button type="button" id="cmhSaveOrderBtn">💾 Save Order List</button>
+          <button type="button" id="cmhResetOrderBtn">Reset to Default</button>
+          <span class="hint" id="cmhSaveOrderStatus" style="margin-top:0;"></span>
+        </div>
       </div>
     </div>
 
     <div class="card" id="cmhContainerSelectCard" style="display:none;">
-      <div class="mh-section-header">
-        <span class="mh-section-title">3 · Select Containers to Include</span>
-        <div style="display:flex; gap:8px;">
-          <button type="button" id="cmhSelectAllBtn">Select All</button>
-          <button type="button" id="cmhSelectNoneBtn">Select None</button>
-        </div>
+      <label for="cmhFilterInput">3 · Filter Containers (optional)</label>
+      <textarea id="cmhFilterInput" rows="5" placeholder="Paste container numbers to include, one per line, e.g.&#10;OOLU9286063&#10;MMPU5012504&#10;&#10;Leave empty to include all containers."></textarea>
+      <div style="display:flex; gap:10px; margin-top:8px; align-items:center; flex-wrap:wrap;">
+        <button type="button" id="cmhApplyFilterBtn">Apply Filter</button>
+        <button type="button" id="cmhClearFilterBtn">Clear Filter</button>
+        <span class="hint" id="cmhFilterStatus" style="margin-top:0;"></span>
       </div>
-      <div class="cmh-container-list" id="cmhContainerList"></div>
-      <div class="hint">Uncheck any container you want to leave out of the output. All detected containers are selected by default.</div>
-
-      <div style="margin-top:14px;">
-        <label for="cmhFilterInput">Or Paste A Container List To Filter</label>
-        <textarea id="cmhFilterInput" rows="4" placeholder="One container number per line, e.g.&#10;OOLU9286063&#10;MMPU5012504"></textarea>
-        <div style="display:flex; gap:10px; margin-top:8px; align-items:center; flex-wrap:wrap;">
-          <button type="button" id="cmhApplyFilterBtn">Apply Filter</button>
-          <span class="hint" id="cmhFilterStatus" style="margin-top:0;"></span>
-        </div>
-      </div>
+      <div class="hint">Leave empty to include every detected container.</div>
     </div>
 
     <div class="mh-btn-row">
@@ -1502,7 +1560,24 @@
         'YHM1', 'YOW1', 'YOW3', '私人地址', 'HOLD', 'YYZ1', 'YYC4/6',
         'YEG1/2', 'YVR3/4', '自提', '换标', '快递'
       ];
-      orderInput.value = DEFAULT_ORDER.join('\n');
+      // shares the same order list as the Container Match Helper (same storage
+      // key and server endpoint), so edits in either tool apply to both
+      const ORDER_STORAGE_KEY = 'containerMatchHelper.destOrderList';
+      const savedOrder = localStorage.getItem(ORDER_STORAGE_KEY);
+      orderInput.value = (savedOrder && savedOrder.trim()) ? savedOrder : DEFAULT_ORDER.join('\n');
+
+      fetch('/api/match-helper/dest-order')
+        .then(r => r.ok ? r.json() : {})
+        .then(cfg => {
+          if (Array.isArray(cfg.destOrder) && cfg.destOrder.length) {
+            orderInput.value = cfg.destOrder.join('\n');
+          }
+        })
+        .catch(() => {}); // offline / server unavailable — keep local copy
+
+      orderInput.addEventListener('input', () => {
+        localStorage.setItem(ORDER_STORAGE_KEY, orderInput.value);
+      });
 
       function normDest(s) {
         if (!s) return '';
@@ -1573,6 +1648,19 @@
         const grouped = groupByDest(rows);
         const order = orderRaw.split(/\r?\n/).map(normOrderItem).filter(Boolean);
 
+        // YYC / YEG / YVR destinations (e.g. "YEG1", "YVR4") fold into the
+        // combined order column that shares the prefix (e.g. "YEG1/2", "YVR3/4").
+        for (const d of Object.keys(grouped)) {
+          if (order.includes(d)) continue;
+          const m = d.toUpperCase().match(/^(YYC|YEG|YVR)/);
+          if (!m) continue;
+          const target = order.find(o => o.toUpperCase().startsWith(m[1]));
+          if (target) {
+            grouped[target] = (grouped[target] || 0) + grouped[d];
+            delete grouped[d];
+          }
+        }
+
         const extra  = Object.keys(grouped).filter(d => !order.includes(d));
         const noData = order.filter(d => !(d in grouped));
 
@@ -1640,8 +1728,162 @@
         'YHM1', 'YOW1', 'YOW3', '私人地址', 'HOLD', 'YYZ1', 'YYC4/6',
         'YEG1/2', 'YVR3/4', '自提', '换标', '快递'
       ];
-      const orderInput = document.getElementById('cmhOrderInput');
-      orderInput.value = DEFAULT_ORDER.join('\n');
+      const ORDER_STORAGE_KEY = 'containerMatchHelper.destOrderList';
+      const orderListEl = document.getElementById('cmhOrderList');
+
+      let destOrder = (() => {
+        const saved = localStorage.getItem(ORDER_STORAGE_KEY);
+        const list = saved ? saved.split('\n').map(s => s.trim()).filter(Boolean) : [];
+        return list.length ? list : DEFAULT_ORDER.slice();
+      })();
+
+      function persistOrderLocal() {
+        localStorage.setItem(ORDER_STORAGE_KEY, destOrder.join('\n'));
+        document.getElementById('cmhSaveOrderStatus').textContent = 'Saved on this device — 💾 to save online';
+      }
+
+      function renderOrderList() {
+        orderListEl.innerHTML = destOrder.map((d, i) => `
+          <li class="cmh-order-item" draggable="true" data-index="${i}">
+            <span class="drag-handle">⠿</span>
+            <span class="order-num">${i + 1}</span>
+            <span class="dest-name" data-edit="${i}" title="Click to edit">${escapeHtml(d)}</span>
+            <button type="button" class="remove-btn" title="Remove" data-remove="${i}">✕</button>
+          </li>
+        `).join('');
+      }
+
+      function addDest() {
+        const input = document.getElementById('cmhNewDestInput');
+        const name = input.value.trim();
+        if (!name) return;
+        if (destOrder.some(d => d.toLowerCase() === name.toLowerCase())) {
+          document.getElementById('cmhSaveOrderStatus').textContent = `"${name}" is already in the list`;
+          return;
+        }
+        destOrder.push(name);
+        input.value = '';
+        renderOrderList();
+        persistOrderLocal();
+        orderListEl.scrollTop = orderListEl.scrollHeight;
+      }
+      document.getElementById('cmhAddDestBtn').addEventListener('click', addDest);
+      document.getElementById('cmhNewDestInput').addEventListener('keydown', e => { if (e.key === 'Enter') addDest(); });
+
+      document.getElementById('cmhResetOrderBtn').addEventListener('click', () => {
+        destOrder = DEFAULT_ORDER.slice();
+        renderOrderList();
+        persistOrderLocal();
+      });
+
+      // remove item / click-to-edit
+      orderListEl.addEventListener('click', e => {
+        const btn = e.target.closest('[data-remove]');
+        if (btn) {
+          destOrder.splice(Number(btn.dataset.remove), 1);
+          renderOrderList();
+          persistOrderLocal();
+          return;
+        }
+        const nameEl = e.target.closest('[data-edit]');
+        if (nameEl) startEditDest(nameEl);
+      });
+
+      function startEditDest(nameEl) {
+        const idx = Number(nameEl.dataset.edit);
+        const item = nameEl.closest('.cmh-order-item');
+        item.draggable = false; // don't let a text-select drag reorder the row
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'dest-edit';
+        input.value = destOrder[idx];
+        nameEl.replaceWith(input);
+        input.focus();
+        input.select();
+
+        let done = false;
+        const commit = () => {
+          if (done) return;
+          done = true;
+          const name = input.value.trim();
+          const isDup = name && destOrder.some((d, i) => i !== idx && d.toLowerCase() === name.toLowerCase());
+          if (name && !isDup) {
+            destOrder[idx] = name;
+            persistOrderLocal();
+          } else if (isDup) {
+            document.getElementById('cmhSaveOrderStatus').textContent = `"${name}" is already in the list`;
+          }
+          renderOrderList();
+        };
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', ev => {
+          if (ev.key === 'Enter') commit();
+          if (ev.key === 'Escape') { done = true; renderOrderList(); }
+        });
+      }
+
+      // drag & drop reorder
+      let _dragIndex = null;
+      orderListEl.addEventListener('dragstart', e => {
+        const item = e.target.closest('.cmh-order-item');
+        if (!item) return;
+        _dragIndex = Number(item.dataset.index);
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      orderListEl.addEventListener('dragover', e => {
+        e.preventDefault();
+        const item = e.target.closest('.cmh-order-item');
+        orderListEl.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+        if (item && Number(item.dataset.index) !== _dragIndex) item.classList.add('drag-target');
+      });
+      orderListEl.addEventListener('drop', e => {
+        e.preventDefault();
+        const item = e.target.closest('.cmh-order-item');
+        if (item && _dragIndex !== null) {
+          const to = Number(item.dataset.index);
+          if (to !== _dragIndex) {
+            const [moved] = destOrder.splice(_dragIndex, 1);
+            destOrder.splice(to, 0, moved);
+            renderOrderList();
+            persistOrderLocal();
+          }
+        }
+      });
+      orderListEl.addEventListener('dragend', () => {
+        _dragIndex = null;
+        orderListEl.querySelectorAll('.dragging, .drag-target').forEach(el => el.classList.remove('dragging', 'drag-target'));
+      });
+
+      // load the shared list from the server (overrides the local copy when available)
+      fetch('/api/match-helper/dest-order')
+        .then(r => r.ok ? r.json() : {})
+        .then(cfg => {
+          if (Array.isArray(cfg.destOrder) && cfg.destOrder.length) {
+            destOrder = cfg.destOrder.slice();
+            renderOrderList();
+            localStorage.setItem(ORDER_STORAGE_KEY, destOrder.join('\n'));
+          }
+        })
+        .catch(() => {}); // offline / server unavailable — keep local copy
+
+      document.getElementById('cmhSaveOrderBtn').addEventListener('click', () => {
+        const btn    = document.getElementById('cmhSaveOrderBtn');
+        const status = document.getElementById('cmhSaveOrderStatus');
+        btn.disabled = true;
+        status.textContent = 'Saving…';
+        fetch('/api/match-helper/dest-order', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ destOrder })
+        })
+          .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+          .then(() => { status.textContent = '✅ Saved online'; })
+          .catch(() => { status.textContent = '⚠️ Save failed — saved on this device only'; })
+          .finally(() => { btn.disabled = false; });
+      });
+
+      renderOrderList();
 
       let workbook  = null;
       let sheetData = [];
@@ -1728,6 +1970,44 @@
       const fileStatus = document.getElementById('cmhFileStatus');
       const matchBtn   = document.getElementById('cmhMatchBtn');
 
+      // input mode tabs (upload vs paste)
+      function setInputMode(mode) {
+        document.getElementById('cmhTabUpload').classList.toggle('active', mode === 'upload');
+        document.getElementById('cmhTabPaste').classList.toggle('active', mode === 'paste');
+        dropZone.style.display = mode === 'upload' ? '' : 'none';
+        document.getElementById('cmhPasteZone').style.display = mode === 'paste' ? '' : 'none';
+      }
+      document.getElementById('cmhTabUpload').addEventListener('click', () => setInputMode('upload'));
+      document.getElementById('cmhTabPaste').addEventListener('click', () => setInputMode('paste'));
+
+      document.getElementById('cmhLoadPasteBtn').addEventListener('click', () => {
+        const raw = document.getElementById('cmhPasteInput').value.replace(/\r/g, '');
+        const lines = raw.split('\n').filter(l => l.trim() !== '');
+        if (lines.length < 2) {
+          fileStatus.className = 'cmh-file-status error';
+          fileStatus.textContent = '✖ Paste at least a header row and one data row.';
+          return;
+        }
+        // Excel copies are tab-separated; fall back to commas for hand-typed CSV.
+        const delim = lines[0].includes('\t') ? '\t' : ',';
+        const headers = lines[0].split(delim).map((h, i) => h.trim() || `Column ${i + 1}`);
+        sheetData = lines.slice(1).map(line => {
+          const cells = line.split(delim);
+          const row = {};
+          headers.forEach((h, i) => { row[h] = (cells[i] ?? '').trim(); });
+          return row;
+        });
+        workbook = null;
+        allCols = headers;
+        sheetField.style.display = 'none';
+        document.getElementById('cmhColumnControls').style.display = 'flex';
+        populateColumnPickers();
+        populateContainerList();
+        matchBtn.disabled = false;
+        fileStatus.className = 'cmh-file-status ok';
+        fileStatus.textContent = `✔ Loaded ${sheetData.length} pasted row(s), ${headers.length} column(s)`;
+      });
+
       dropZone.addEventListener('click', () => fileInput.click());
       dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
       dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
@@ -1812,7 +2092,6 @@
       clientColSel.addEventListener('change', populateContainerList);
 
       const containerSelectCard = document.getElementById('cmhContainerSelectCard');
-      const containerListEl     = document.getElementById('cmhContainerList');
 
       function populateContainerList() {
         const containerCol = containerColSel.value;
@@ -1832,41 +2111,18 @@
 
         detectedContainers = order.map(c => ({ container: c, client: clientByContainer.get(c) }));
         selectedContainers = new Set(detectedContainers.map(c => c.container));
-        renderContainerList();
-      }
-
-      function renderContainerList() {
         containerSelectCard.style.display = detectedContainers.length ? 'block' : 'none';
-        containerListEl.innerHTML = detectedContainers.map(c => `
-          <label class="cmh-container-item">
-            <input type="checkbox" data-container="${escapeHtml(c.container)}" ${selectedContainers.has(c.container) ? 'checked' : ''}>
-            ${escapeHtml(c.container)}${c.client ? ` <span class="client-tag">(${escapeHtml(c.client)})</span>` : ''}
-          </label>
-        `).join('');
+        applyContainerFilter(); // re-apply any pasted filter to the fresh data
       }
 
-      containerListEl.addEventListener('change', e => {
-        const cb = e.target;
-        if (cb.tagName !== 'INPUT') return;
-        const container = cb.dataset.container;
-        if (cb.checked) selectedContainers.add(container);
-        else selectedContainers.delete(container);
-      });
-
-      document.getElementById('cmhSelectAllBtn').addEventListener('click', () => {
-        selectedContainers = new Set(detectedContainers.map(c => c.container));
-        renderContainerList();
-      });
-
-      document.getElementById('cmhSelectNoneBtn').addEventListener('click', () => {
-        selectedContainers = new Set();
-        renderContainerList();
-      });
-
-      document.getElementById('cmhApplyFilterBtn').addEventListener('click', () => {
+      function applyContainerFilter() {
         const statusEl = document.getElementById('cmhFilterStatus');
         const raw = document.getElementById('cmhFilterInput').value.trim();
-        if (!raw) { statusEl.textContent = ''; return; }
+        if (!raw) {
+          selectedContainers = new Set(detectedContainers.map(c => c.container));
+          statusEl.textContent = detectedContainers.length ? `Including all ${detectedContainers.length} containers` : '';
+          return;
+        }
 
         const wanted      = raw.split(/\r?\n/).map(normContainer).filter(Boolean);
         const detectedSet = new Set(detectedContainers.map(c => c.container));
@@ -1874,11 +2130,16 @@
         const notFound     = wanted.filter(c => !detectedSet.has(c));
 
         selectedContainers = new Set(found);
-        renderContainerList();
 
         statusEl.textContent = notFound.length
           ? `✔ ${found.length} matched · ✖ ${notFound.length} not found: ${notFound.join(', ')}`
           : `✔ ${found.length} matched`;
+      }
+
+      document.getElementById('cmhApplyFilterBtn').addEventListener('click', applyContainerFilter);
+      document.getElementById('cmhClearFilterBtn').addEventListener('click', () => {
+        document.getElementById('cmhFilterInput').value = '';
+        applyContainerFilter();
       });
 
       function buildPivot(order) {
@@ -1909,7 +2170,13 @@
           const value = parseFloat(raw[valueCol]) || 0;
           if (!dest) continue;
 
-          const idx = orderUpper.indexOf(dest.toUpperCase());
+          let idx = orderUpper.indexOf(dest.toUpperCase());
+          // YYC / YEG / YVR destinations (e.g. "YYC6", "YVR3") fall into the combined
+          // column that shares the prefix (e.g. "YYC4/6", "YVR3/4").
+          if (idx === -1) {
+            const prefixMatch = dest.toUpperCase().match(/^(YYC|YEG|YVR)/);
+            if (prefixMatch) idx = orderUpper.findIndex(o => o.startsWith(prefixMatch[1]));
+          }
           if (idx === -1) { unmatchedDest.add(dest); continue; }
 
           const key = order[idx];
@@ -1928,13 +2195,12 @@
       matchBtn.addEventListener('click', run);
 
       function run() {
-        const orderRaw = orderInput.value.trim();
         alertsEl.innerHTML = '';
         summaryEl.innerHTML = '';
 
         if (!sheetData.length) { alert('Please upload an Excel file first.'); return; }
 
-        const order = orderRaw.split(/\r?\n/).map(normOrderItem).filter(Boolean);
+        const order = destOrder.map(normOrderItem).filter(Boolean);
         const { rows, unmatchedDest } = buildPivot(order);
         _pivot = { order, rows };
 
@@ -1975,10 +2241,7 @@
       function copyPivot() {
         if (!_pivot || !_pivot.rows.length) return;
         const { order, rows } = _pivot;
-        const lines = [
-          ['CLIENT', 'CNTR', ...order].join('\t'),
-          ...rows.map(r => [r.client, r.container, ...order.map(d => r.values[d] || '')].join('\t'))
-        ];
+        const lines = rows.map(r => [r.client, r.container, ...order.map(d => r.values[d] || '')].join('\t'));
         copyToClipboard(lines.join('\r\n')).then(() => {
           copyBtn.textContent = 'Copied!';
           copyBtn.classList.add('copied');
@@ -1999,8 +2262,8 @@
         fileStatus.textContent = '';
         document.getElementById('cmhColumnControls').style.display = 'none';
         containerSelectCard.style.display = 'none';
-        containerListEl.innerHTML = '';
         document.getElementById('cmhFilterInput').value = '';
+        document.getElementById('cmhPasteInput').value = '';
         document.getElementById('cmhFilterStatus').textContent = '';
         matchBtn.disabled = true;
         section.classList.remove('visible');
