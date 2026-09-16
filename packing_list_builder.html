@@ -4,10 +4,60 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Packing List Builder</title>
-<link rel="stylesheet" href="style.css">
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
+  /* The shared stylesheet is not in this repository, so the standalone page
+     carries the minimum it needs to lay out full width. */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; color: #1a1a2e; padding: 28px 20px 40px; }
+  .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 32px; max-width: none; margin: 0; }
+  h1 { font-size: 1.5rem; font-weight: 700; color: #0f3460; margin-bottom: 6px; }
+  .subtitle { color: #6b7280; font-size: 0.9rem; margin-bottom: 24px; }
+  .form-group { margin-bottom: 20px; }
+  .form-group > label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 8px; }
+  .drop-zone { border: 2px dashed #d1d5db; border-radius: 10px; padding: 28px 16px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; }
+  .drop-zone:hover, .drop-zone.active { border-color: #0f3460; background: #f8fafc; }
+  .drop-zone input[type="file"] { display: none; }
+  .drop-icon { font-size: 1.6rem; margin-bottom: 6px; }
+  .drop-text { font-size: .9rem; color: #6b7280; }
+  input[type="text"] { width: 100%; padding: 9px 12px; border: 1.5px solid #d1d5db; border-radius: 8px; font-size: .9rem; font-family: inherit; }
+  input[type="text"]:focus { outline: none; border-color: #0f3460; }
+  .btn { padding: 11px 22px; background: #0f3460; color: #fff; border: none; border-radius: 8px; font-size: .9rem; font-weight: 600; font-family: inherit; cursor: pointer; }
+  .btn:hover { background: #16457d; }
+  .btn:disabled { opacity: .6; cursor: not-allowed; }
+  #status { margin-top: 16px; padding: 10px 14px; border-radius: 8px; font-size: .85rem; display: none; }
+  #status.info { background: #eff6ff; color: #1e40af; }
+  #status.success { background: #f0fdf4; color: #166534; }
+  #status.error { background: #fef2f2; color: #991b1b; }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; margin-right: 8px; animation: spin .7s linear infinite; vertical-align: -1px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Config panel, ported from the tabbed app. */
+  .cfg-db-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .cfg-link-btn { background: none; border: none; color: #0f3460; font-size: 0.78rem; font-weight: 600; cursor: pointer; padding: 2px 0; text-transform: none; letter-spacing: normal; }
+  .cfg-link-btn:hover { text-decoration: underline; }
+  .cfg-link-btn-primary { background: #0f3460; color: #fff; padding: 6px 14px; border-radius: 6px; }
+  .cfg-link-btn-primary:hover { background: #16213e; text-decoration: none; }
+  .cfg-db-status { font-size: 0.78rem; color: #6b7280; }
+  .cfg-section { margin-bottom: 14px; }
+  .cfg-settings-body { margin-top: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fafbfc; }
+  .cfg-settings-body .cfg-section:last-child { margin-bottom: 0; }
+  .cfg-caret { display: inline-block; width: 0.8em; font-size: 0.8em; }
+  .cfg-label { font-size: 11px; font-weight: 700; color: #888; letter-spacing: .05em; margin-bottom: 5px; }
+  .cfg-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .cfg-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 4px; padding: 2px 6px 2px 8px; font-size: 12px; font-weight: 500; }
+  .cfg-chip-x { background: rgba(0,0,0,0.08); border: none; border-radius: 50%; width: 16px; height: 16px; line-height: 1; font-size: 12px; cursor: pointer; color: inherit; }
+  .cfg-chip-x:hover { background: rgba(0,0,0,0.2); }
+  .cfg-add-row { display: flex; gap: 6px; }
+  .cfg-add-row input { flex: 1; width: auto; padding: 6px 10px; font-size: 0.82rem; border: 1.5px solid #d1d5db; border-radius: 6px; font-family: inherit; }
+  .cfg-add-row input:focus { outline: none; border-color: #0f3460; }
+  .cfg-add-btn { background: #eef2ff; color: #1e40af; border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.78rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .cfg-add-btn:hover { background: #dbeafe; }
+  .cfg-undo-toast { display: flex; align-items: center; gap: 10px; background: #1a1a2e; color: #fff; border-radius: 6px; padding: 8px 12px; font-size: 0.8rem; margin-top: 4px; }
+  .cfg-undo-toast .cfg-link-btn { color: #93c5fd; font-weight: 700; }
+  .cfg-undo-toast .cfg-link-btn:hover { color: #fff; }
+
   .pl-row-range { display: flex; gap: 16px; margin-bottom: 10px; }
   .pl-row-range > div { flex: 1; }
   .pl-sublabel { font-size: 0.7rem; font-weight: 600; color: #9ca3af; margin-bottom: 4px; display: block; }
@@ -17,7 +67,6 @@
   }
   input[type="number"]:focus { outline: none; border-color: #0f3460; }
 
-  .pl-btn-row { display: flex; gap: 10px; }
   .btn-secondary {
     padding: 10px 16px; background: #f3f4f6; color: #444; border: none;
     border-radius: 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer;
@@ -25,28 +74,230 @@
   }
   .btn-secondary:hover { background: #e5e7eb; }
 
-  .pl-table-wrap {
-    overflow: auto; max-height: 360px; border: 1px solid #e5e7eb;
-    border-radius: 8px; margin-top: 10px;
-  }
-  .pl-table-wrap table { border-collapse: collapse; font-size: 0.8rem; white-space: nowrap; }
   .pl-table-wrap th, .pl-table-wrap td {
     padding: 5px 10px; border-bottom: 1px solid #eee; border-right: 1px solid #f3f4f6; text-align: left;
   }
-  .pl-table-wrap thead th { background: #0f3460; color: #fff; position: sticky; top: 0; z-index: 1; }
-  .pl-table-wrap td.pl-rownum { background: #f9fafb; color: #9ca3af; text-align: right; position: sticky; left: 0; }
-  .pl-table-wrap tr.pl-row-header td { background: #fef9c3; }
-  .pl-table-wrap tr.pl-row-data   td { background: #dcfce7; }
 
-  .pl-preview h2 {
-    font-size: 0.85rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.06em; color: #0f3460; margin: 18px 0 6px;
+  /* ── Cell classification in the original-sheet view ───────── */
+
+  /* Role colours, shared by the legend chips and the table cells. */
+
+  .pl-table-wrap thead th .pl-th-role {
+    display: block; font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; opacity: 0.85; margin-top: 2px;
   }
+  /* The role colour belongs to the column, so it overrides the sticky header. */
+
+  /* Header row of the detected table: solid role colour, bold. */
+  /* Data rows: same hue, lightened so the header still stands out. */
+  .pl-table-wrap tr.pl-row-data td.pl-k-ignored,
+  /* Rows outside the detected range are not part of the packing list. */
+  /* ── Excel-like sheet grid ────────────────────────────────── */
+  /* Selection. The header band is the first row of the rectangle. */
+  /* A role tint wins over the plain selection fill. */
+
+
+  /* ── Data range panel ─────────────────────────────────────── */
+  .pl-legend { margin-top: 12px; padding: 14px 16px 12px; border: 1px solid #e2e8f0; border-bottom: none; border-radius: 10px 10px 0 0; background: #fbfcfd; }
+  .pl-range-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .pl-range-ref { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; font-weight: 700; color: #1e3a8a; background: #dbeafe; padding: 3px 9px; border-radius: 6px; }
+  .pl-range-mode { font-size: 0.72rem; font-weight: 600; color: #64748b; }
+  .pl-range-manual { color: #166534; }
+  .pl-range-reset { margin-left: auto; padding: 5px 11px; font-size: 0.75rem; font-weight: 600; font-family: inherit; color: #475569; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
+  .pl-range-reset:hover { background: #f1f5f9; }
+  .pl-range-explain { font-size: 0.84rem; line-height: 1.55; color: #334155; margin: 0 0 4px; }
+  .pl-range-explain strong { color: #0f3460; font-weight: 700; }
+  .pl-range-hint { font-size: 0.76rem; line-height: 1.5; color: #94a3b8; margin: 0 0 10px; }
+  .pl-role-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 10px; border-top: 1px solid #eef2f6; }
+  .pl-role-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-right: 2px; }
+  .pl-role-aside { font-size: 0.74rem; color: #94a3b8; margin-left: 4px; }
+  .pl-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 6px; font-size: 0.74rem; font-weight: 600; color: #334155; background: #fff; border: 1px solid #e2e8f0; }
+  .pl-chip em { font-style: normal; font-weight: 400; color: #94a3b8; }
+  .pl-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .pl-legend-warn { font-size: 0.78rem; line-height: 1.55; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 9px 11px; margin-top: 10px; }
+  .pl-legend-warn strong { font-weight: 700; }
+
+  /* ── Sheet grid ───────────────────────────────────────────── */
+  .pl-table-wrap { overflow: auto; max-height: min(66vh, 700px); border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px; margin-top: 0; background: #fff; }
+  .pl-grid { border-collapse: separate; border-spacing: 0; font-size: 0.78rem; white-space: nowrap; user-select: none; }
+  .pl-grid th, .pl-grid td { border-right: 1px solid #eef2f6; border-bottom: 1px solid #eef2f6; padding: 5px 9px; text-align: left; background: #fff; }
+  .pl-grid td { min-width: 62px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; color: #334155; }
+  .pl-grid-corner { position: sticky; top: 0; left: 0; z-index: 4; min-width: 46px; background: #f1f5f9 !important; border-bottom: 1px solid #cbd5e1 !important; }
+  .pl-grid-colhdr { position: sticky; top: 0; z-index: 3; background: #f8fafc; color: #64748b; font-weight: 700; text-align: center; cursor: pointer; border-bottom: 2px solid #cbd5e1; }
+  .pl-grid-rownum { position: sticky; left: 0; z-index: 2; background: #f8fafc; color: #94a3b8; font-weight: 600; text-align: right; min-width: 46px; cursor: pointer; }
+  .pl-grid-colhdr .pl-th-role { display: block; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; min-height: 0.85em; color: #94a3b8; }
+  .pl-grid-colhdr-sel, .pl-grid-rownum-sel { background: #dbeafe !important; color: #1e3a8a !important; }
+
+  /* Role identity lives in the column letter strip, not in every cell. */
+  .pl-grid-colhdr.pl-k-dest { border-bottom-color: #2563eb; }
+  .pl-grid-colhdr.pl-k-dest .pl-th-role { color: #2563eb; }
+  .pl-grid-colhdr.pl-k-carton { border-bottom-color: #16a34a; }
+  .pl-grid-colhdr.pl-k-carton .pl-th-role { color: #16a34a; }
+  .pl-grid-colhdr.pl-k-fba { border-bottom-color: #d97706; }
+  .pl-grid-colhdr.pl-k-fba .pl-th-role { color: #d97706; }
+  .pl-grid-colhdr.pl-k-po { border-bottom-color: #db2777; }
+  .pl-grid-colhdr.pl-k-po .pl-th-role { color: #db2777; }
+  .pl-grid-colhdr.pl-k-weight { border-bottom-color: #7c3aed; }
+  .pl-grid-colhdr.pl-k-weight .pl-th-role { color: #7c3aed; }
+  .pl-grid-colhdr.pl-k-cbm { border-bottom-color: #0891b2; }
+  .pl-grid-colhdr.pl-k-cbm .pl-th-role { color: #0891b2; }
+  .pl-grid-colhdr.pl-k-ignored .pl-th-role { color: #cbd5e1; }
+  .pl-grid-colhdr.pl-k-empty   .pl-th-role { color: #e2e8f0; }
+
+  /* Selection: one accent, so the eye reads the box and not a rainbow. */
+  .pl-grid td.pl-sel { background: #f5f9ff; }
+  .pl-grid td.pl-sel-hdr { background: #e6effd; font-weight: 700; color: #0f3460; }
+  .pl-grid td.pl-sel-t { border-top: 2px solid #2563eb; }
+  .pl-grid td.pl-sel-b { border-bottom: 2px solid #2563eb; }
+  .pl-grid td.pl-sel-l { border-left: 2px solid #2563eb; }
+  .pl-grid td.pl-sel-r { border-right: 2px solid #2563eb; }
+  .pl-grid td.pl-k-ignored { color: #cbd5e1; text-decoration: line-through; }
+  .pl-grid td.pl-k-empty { color: #e2e8f0; }
+  .pl-grid tr td:not(.pl-sel) { color: #cbd5e1; }
+  .pl-range-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pl-range-tools .btn-secondary { margin-top: 0; }
+  .pl-tool-gap { flex: 1 1 auto; }
+  .pl-tool-label { font-size: 0.74rem; font-weight: 600; color: #94a3b8; text-transform: none; letter-spacing: normal; margin: 0; }
+  .pl-range-tools input[type="number"] { width: 78px; padding: 6px 9px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; font-family: inherit; }
+  .pl-range-tools input[type="number"]:focus { outline: none; border-color: #2563eb; }
+  .pl-range-tools label.pl-tool-label { display: inline-block; font-size: 0.74rem; font-weight: 600; color: #94a3b8; text-transform: none; letter-spacing: normal; margin: 0; }
+  .pl-drop-compact { padding: 12px 16px !important; }
+  .pl-drop-compact .drop-icon { display: none; }
+  .pl-grid-trunc { padding: 9px 11px; font-size: 0.75rem; color: #92400e; background: #fffbeb; border-top: 1px solid #fde68a; }
+  /* ── Preview shaped like the sheet it generates ───────────── */
+  .pl-preview h2 { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin: 22px 0 8px; padding-top: 0; border-top: none; }
+  .pl-out { border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #fff; }
+  .pl-out-head { padding: 16px 18px; background: #f8fafc; }
+  .pl-out-title { font-size: 0.95rem; font-weight: 700; color: #0f3460; text-align: center; letter-spacing: 0.02em; margin-bottom: 12px; }
+  .pl-out-grid { display: grid; grid-template-columns: max-content minmax(120px, 1fr) max-content minmax(120px, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; }
+  .pl-out-k, .pl-out-v { background: #fff; padding: 7px 11px; font-size: 0.82rem; }
+  .pl-out-k { font-weight: 700; color: #475569; }
+  .pl-out-v { color: #0f3460; font-weight: 600; }
+  .pl-out-blank { color: #cbd5e1; font-weight: 400; font-style: italic; }
+  .pl-out-band { padding: 8px 18px; background: #0f3460; color: #fff; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .pl-out-table { border: none !important; border-radius: 0 !important; margin-top: 0 !important; max-height: 420px; }
+  
+  /* ── Action bar ───────────────────────────────────────────── */
+  .pl-btn-row { display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e8f0; }
+  .pl-btn-row .btn { margin-top: 0; flex: 0 0 auto; width: auto; min-width: 230px; }
+  .pl-btn-row .btn-secondary { flex: 0 0 auto; margin-top: 0; padding-left: 20px; padding-right: 20px; }
+  /* ── Two-cell shipment field, laid out like a spreadsheet ──── */
+  .pl-cells { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) minmax(170px, 1.1fr); border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #cbd5e1; gap: 1px; max-width: 860px; }
+  .pl-cell { display: flex; flex-direction: column; background: #fff; }
+  .pl-cell-head { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; background: #f1f5f9; padding: 6px 11px; margin: 0; border-bottom: 1px solid #e2e8f0; }
+  .pl-cell input[type="text"] { border: none !important; border-radius: 0 !important; padding: 10px 11px; font-size: 0.9rem; width: 100%; background: transparent; }
+  .pl-cell input[type="text"]:focus { outline: 2px solid #2563eb; outline-offset: -2px; }
+  
+  /* ── Clickable column chips ───────────────────────────────── */
+  .pl-chip-btn { cursor: pointer; font-family: inherit; }
+  .pl-chip-btn:hover { border-color: #94a3b8; background: #f8fafc; }
+  .pl-chip-on { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
+  .pl-chip-col { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.68rem; font-weight: 700; color: #64748b; background: #f1f5f9; border-radius: 4px; padding: 1px 4px; }
+  .pl-grid td.pl-col-focus { background: #fffbeb !important; }
+  .pl-grid th.pl-col-focus-hdr { background: #fde68a !important; color: #92400e !important; }
+  /* ── Pop-up menu ──────────────────────────────────────────── */
+  .pl-menu { position: absolute; z-index: 9999; min-width: 230px; max-height: 60vh; overflow-y: auto; padding: 5px; background: #fff; border: 1px solid #cbd5e1; border-radius: 9px; box-shadow: 0 8px 24px rgba(15,23,42,.14); font-size: 0.82rem; }
+  .pl-menu-title { padding: 6px 9px 7px; font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #f1f5f9; margin-bottom: 4px; }
+  .pl-menu-item { display: flex; align-items: center; gap: 7px; width: 100%; padding: 6px 9px; background: none; border: none; border-radius: 6px; font: inherit; color: #334155; text-align: left; cursor: pointer; }
+  .pl-menu-item:hover:not(:disabled) { background: #eff6ff; color: #1e3a8a; }
+  .pl-menu-item:disabled { color: #cbd5e1; cursor: default; }
+  .pl-menu-on { font-weight: 700; color: #1e3a8a; }
+  .pl-menu-tick { width: 12px; flex: none; color: #2563eb; }
+  .pl-menu-label { flex: 1 1 auto; }
+  .pl-menu-note { font-size: 0.72rem; color: #94a3b8; }
+  .pl-menu-sep { height: 1px; background: #f1f5f9; margin: 4px 0; }
+  .pl-chip-caret { color: #94a3b8; font-size: 0.65rem; }
+  .pl-chip-unset { border-style: dashed; color: #94a3b8; }
+  .pl-chip-unset em { color: #cbd5e1; font-style: italic; }
+  /* ── Selection corner handles ─────────────────────────────── */
+  .pl-grid-canvas { position: relative; display: inline-block; min-width: 100%; }
+  .pl-handle { position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; background: #fff; border: 2px solid #2563eb; border-radius: 3px; z-index: 5; }
+  .pl-handle-tl, .pl-handle-br { cursor: nwse-resize; }
+  .pl-handle-tr, .pl-handle-bl { cursor: nesw-resize; }
+  .pl-handle:hover { background: #2563eb; }
+  .pl-grid-resizing .pl-handle { pointer-events: none; }
+  .pl-grid-resizing { cursor: crosshair; }
+  
+  /* ── Sheet picker ─────────────────────────────────────────── */
+  .pl-sheet-pick { display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; color: #64748b; }
+  .pl-sheet-pick select { padding: 3px 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.76rem; font-family: inherit; background: #fff; color: #334155; max-width: 220px; }
+  .pl-sheet-pick select:focus { outline: none; border-color: #2563eb; }
+  /* ── Editable preview cells ───────────────────────────────── */
+  .pl-edit-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 8px; font-size: 0.78rem; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; }
+  .pl-edit-bar span { flex: 1 1 auto; }
+  .pl-out-table td.pl-edit { cursor: text; }
+  .pl-out-table td.pl-edit:hover { background: #f8fafc; }
+  .pl-out-table td.pl-edit:focus { outline: 2px solid #2563eb; outline-offset: -2px; background: #fff; }
+  .pl-out-table td.pl-edited { background: #fffbeb; box-shadow: inset 3px 0 0 #f59e0b; }
+  /* ── Short names for unrecognised destinations ────────────── */
+  .pl-dest-panel { padding: 12px 14px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9px; }
+  .pl-dest-head { font-size: 0.78rem; color: #475569; margin-bottom: 9px; }
+  .pl-dest-row { padding: 9px 0; border-top: 1px solid #eef2f6; }
+  .pl-dest-orig { font-size: 0.76rem; line-height: 1.55; color: #475569; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 9px; margin-bottom: 7px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; cursor: text; max-height: 8.5em; overflow-y: auto; }
+  .pl-dest-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .pl-dest-copy { padding: 5px 10px; font-size: 0.74rem; font-weight: 600; font-family: inherit; color: #475569; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .pl-dest-copy:hover { background: #f1f5f9; }
+  .pl-dest-copied { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+  .pl-dest-row:first-of-type { border-top: none; }
+  .pl-dest-meta { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; }
+  .pl-dest-panel input.pl-dest-input { width: 220px; padding: 5px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.8rem; font-family: inherit; }
+  .pl-dest-panel input.pl-dest-input:focus { outline: none; border-color: #2563eb; }
+  .pl-dest-use, .pl-dest-clear { padding: 5px 10px; font-size: 0.74rem; font-weight: 600; font-family: inherit; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .pl-dest-use { color: #1e3a8a; background: #dbeafe; border: 1px solid #bfdbfe; }
+  .pl-dest-use:hover { background: #bfdbfe; }
+  .pl-dest-clear { color: #475569; background: #fff; border: 1px solid #cbd5e1; }
+  .pl-dest-clear:hover { background: #f1f5f9; }
+  .pl-cell[draggable="true"] .pl-cell-head { cursor: grab; user-select: none; }
+  .pl-cell[draggable="true"] .pl-cell-head::before { content: "⠿"; margin-right: 6px; opacity: 0.45; letter-spacing: -1px; }
+  .pl-cell-dragging { opacity: 0.45; }
+  .pl-cell-over { box-shadow: inset 3px 0 0 #2563eb; }
+  /* ── Settings anchored to the card's top right ────────────── */
+  .pl-card, .card { position: relative; }
+  .cfg-corner { position: absolute; top: 18px; right: 20px; z-index: 30; display: flex; justify-content: flex-end; }
+  .cfg-corner .cfg-db-bar { display: flex; align-items: center; gap: 10px; margin: 0; }
+  /* The keyword lists open as a panel rather than pushing the page around. */
+  .cfg-corner .cfg-settings-body { position: absolute; top: calc(100% + 8px); right: 0; width: min(760px, 88vw); max-height: 66vh; overflow-y: auto; margin-top: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 32px rgba(15,23,42,.16); padding: 16px 18px; }
+  /* A bar with display:flex beats the browser's [hidden] rule, which left an
+  empty strip above the preview whenever there were no edits. */
+  .pl-edit-bar[hidden], .pl-dest-panel[hidden] { display: none !important; }
+  
+  /* The preview is meant to read as the document, so the tables fill it. */
+  .pl-out-table table { width: 100%; min-width: 100%; }
+  .pl-out-table th { background: #1e4a7a; color: #fff; font-weight: 700; font-size: 0.72rem; line-height: 1.3; vertical-align: bottom; white-space: normal; }
+  .pl-out-table td, .pl-out-table th { border-right: 1px solid rgba(148,163,184,.25); }
+  .pl-out-table tr:nth-child(even) td { background: #fbfcfe; }
+  .pl-out-table td.pl-num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pl-out-table th:first-child, .pl-out-table td:first-child { position: sticky; left: 0; z-index: 1; }
+  .pl-out-table td:first-child { background: #fff; font-weight: 600; }
+  .pl-out-table tr:nth-child(even) td:first-child { background: #fbfcfe; }
+  /* The summary's nine columns include six the warehouse fills in by hand. */
+  .pl-out-table td:empty::after { content: ""; display: block; min-height: 1em; }
+  /* ── Offering to remember a hand-made column mapping ──────── */
+  .pl-learn-bar { display: flex; flex-wrap: wrap; gap: 10px; padding: 9px 12px; margin-top: 8px; font-size: 0.78rem; color: #1e3a8a; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; }
+  .pl-learn-bar[hidden] { display: none !important; }
+  .pl-learn-item { display: inline-flex; align-items: center; gap: 8px; }
+  .pl-learn-text strong { font-weight: 700; }
+  .pl-learn-btn { padding: 4px 10px; font-size: 0.74rem; font-weight: 600; font-family: inherit; color: #1e3a8a; background: #fff; border: 1px solid #93c5fd; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .pl-learn-btn:hover:not(:disabled) { background: #dbeafe; }
+  .pl-learn-btn:disabled { opacity: .6; cursor: default; }
+  .pl-out-table table th,
+  .pl-out-table table td { text-align: center; }
+  .pl-out-table table td.pl-num { text-align: center; }
+  .pl-out-table table td:first-child { text-align: center; }
+  .pl-out-grid .pl-out-k,
+  .pl-out-grid .pl-out-v { text-align: center; }
+  .pl-mode { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 7px; overflow: hidden; }
+  .pl-mode-btn { padding: 4px 11px; font-size: 0.73rem; font-weight: 600; font-family: inherit; color: #64748b; background: #fff; border: none; cursor: pointer; }
+  .pl-mode-btn + .pl-mode-btn { border-left: 1px solid #cbd5e1; }
+  .pl-mode-btn:hover { background: #f1f5f9; }
+  .pl-mode-on { color: #fff; background: #2563eb; }
+  .pl-mode-on:hover { background: #1d4ed8; }
 </style>
 </head>
 
 <body>
 <div class="card">
+  <div id="cfgPanel" class="cfg-corner"></div>
   <h1>Packing List Builder</h1>
   <p class="subtitle">Upload an Excel file to generate a formatted packing list</p>
 
@@ -63,59 +314,58 @@
     </div>
 
     <div class="form-group">
-      <label>
-        config.properties
-        <span style="font-weight:400;color:#aaa;margin-left:6px;">— optional, overrides built-in keywords</span>
-      </label>
-      <div class="drop-zone" id="cfgDropZone" style="padding:14px 16px;">
-        <div class="drop-text" id="cfgDropText"><strong>Click to browse</strong> or drag &amp; drop config.properties</div>
-        <div id="cfgBadge" style="display:none"></div>
-        <input type="file" id="cfgFile" accept=".properties,.txt">
+      <label>Shipment</label>
+      <div class="pl-cells" id="plCells">
+        <div class="pl-cell" data-cell="clientName" draggable="true">
+          <label for="clientName" class="pl-cell-head">Client name</label>
+          <input type="text" id="clientName" placeholder="易达优 EPS" required>
+        </div>
+        <div class="pl-cell" data-cell="containerNo" draggable="true">
+          <label for="containerNo" class="pl-cell-head">Container #</label>
+          <input type="text" id="containerNo" placeholder="CAAU8049388" required>
+        </div>
+        <div class="pl-cell" data-cell="fileNo" draggable="true">
+          <label for="fileNo" class="pl-cell-head">File number</label>
+          <input type="text" id="fileNo">
+        </div>
       </div>
-      <div id="cfgPanel"></div>
     </div>
 
     <div class="form-group">
-      <label for="clientContainer">
-        Client Name &amp; Container #
-        <span style="font-weight:400;color:#aaa;margin-left:6px;">— paste both, separated by a tab</span>
-      </label>
-      <input type="text" id="clientContainer" placeholder="e.g. 易达优 EPS&#9;CAAU8049388" required>
-    </div>
-
-    <div class="form-group">
-      <label>
-        Data Table Row Range
-        <span style="font-weight:400;color:#aaa;margin-left:6px;">— optional, override auto-detection for exceptions</span>
-      </label>
-      <div class="pl-row-range">
-        <div>
-          <label for="hdrRowInput" class="pl-sublabel">Header row #</label>
-          <input type="number" id="hdrRowInput" min="1" placeholder="auto">
-        </div>
-        <div>
-          <label for="lastRowInput" class="pl-sublabel">Last data row #</label>
-          <input type="number" id="lastRowInput" min="1" placeholder="auto">
-        </div>
+      <div class="pl-range-tools">
+        <button type="button" class="btn-secondary" id="btnViewSheet">View &amp; Select Data Range</button>
+        <span class="pl-tool-gap"></span>
+        <label for="hdrRowInput" class="pl-tool-label">Header row</label>
+        <input type="number" id="hdrRowInput" min="1" placeholder="auto" class="pl-tool-num">
+        <label for="lastRowInput" class="pl-tool-label">Last row</label>
+        <input type="number" id="lastRowInput" min="1" placeholder="auto" class="pl-tool-num">
       </div>
-      <button type="button" class="btn-secondary" id="btnViewSheet">View Original Sheet</button>
+      <div id="plSheetLegend" class="pl-legend" style="display:none;"></div>
       <div id="plOriginalSheet" class="pl-table-wrap" style="display:none;"></div>
     </div>
 
+    <div id="status"></div>
+
+    <div id="plPreview" class="pl-preview" style="display:none;">
+      <h2>Preview — the packing list that will be generated</h2>
+      <div id="plDestPanel" class="pl-dest-panel" hidden></div>
+      <div id="plEditBar" class="pl-edit-bar" hidden></div>
+      <div class="pl-out">
+        <div id="plPreviewHead" class="pl-out-head"></div>
+        <div class="pl-out-band">Loads</div>
+        <div class="pl-table-wrap pl-out-table" id="plPreviewData"></div>
+        <div class="pl-out-band">Summary</div>
+        <div class="pl-table-wrap pl-out-table" id="plPreviewSummary"></div>
+      </div>
+    </div>
+
+    <div id="plLearnBar" class="pl-learn-bar" hidden></div>
+
     <div class="pl-btn-row">
-      <button type="button" class="btn-secondary" id="btnPreview">Preview</button>
+      <button type="button" class="btn-secondary" id="btnPreview">Refresh preview</button>
       <button type="submit" class="btn" id="submitBtn">Generate Packing List</button>
     </div>
   </form>
-
-  <div id="status"></div>
-
-  <div id="plPreview" class="pl-preview" style="display:none;">
-    <h2>Preview — Packing List</h2>
-    <div class="pl-table-wrap" id="plPreviewData"></div>
-    <h2>Preview — Summary</h2>
-    <div class="pl-table-wrap" id="plPreviewSummary"></div>
-  </div>
 </div>
 
 <!-- load order matters: each file depends on those above it -->
@@ -124,6 +374,7 @@
 <script src="js/utils.js"></script>
 <script src="js/detect.js"></script>
 <script src="js/columns.js"></script>
+<script src="js/grid.js"></script>
 <script src="js/process.js"></script>
 <script src="js/writer.js"></script>
 <script src="js/ui.js"></script>

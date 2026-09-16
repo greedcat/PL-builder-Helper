@@ -693,20 +693,19 @@ const containerSelectCard = document.getElementById("container-select-card");
 function populateContainerList() {
   const containerCol = containerColSel.value;
   const clientCol     = clientColSel.value;
-  const clientByContainer = new Map();
-  const order = [];
+  // one entry per client + container pair, so a reused container number shows
+  // up once per client instead of being collapsed into a single entry
+  const pairs = new Map(); // "client container" -> { container, client }
 
   for (const raw of sheetData) {
     const container = normContainer(raw[containerCol]);
     if (!container) continue;
-    if (!clientByContainer.has(container)) { clientByContainer.set(container, ""); order.push(container); }
-    if (!clientByContainer.get(container)) {
-      const client = String(raw[clientCol] ?? "").trim();
-      if (client) clientByContainer.set(container, client);
-    }
+    const client = String(raw[clientCol] ?? "").trim();
+    const key = client.toUpperCase() + " " + container;
+    if (!pairs.has(key)) pairs.set(key, { container, client });
   }
 
-  detectedContainers = order.map(c => ({ container: c, client: clientByContainer.get(c) }));
+  detectedContainers = [...pairs.values()];
   selectedContainers = new Set(detectedContainers.map(c => c.container));
   containerSelectCard.style.display = detectedContainers.length ? "block" : "none";
   applyContainerFilter(); // re-apply any pasted filter to the fresh data
@@ -717,7 +716,7 @@ function applyContainerFilter() {
   const raw = document.getElementById("container-filter-input").value.trim();
   if (!raw) {
     selectedContainers = new Set(detectedContainers.map(c => c.container));
-    statusEl.textContent = detectedContainers.length ? `Including all ${detectedContainers.length} containers` : "";
+    statusEl.textContent = selectedContainers.size ? `Including all ${selectedContainers.size} containers` : "";
     return;
   }
 
@@ -746,7 +745,9 @@ function buildPivot(order) {
   const valueCol       = valueColSel.value;
 
   const orderUpper = order.map(o => o.toUpperCase());
-  const rowsMap   = new Map(); // normalized container -> row
+  // A container number can be reused across shipments/clients, so a row is
+  // identified by client + container, not container alone.
+  const rowsMap   = new Map(); // "client container" -> row
   const rowOrder  = [];
   const unmatchedDest = new Set();
 
@@ -754,13 +755,14 @@ function buildPivot(order) {
     const container = normContainer(raw[containerCol]);
     if (!container || !selectedContainers.has(container)) continue;
 
-    if (!rowsMap.has(container)) {
-      rowsMap.set(container, { client: "", container, values: {} });
-      rowOrder.push(container);
-    }
-    const row = rowsMap.get(container);
-
     const client = String(raw[clientCol] ?? "").trim();
+    const rowKey = client.toUpperCase() + " " + container;
+
+    if (!rowsMap.has(rowKey)) {
+      rowsMap.set(rowKey, { client, container, values: {} });
+      rowOrder.push(rowKey);
+    }
+    const row = rowsMap.get(rowKey);
     if (!row.client && client) row.client = client;
 
     const dest  = normDest(raw[destCol]);
@@ -781,7 +783,7 @@ function buildPivot(order) {
   }
 
   return {
-    rows: rowOrder.map(c => rowsMap.get(c)),
+    rows: rowOrder.map(k => rowsMap.get(k)),
     unmatchedDest: [...unmatchedDest]
   };
 }
@@ -826,8 +828,11 @@ function run() {
 
   // summary chips
   const total = rows.reduce((s, r) => s + Object.values(r.values).reduce((a, b) => a + b, 0), 0);
+  const distinctContainers = new Set(rows.map(r => r.container)).size;
+  const reused = rows.length - distinctContainers;
   summaryEl.innerHTML = `
-    <span class="chip chip-blue">${rows.length} containers</span>
+    <span class="chip chip-blue">${rows.length} rows · ${distinctContainers} containers</span>
+    ${reused ? `<span class="chip chip-blue">${reused} reused container row(s)</span>` : ""}
     <span class="chip chip-blue">${order.length} destination columns</span>
     <span class="chip chip-blue">Total: ${total.toLocaleString()}</span>
   `;

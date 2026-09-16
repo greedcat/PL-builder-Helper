@@ -95,11 +95,20 @@ function detectTableEnd(rawRows, headerRow, fillThreshold = 0.4, sumMultiplier =
   }
 
   if (!scores.length) return [dataStart, scores];
+
+  // A row only marks the end of the table if it actually looks like one.
+  // Below this, the signals are ordinary variation between data rows.
+  const END_SCORE = 40;
   const maxScoreRow = scores.reduce((a, b) => b[1] > a[1] ? b : a);
+
+  // Nothing resembles a footer, summary or spacer, so the table runs to the
+  // last row. Without this a perfectly clean sheet collapses to one row,
+  // because every score ties at zero and the reducer keeps the first.
+  if (maxScoreRow[1] < END_SCORE) return [scores[scores.length - 1][0], scores];
+
   let lastDataRow = dataStart;
   for (const [idx] of scores) {
     if (idx < maxScoreRow[0]) lastDataRow = idx;
   }
-  
   return [lastDataRow, scores];
 }

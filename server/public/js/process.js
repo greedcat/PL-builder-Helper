@@ -1,31 +1,29 @@
 // ─────────────────────────────────────────────────────────────
 // DATA PROCESSING
 // ─────────────────────────────────────────────────────────────
-function readExcel(headers, rows) {
-  const destCol   = detectDestinationColumn(headers, rows);
-  const fbaCol    = detectFBAColumn(headers, rows);
-  const poCol     = detectAmazonPOColumn(headers, rows);
-  const ctnCol    = detectCartonColumn(headers);
-  const weightCol = detectWeightColumn(headers);
-  const cbmCol    = detectCBMColumn(headers);
-
-  console.log('Column map:', { destCol, fbaCol, poCol, ctnCol, weightCol, cbmCol });
-
+// `overrides` maps a role to the header name the user picked, or to null to
+// leave that role unused. Anything absent falls back to auto-detection.
+// `dropIdx` is a Set of column indices to leave out of the result entirely.
+function readExcel(headers, rows, overrides = {}, dropIdx = new Set()) {
   const matchDict = {
-    'Destination': destCol,
-    'Carton':      ctnCol,
-    'FBA_ID':      fbaCol,
-    'REF ID':      poCol,
-    'Weight':      weightCol,
-    'CMB':         cbmCol
+    'Destination': detectDestinationColumn(headers, rows),
+    'Carton':      detectCartonColumn(headers),
+    'FBA_ID':      detectFBAColumn(headers, rows),
+    'REF ID':      detectAmazonPOColumn(headers, rows),
+    'Weight':      detectWeightColumn(headers),
+    'CMB':         detectCBMColumn(headers),
   };
+  for (const role of Object.keys(matchDict)) {
+    if (Object.prototype.hasOwnProperty.call(overrides, role)) matchDict[role] = overrides[role];
+  }
 
   // Use indices to preserve null/empty-header columns
-  const mainNames = [destCol, ctnCol, fbaCol, poCol, weightCol, cbmCol].filter(Boolean);
+  const ROLE_ORDER = ['Destination', 'Carton', 'FBA_ID', 'REF ID', 'Weight', 'CMB'];
+  const mainNames  = ROLE_ORDER.map(r => matchDict[r]).filter(Boolean);
   const mainIdx   = mainNames.map(h => headers.indexOf(h));
   const otherIdx  = headers
     .map((h, i) => i)
-    .filter(i => !mainIdx.includes(i) && !NO_NEED_COL.includes(headers[i]));
+    .filter(i => !mainIdx.includes(i) && !dropIdx.has(i));
   const orderIdx  = [...mainIdx, ...otherIdx];
 
   return {
@@ -87,7 +85,11 @@ function modifyDF(headers, rows, matchDict) {
   function matchDest(val) {
     if (val == null) return val;
     const s = String(val).trim();
-    for (const code of DEST_LIST) { if (s.includes(code)) return code; }
+    // Longest code first, so YYZ11 is not swallowed by YYZ1.
+    const codes = [...DEST_LIST].sort((a, b) => String(b).length - String(a).length);
+    for (const code of codes) { if (s.includes(code)) return code; }
+    // Anything else is left exactly as written. Long consignee blocks are
+    // offered a short name in the preview instead of being rewritten here.
     return s;
   }
   data = data.map(r => {

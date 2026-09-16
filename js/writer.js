@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // EXCEL OUTPUT
 // ─────────────────────────────────────────────────────────────
-async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cName, containerName, wbIn) {
+async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cName, containerName, wbIn, fileName, fileNo) {
   const wb  = new ExcelJS.Workbook();
   const TNR = 'Times New Roman';
   const bdr = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -25,46 +25,88 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   // ── PL sheet ──────────────────────────────────────────────
   const wsPL = wb.addWorksheet('PL');
 
-  wsPL.mergeCells('A1:I1');
-  styledCell(wsPL, 1, 1, { size: 28, bold: true }).value = 'PACKING LIST AND DESTUFFING INSTRUCTION (FBA)';
-  wsPL.getRow(1).height = 65;
+  const sectionCols = Math.max(visH.length, 9);
+  const numDests    = new Set(dataRows.map(r => r[dataHeaders.indexOf('Destination')]).filter(v => v != null)).size;
 
-  wsPL.mergeCells('A2:B2'); styledCell(wsPL, 2, 1, { size: 20, bold: true }).value = 'Client_Name';
-  wsPL.mergeCells('C2:D2'); styledCell(wsPL, 2, 3, { size: 20, bold: true }).value = cName;
-  wsPL.mergeCells('E2:F2'); styledCell(wsPL, 2, 5, { size: 20, bold: true }).value = 'Container #';
-  wsPL.mergeCells('G2:I2'); styledCell(wsPL, 2, 7, { size: 20, bold: true }).value = containerName;
-  wsPL.getRow(2).height = 65;
+  wsPL.mergeCells(1, 1, 1, sectionCols);
+  styledCell(wsPL, 1, 1, { size: 28, bold: true, wrap: true }).value = 'PACKING LIST AND DESTUFFING INSTRUCTION (FBA)';
+  wsPL.getRow(1).height = 60;
 
-  const numDests = new Set(dataRows.map(r => r[dataHeaders.indexOf('Destination')]).filter(v => v != null)).size;
-  wsPL.mergeCells('A3:B3'); styledCell(wsPL, 3, 1, { size: 20, bold: true }).value = '# of Destination';
-  wsPL.mergeCells('C3:D3'); styledCell(wsPL, 3, 3, { size: 20, bold: true }).value = numDests;
-  wsPL.mergeCells('E3:F3'); styledCell(wsPL, 3, 5, { size: 20, bold: true }).value = 'Destuffing Time';
-  wsPL.mergeCells('G3:I3'); styledCell(wsPL, 3, 7, { size: 20, bold: true }).value = '';
-  wsPL.getRow(3).height = 65;
+  // Two label/value pairs per row. Labels span 2 columns, values span the
+  // rest of the half so the block lines up with the tables below.
+  const half  = Math.ceil(sectionCols / 2);
+  const pairs = [
+    ['Client Name',     cName,     'Container #',       containerName],
+    ['File #',          fileNo || '', '# of Destinations', numDests],
+    ['Destuffing Time', '',        '',                  ''],
+  ];
+  pairs.forEach(([l1, v1, l2, v2], i) => {
+    const r = 2 + i;
+    wsPL.mergeCells(r, 1, r, 2);
+    wsPL.mergeCells(r, 3, r, half);
+    wsPL.mergeCells(r, half + 1, r, half + 2);
+    wsPL.mergeCells(r, half + 3, r, sectionCols);
+    styledCell(wsPL, r, 1,        { size: 18, bold: true }).value = l1;
+    styledCell(wsPL, r, 3,        { size: 18, bold: true }).value = v1;
+    styledCell(wsPL, r, half + 1, { size: 18, bold: true }).value = l2;
+    styledCell(wsPL, r, half + 3, { size: 18, bold: true }).value = v2;
+    wsPL.getRow(r).height = 55; // roomy: Destuffing Time is written in by hand
+  });
 
-  wsPL.getRow(4).height = 20; // blank separator
+  const BLANK_ROW = 2 + pairs.length;
+  wsPL.getRow(BLANK_ROW).height = 20; // blank separator
 
-  const DATA_HDR_ROW = 5;
-  visH.forEach((h, ci) => { styledCell(wsPL, DATA_HDR_ROW, ci + 1).value = h; });
-  wsPL.getRow(DATA_HDR_ROW).height = 40;
+  // Section title row. The word "LOADS" in column A is the marker code uses
+  // to find the loads table (see parsePLSections in utils.js), so a hand-made
+  // PL only needs this word typed above its header row to be readable.
+  const LOADS_TITLE_ROW = BLANK_ROW + 1;
+  wsPL.mergeCells(LOADS_TITLE_ROW, 1, LOADS_TITLE_ROW, sectionCols);
+  styledCell(wsPL, LOADS_TITLE_ROW, 1, { size: 24, bold: true }).value = PL_SECTION_LOADS;
+  wsPL.getRow(LOADS_TITLE_ROW).height = 50;
 
-  const DATA_START = 6;
+  const DATA_HDR_ROW = LOADS_TITLE_ROW + 1;
+  visH.forEach((h, ci) => { styledCell(wsPL, DATA_HDR_ROW, ci + 1, { bold: true, wrap: true }).value = h; });
+  wsPL.getRow(DATA_HDR_ROW).height = 45;
+
+  const DATA_START = DATA_HDR_ROW + 1;
   visRows.forEach((row, ri) => {
-    row.forEach((v, ci) => { styledCell(wsPL, DATA_START + ri, ci + 1).value = v ?? ''; });
+    row.forEach((v, ci) => { styledCell(wsPL, DATA_START + ri, ci + 1).value = tidyNumber(v) ?? ''; });
     wsPL.getRow(DATA_START + ri).height = 30;
   });
   const lastDataRow = DATA_START + visRows.length - 1;
 
-  // Merge consecutive identical Destination cells
+  // Destination groups: consecutive rows sharing the same Destination.
+  // Each group is one "part" of the packing list.
   const destVisIdx = visH.indexOf('Destination') + 1;
-  if (destVisIdx > 0) {
+  const groups = [];   // [{ s, e }] as 1-based sheet row numbers
+  if (destVisIdx > 0 && visRows.length) {
     let s = DATA_START;
     while (s <= lastDataRow) {
       let e = s;
-      const val = wsPL.getCell(s, destVisIdx).value;
-      while (e + 1 <= lastDataRow && wsPL.getCell(e + 1, destVisIdx).value === val) e++;
-      if (e > s) wsPL.mergeCells(s, destVisIdx, e, destVisIdx);
+      const val = visRows[s - DATA_START][destVisIdx - 1];
+      while (e + 1 <= lastDataRow && visRows[e + 1 - DATA_START][destVisIdx - 1] === val) e++;
+      groups.push({ s, e });
       s = e + 1;
+    }
+  }
+
+  // Merge consecutive identical Destination cells
+  for (const { s, e } of groups) {
+    if (e > s) wsPL.mergeCells(s, destVisIdx, e, destVisIdx);
+  }
+
+  // Split line between parts: a thick line under the last row of every
+  // destination group. Excel draws the shared edge from either cell, so set
+  // the bottom edge of the group end and the top edge of the next group.
+  // A merged Destination cell shares one style across its range, so setting
+  // its top/bottom applies to the top/bottom of the whole merged block.
+  const thick = { style: 'medium' };
+  for (let gi = 0; gi < groups.length - 1; gi++) {
+    const end  = groups[gi].e;
+    const next = groups[gi + 1].s;
+    for (let c = 1; c <= visH.length; c++) {
+      const a = wsPL.getCell(end,  c); a.border = { ...a.border, bottom: thick };
+      const b = wsPL.getCell(next, c); b.border = { ...b.border, top:    thick };
     }
   }
 
@@ -73,44 +115,74 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   const SUM_HDR_ROW    = SUM_TITLE_ROW + 1;
   const SUM_DATA_START = SUM_HDR_ROW + 1;
 
-  wsPL.mergeCells(SUM_TITLE_ROW, 1, SUM_TITLE_ROW, 9);
-  styledCell(wsPL, SUM_TITLE_ROW, 1, { size: 36, bold: true }).value = 'SUMMARY';
-  wsPL.getRow(SUM_TITLE_ROW).height = 85;
+  wsPL.mergeCells(SUM_TITLE_ROW, 1, SUM_TITLE_ROW, sectionCols);
+  styledCell(wsPL, SUM_TITLE_ROW, 1, { size: 24, bold: true }).value = PL_SECTION_SUMMARY;
+  wsPL.getRow(SUM_TITLE_ROW).height = 50;
 
-  const SUM_HEADERS = [
-    'Destination\n地址',
-    'Total Carton\n箱数',
-    'Estimated Skid #\n预计托盘数量',
-    'Actual Skid # (Standard)\n实际打托数量（标准）',
-    'Actual Skid # (60 Inches)\n实际打托数量（长板60寸）',
-    'Actual Skid # (75 Inches)\n实际打托数量（长板75寸）',
-    'Actual Skid # (96 Inches)\n实际打托数量（长板96寸）',
-    'Standard plt but overhanging',
-    'Self Palletized\n自托'
-  ];
+  const SUM_HEADERS = PL_SUMMARY_HEADERS;
   SUM_HEADERS.forEach((lbl, ci) => {
-    styledCell(wsPL, SUM_HDR_ROW, ci + 1, { size: 18, bold: true, wrap: true }).value = lbl;
+    styledCell(wsPL, SUM_HDR_ROW, ci + 1, { size: 14, bold: true, wrap: true }).value = lbl;
   });
-  wsPL.getRow(SUM_HDR_ROW).height = 125;
+  wsPL.getRow(SUM_HDR_ROW).height = 95;
 
   sumVisR.forEach((row, ri) => {
     const rn = SUM_DATA_START + ri;
     for (let ci = 0; ci < 9; ci++) {
-      styledCell(wsPL, rn, ci + 1, { size: 18 }).value = ci < row.length ? (row[ci] ?? '') : '';
+      styledCell(wsPL, rn, ci + 1, { size: 16 }).value = ci < row.length ? (tidyNumber(row[ci]) ?? '') : '';
     }
-    wsPL.getRow(rn).height = 85;
+    wsPL.getRow(rn).height = 85; // roomy: actual skid counts are written in by hand
   });
 
-  // Auto-fit column widths
-  const plLastRow = SUM_DATA_START + sumVisR.length - 1;
-  for (let c = 1; c <= Math.max(visH.length, 9); c++) {
-    let maxLen = 0;
-    for (let r = 1; r <= plLastRow; r++) {
-      const v = wsPL.getCell(r, c).value;
-      if (v != null) maxLen = Math.max(maxLen, ...String(v).split('\n').map(l => l.length));
+  // Section split lines: a thick full-width line between the container
+  // detail block, the loads table and the summary. Each line is drawn on the
+  // shared edge (bottom of the blank row / top of the next section header)
+  // so Excel shows it regardless of which side it picks.
+  const heavy = { style: 'thick' };
+  function sectionLine(blankRow, nextRow) {
+    for (let c = 1; c <= sectionCols; c++) {
+      const a = wsPL.getCell(blankRow, c); a.border = { ...a.border, bottom: heavy };
+      const b = wsPL.getCell(nextRow,  c); b.border = { ...b.border, top:    heavy };
     }
-    wsPL.getColumn(c).width = Math.min(maxLen * 1.2 + 4, 90);
   }
+  sectionLine(LOADS_TITLE_ROW - 1, LOADS_TITLE_ROW); // container detail | loads
+  sectionLine(SUM_TITLE_ROW - 1,   SUM_TITLE_ROW);   // loads | summary
+
+  // Auto-fit column widths from the table cells only (titles and the
+  // container-detail block are merged across columns and must not count).
+  // Width units are ~one character of the 11pt default font, so scale by
+  // font size and count CJK / full-width characters as two.
+  const plLastRow = SUM_DATA_START + sumVisR.length - 1;
+  const CJK       = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/;
+  const dispLen   = str => [...str].reduce((n, ch) => n + (CJK.test(ch) ? 2 : 1), 0);
+  // Longest run Excel cannot break: whitespace and CJK characters are break points.
+  const longestRun = str => Math.max(0, ...str.split(new RegExp(`[\\s${CJK.source.slice(1, -1)}]+`)).map(dispLen));
+  const measure   = (r, c) => {
+    const cl = wsPL.getCell(r, c);
+    if (cl.value == null || cl.value === '') return 0;
+    const lines = String(cl.value).split('\n');
+    const size  = (cl.font && cl.font.size) || 11;
+    const wrap  = !!(cl.alignment && cl.alignment.wrapText);
+    // Wrapped cells may break onto ~2 lines, but never inside a word.
+    const need  = wrap
+      ? Math.max(...lines.map(l => Math.max(dispLen(l) / 2, longestRun(l))))
+      : Math.max(...lines.map(dispLen));
+    return need * (size / 11) * 1.1 + 2;
+  };
+  const measureRows = [];
+  for (let r = DATA_HDR_ROW; r <= lastDataRow; r++) measureRows.push(r);
+  for (let r = SUM_HDR_ROW;  r <= plLastRow;   r++) measureRows.push(r);
+  for (let c = 1; c <= sectionCols; c++) {
+    let w = 10;
+    for (const r of measureRows) w = Math.max(w, measure(r, c));
+    wsPL.getColumn(c).width = Math.min(w, 45);
+  }
+
+  // Print setup: landscape, one page wide, repeat nothing.
+  wsPL.pageSetup = {
+    orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+    margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
+    horizontalCentered: true,
+  };
 
   // ── Summary sheet ─────────────────────────────────────────
   const wsSUM = wb.addWorksheet('summary');
@@ -177,7 +249,8 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   // ── Download ──────────────────────────────────────────────
   const outBuf = await wb.xlsx.writeBuffer();
   const url    = URL.createObjectURL(new Blob([outBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-  const a      = Object.assign(document.createElement('a'), { href: url, download: `PL(${containerName}).xlsx` });
+  const name   = fileName || `PL(${containerName}).xlsx`;
+  const a      = Object.assign(document.createElement('a'), { href: url, download: name });
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

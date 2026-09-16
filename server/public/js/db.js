@@ -3,25 +3,13 @@
 // Talks to the small Node/Express server in server/ which stores
 // the shared config document in MongoDB.
 // ─────────────────────────────────────────────────────────────
-const DB_SETTINGS_KEY  = 'plBuilderDbSettings';
 const DB_DEFAULT_BASE  = 'https://pl-builder-helper-server-production.up.railway.app';
 const DB_FIELDS        = ['DEST_LIST', 'CARTON_KEYWORDS', 'CBM_KEYWORDS', 'WEIGHT_KEYWORDS', 'NO_NEED_COL'];
 
-function getDbSettings() {
-  try {
-    return JSON.parse(localStorage.getItem(DB_SETTINGS_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-function saveDbSettings(settings) {
-  localStorage.setItem(DB_SETTINGS_KEY, JSON.stringify(settings));
-}
-
+// One backend, named here. It used to be editable in the settings panel,
+// which only ever offered a way to point the app at nothing.
 function getDbBaseUrl() {
-  const s = getDbSettings();
-  return (s.baseUrl || DB_DEFAULT_BASE).replace(/\/+$/, '');
+  return DB_DEFAULT_BASE.replace(/\/+$/, '');
 }
 
 function isDbConfigured() {

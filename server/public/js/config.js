@@ -1,5 +1,7 @@
 // ─────────────────────────────────────────────────────────────
-// CONFIGURATION  (overridden by config.properties or MongoDB)
+// CONFIGURATION
+// These are fallbacks only. On load, initConfigFromDB() replaces them with
+// the shared lists from MongoDB; edit those in the settings drawer.
 // ─────────────────────────────────────────────────────────────
 let DEST_LIST = [
   'YYZ3','YYZ4','YOO1','XYY1','YHM1','YYZ9','YYZ7','YXU1',
@@ -47,6 +49,10 @@ function setCfgList(key, values) {
   }
 }
 
+// The keyword lists and the backend URL live in a drawer that starts closed;
+// this survives the re-render that follows every edit.
+let cfgSettingsOpen = false;
+
 // Holds the most recently removed item so it can be restored via "Undo".
 let cfgLastRemoved = null;
 let cfgUndoTimer   = null;
@@ -57,24 +63,6 @@ function escapeHtml(str) {
   }[c]));
 }
 
-function applyConfig(text) {
-  const props = {};
-  for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith('#')) continue;
-    const eq = line.indexOf('=');
-    if (eq < 0) continue;
-    props[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
-  }
-  const split = key => (props[key] || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (props['DEST_LIST'])        DEST_LIST       = split('DEST_LIST');
-  if (props['CARTON_KEYWORDS'])  CARTON_KEYWORDS = split('CARTON_KEYWORDS');
-  if (props['CBM_KEYWORDS'])     CBM_KEYWORDS    = split('CBM_KEYWORDS');
-  if (props['WEIGHT_KEYWORDS'])  WEIGHT_KEYWORDS = split('WEIGHT_KEYWORDS');
-  if (props['NO_NEED_KEYWORDS']) NO_NEED_COL     = split('NO_NEED_KEYWORDS');
-  renderConfigPanel();
-}
-
 // ─────────────────────────────────────────────────────────────
 // CONFIG PANEL  (view + edit + database sync)
 // ─────────────────────────────────────────────────────────────
@@ -82,23 +70,18 @@ function renderConfigPanel() {
   const panel = document.getElementById('cfgPanel');
   if (!panel) return;
 
-  const settings = getDbSettings();
-
   panel.innerHTML = `
     <div class="cfg-db-bar">
-      <button type="button" id="cfgDbToggle" class="cfg-link-btn">⚙ Database settings</button>
+      <button type="button" id="cfgDbToggle" class="cfg-link-btn" aria-expanded="${cfgSettingsOpen}"
+              aria-controls="cfgSettingsBody">
+        <span class="cfg-caret">${cfgSettingsOpen ? '▾' : '▸'}</span> ⚙ Settings &amp; keyword lists
+      </button>
       <span id="cfgDbStatus" class="cfg-db-status">⚪ not checked</span>
       <button type="button" id="cfgDbReload" class="cfg-link-btn">⟳ Reload from DB</button>
     </div>
-    <div id="cfgDbForm" class="cfg-db-form" style="display:none;">
-      <label>Backend API URL
-        <input type="text" id="cfgDbBaseUrl" placeholder="${DB_DEFAULT_BASE}" value="${escapeHtml(settings.baseUrl || '')}">
-      </label>
-      <div class="cfg-db-actions">
-        <button type="button" id="cfgDbSave" class="cfg-link-btn cfg-link-btn-primary">Save connection</button>
-      </div>
+    <div id="cfgSettingsBody" class="cfg-settings-body" style="display:${cfgSettingsOpen ? 'block' : 'none'};">
+      ${CFG_SECTIONS.map(renderSection).join('')}
     </div>
-    ${CFG_SECTIONS.map(renderSection).join('')}
     ${cfgLastRemoved ? `
       <div id="cfgUndoToast" class="cfg-undo-toast">
         Removed "${escapeHtml(cfgLastRemoved.value)}" from ${cfgLastRemoved.key}.
@@ -136,18 +119,27 @@ function attachConfigPanelHandlers() {
   const panel = document.getElementById('cfgPanel');
 
   const toggleBtn = document.getElementById('cfgDbToggle');
-  const dbForm    = document.getElementById('cfgDbForm');
+  const body      = document.getElementById('cfgSettingsBody');
   toggleBtn.addEventListener('click', () => {
-    dbForm.style.display = dbForm.style.display === 'none' ? 'block' : 'none';
+    cfgSettingsOpen     = !cfgSettingsOpen;
+    body.style.display  = cfgSettingsOpen ? 'block' : 'none';
+    toggleBtn.setAttribute('aria-expanded', String(cfgSettingsOpen));
+    toggleBtn.querySelector('.cfg-caret').textContent = cfgSettingsOpen ? '▾' : '▸';
   });
 
-  const saveBtn = document.getElementById('cfgDbSave');
-  saveBtn.addEventListener('click', () => {
-    saveDbSettings({
-      baseUrl: document.getElementById('cfgDbBaseUrl').value.trim(),
+  // It now hangs off the corner as a dropdown, so dismiss it like one.
+  if (!attachConfigPanelHandlers.dismissBound) {
+    attachConfigPanelHandlers.dismissBound = true;
+    document.addEventListener('mousedown', e => {
+      if (!cfgSettingsOpen) return;
+      if (e.target.closest('#cfgPanel')) return;
+      cfgSettingsOpen = false;
+      renderConfigPanel();
     });
-    initConfigFromDB();
-  });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && cfgSettingsOpen) { cfgSettingsOpen = false; renderConfigPanel(); }
+    });
+  }
 
   const reloadBtn = document.getElementById('cfgDbReload');
   reloadBtn.addEventListener('click', () => initConfigFromDB());

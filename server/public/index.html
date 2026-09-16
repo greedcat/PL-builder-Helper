@@ -62,7 +62,7 @@
     .tab-btn.active { color: #fff; border-bottom-color: #4f8ef7; }
 
     /* ── Tab Panels ──────────────────────────────────────────── */
-    .tab-panel { display: none; padding: 40px 16px; }
+    .tab-panel { display: none; padding: 28px 20px 40px; }
     .tab-panel.active { display: block; }
 
 
@@ -184,252 +184,47 @@
     /* ══════════════════════════════════════════════════════════
        TAB 2 — Match Helper
     ══════════════════════════════════════════════════════════ */
-    #tab-match-helper h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #0f3460;
-      text-align: center;
-      margin-bottom: 28px;
-    }
 
-    #tab-match-helper .mh-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      max-width: 1100px;
-      margin: 0 auto 20px;
-    }
     @media (max-width: 900px) {
-      #tab-match-helper .mh-layout { grid-template-columns: 1fr; }
     }
 
-    #tab-match-helper .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-      padding: 28px 32px;
-    }
 
-    #tab-match-helper .mh-layout .card { margin: 0; }
 
-    #tab-match-helper #mhResultsSection {
-      max-width: 1100px;
-      margin: 0 auto;
-      display: none;
-    }
-    #tab-match-helper #mhResultsSection.visible { display: block; }
 
-    #tab-match-helper label {
-      display: block;
-      font-size: 0.78rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #555;
-      margin-bottom: 6px;
-    }
 
-    #tab-match-helper textarea {
-      width: 100%;
-      height: 260px;
-      padding: 10px 12px;
-      border: 1.5px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-family: 'Consolas', 'Courier New', monospace;
-      resize: vertical;
-      line-height: 1.6;
-      transition: border-color 0.2s;
-    }
 
-    #tab-match-helper textarea:focus { outline: none; border-color: #0f3460; }
 
-    #tab-match-helper .hint { font-size: 0.74rem; color: #9ca3af; margin-top: 4px; }
 
-    #tab-match-helper .mh-btn-row {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      max-width: 1100px;
-      margin: 0 auto 24px;
-    }
 
-    #tab-match-helper button {
-      padding: 10px 24px;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-    }
 
-    #tab-match-helper button:active { transform: scale(0.97); }
 
     #mhBtnRun { background: #0f3460; color: #fff; padding: 10px 32px; }
     #mhBtnRun:hover { background: #16213e; }
     #mhBtnClear { background: #f3f4f6; color: #555; }
     #mhBtnClear:hover { background: #e5e7eb; }
 
-    #tab-match-helper .mh-alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-    #tab-match-helper .mh-alert {
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 500;
-    }
-    #tab-match-helper .mh-alert-success { background: #dcfce7; color: #166534; border-left: 4px solid #16a34a; }
-    #tab-match-helper .mh-alert-warn    { background: #fef9c3; color: #854d0e; border-left: 4px solid #ca8a04; }
-    #tab-match-helper .mh-alert-error   { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; }
 
-    #tab-match-helper .mh-summary { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-    #tab-match-helper .mh-chip {
-      padding: 4px 14px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-    #tab-match-helper .mh-chip-blue   { background: #dbeafe; color: #1d4ed8; }
-    #tab-match-helper .mh-chip-green  { background: #dcfce7; color: #166534; }
-    #tab-match-helper .mh-chip-red    { background: #fee2e2; color: #991b1b; }
-    #tab-match-helper .mh-chip-yellow { background: #fef9c3; color: #854d0e; }
 
-    #tab-match-helper .mh-section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-    #tab-match-helper .mh-section-title {
-      font-size: 0.78rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #555;
-    }
     #mhCopyBtn { background: #f3f4f6; color: #555; }
     #mhCopyBtn:hover { background: #e5e7eb; }
     #mhCopyBtn.copied { background: #d1fae5; color: #065f46; }
 
-    #tab-match-helper .mh-horiz-wrap { overflow-x: auto; }
-    #tab-match-helper .mh-horiz-wrap table { border-collapse: collapse; width: 100%; font-size: 0.9rem; white-space: nowrap; }
-    #tab-match-helper .mh-horiz-wrap thead th {
-      background: #0f3460;
-      color: #fff;
-      padding: 9px 14px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 0.8rem;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    #tab-match-helper .mh-horiz-wrap td {
-      padding: 8px 14px;
-      border-bottom: 1px solid #eee;
-    }
-    #tab-match-helper .mh-horiz-wrap td.val { font-weight: 700; color: #1d4ed8; text-align: right; font-variant-numeric: tabular-nums; }
-    #tab-match-helper .mh-horiz-wrap td.empty { color: #bbb; text-align: right; }
 
 
     /* ══════════════════════════════════════════════════════════
        TAB — Container Match Helper
     ══════════════════════════════════════════════════════════ */
-    #tab-container-match-helper h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      color: #0f3460;
-      text-align: center;
-      margin-bottom: 28px;
-    }
 
-    #tab-container-match-helper .cmh-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      max-width: 1100px;
-      margin: 0 auto 20px;
-    }
     @media (max-width: 900px) {
-      #tab-container-match-helper .cmh-layout { grid-template-columns: 1fr; }
     }
 
-    #tab-container-match-helper .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-      padding: 28px 32px;
-      max-width: 1100px;
-      margin: 0 auto 20px;
-    }
-    #tab-container-match-helper .cmh-layout .card { margin: 0; max-width: none; }
 
-    #tab-container-match-helper label {
-      display: block;
-      font-size: 0.78rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #555;
-      margin-bottom: 6px;
-    }
 
-    #tab-container-match-helper textarea {
-      width: 100%;
-      height: 220px;
-      padding: 10px 12px;
-      border: 1.5px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-family: 'Consolas', 'Courier New', monospace;
-      resize: vertical;
-      line-height: 1.6;
-      transition: border-color 0.2s;
-    }
-    #tab-container-match-helper textarea:focus { outline: none; border-color: #0f3460; }
-    #tab-container-match-helper #cmhFilterInput { height: auto; }
 
-    #tab-container-match-helper .hint { font-size: 0.74rem; color: #9ca3af; margin-top: 4px; }
 
-    #tab-container-match-helper .cmh-drop-zone {
-      border: 2px dashed #0f3460;
-      border-radius: 8px;
-      padding: 30px 16px;
-      text-align: center;
-      cursor: pointer;
-      transition: background .2s;
-      color: #555;
-    }
-    #tab-container-match-helper .cmh-drop-zone:hover,
-    #tab-container-match-helper .cmh-drop-zone.drag-over { background: #f0f4ff; }
-    #tab-container-match-helper .cmh-drop-zone input { display: none; }
-    #tab-container-match-helper .cmh-drop-icon { font-size: 2.2rem; }
-    #tab-container-match-helper .cmh-drop-zone p { margin-top: 6px; font-size: .92rem; }
-    #tab-container-match-helper .cmh-drop-zone small { color: #888; }
 
-    #tab-container-match-helper .cmh-file-status { font-size: .85rem; color: #888; margin-top: 8px; min-height: 1.2em; }
-    #tab-container-match-helper .cmh-file-status.error { color: #d32f2f; }
-    #tab-container-match-helper .cmh-file-status.ok { color: #16a34a; }
 
-    #tab-container-match-helper .cmh-field-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-    #tab-container-match-helper .cmh-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
-    #tab-container-match-helper .cmh-field label { margin-bottom: 0; }
-    #tab-container-match-helper .cmh-field select {
-      padding: 7px 8px; border: 1.5px solid #d1d5db; border-radius: 6px;
-      font-size: .88rem; background: #fafafa; font-family: inherit;
-    }
-    #tab-container-match-helper .cmh-field select:focus { outline: none; border-color: #0f3460; }
 
-    #tab-container-match-helper button {
-      padding: 10px 24px;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-    }
-    #tab-container-match-helper button:active { transform: scale(0.97); }
-    #tab-container-match-helper button:disabled { opacity: .5; cursor: default; }
 
     #cmhMatchBtn { background: #0f3460; color: #fff; padding: 10px 32px; }
     #cmhMatchBtn:hover:not(:disabled) { background: #16213e; }
@@ -439,141 +234,16 @@
     #cmhCopyBtn:hover { background: #e5e7eb; }
     #cmhCopyBtn.copied { background: #d1fae5; color: #065f46; }
 
-    #tab-container-match-helper .mh-btn-row {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      max-width: 1100px;
-      margin: 0 auto 24px;
-    }
 
-    #tab-container-match-helper #cmhResultsSection { max-width: 1100px; margin: 0 auto; display: none; }
-    #tab-container-match-helper #cmhResultsSection.visible { display: block; }
 
-    #tab-container-match-helper .mh-alerts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-    #tab-container-match-helper .mh-alert {
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 500;
-    }
-    #tab-container-match-helper .mh-alert-success { background: #dcfce7; color: #166534; border-left: 4px solid #16a34a; }
-    #tab-container-match-helper .mh-alert-warn    { background: #fef9c3; color: #854d0e; border-left: 4px solid #ca8a04; }
-    #tab-container-match-helper .mh-alert-error   { background: #fee2e2; color: #991b1b; border-left: 4px solid #dc2626; }
 
-    #tab-container-match-helper .mh-summary { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-    #tab-container-match-helper .mh-chip {
-      padding: 4px 14px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-    #tab-container-match-helper .mh-chip-blue { background: #dbeafe; color: #1d4ed8; }
 
-    #tab-container-match-helper .mh-section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    #tab-container-match-helper .mh-section-title {
-      font-size: 0.78rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #555;
-    }
 
-    #tab-container-match-helper .mh-horiz-wrap { overflow-x: auto; }
-    #tab-container-match-helper .mh-horiz-wrap table { border-collapse: collapse; width: 100%; font-size: 0.9rem; white-space: nowrap; }
-    #tab-container-match-helper .mh-horiz-wrap thead th {
-      background: #0f3460;
-      color: #fff;
-      padding: 9px 14px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 0.8rem;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    #tab-container-match-helper .mh-horiz-wrap td { padding: 8px 14px; border-bottom: 1px solid #eee; }
-    #tab-container-match-helper .mh-horiz-wrap td.val { font-weight: 700; color: #1d4ed8; text-align: right; font-variant-numeric: tabular-nums; }
-    #tab-container-match-helper .mh-horiz-wrap td.empty { color: #bbb; text-align: right; }
 
-    #tab-container-match-helper .cmh-container-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      max-height: 220px;
-      overflow-y: auto;
-      padding: 10px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      background: #f9fafb;
-    }
-    #tab-container-match-helper .cmh-container-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 10px;
-      background: #fff;
-      border: 1px solid #e0e4ec;
-      border-radius: 6px;
-      font-size: .85rem;
-      cursor: pointer;
-    }
-    #tab-container-match-helper .cmh-container-item input { cursor: pointer; }
-    #tab-container-match-helper .cmh-container-item .client-tag { color: #999; font-size: .78rem; }
 
     /* input mode tabs */
-    #tab-container-match-helper .cmh-input-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
-    #tab-container-match-helper .cmh-input-tab {
-      padding: 7px 16px; border: 1px solid #d0d5dd; border-radius: 8px;
-      background: #fafafa; color: #555; font-size: .85rem; font-weight: 600;
-      cursor: pointer; transition: background .15s, color .15s;
-    }
-    #tab-container-match-helper .cmh-input-tab:hover { background: #eef4ff; }
-    #tab-container-match-helper .cmh-input-tab.active { background: #4f8ef7; border-color: #4f8ef7; color: #fff; }
 
     /* destination order list */
-    #tab-container-match-helper .cmh-order-list {
-      list-style: none; margin: 0; padding: 10px;
-      display: flex; flex-direction: column; gap: 6px;
-      max-height: 340px; overflow-y: auto;
-      border: 1px solid #e8edf5; border-radius: 8px; background: #fafbfd;
-    }
-    #tab-container-match-helper .cmh-order-item {
-      display: flex; align-items: center; gap: 10px;
-      padding: 7px 10px; background: #fff; border: 1px solid #e0e4ec; border-radius: 6px;
-      font-size: .9rem; cursor: grab; user-select: none;
-    }
-    #tab-container-match-helper .cmh-order-item:active { cursor: grabbing; }
-    #tab-container-match-helper .cmh-order-item.dragging { opacity: .45; }
-    #tab-container-match-helper .cmh-order-item.drag-target { border-color: #4f8ef7; box-shadow: 0 0 0 2px rgba(79,142,247,.25); }
-    #tab-container-match-helper .cmh-order-item .drag-handle { color: #bbb; font-size: .95rem; }
-    #tab-container-match-helper .cmh-order-item .order-num {
-      min-width: 22px; text-align: center;
-      font-size: .72rem; font-weight: 700; color: #1d4ed8;
-      background: #dbeafe; border-radius: 10px; padding: 2px 0;
-    }
-    #tab-container-match-helper .cmh-order-item .dest-name { flex: 1; cursor: text; border-radius: 4px; padding: 1px 4px; }
-    #tab-container-match-helper .cmh-order-item .dest-name:hover { background: #eef4ff; }
-    #tab-container-match-helper .cmh-order-item .dest-edit {
-      flex: 1; padding: 2px 6px; border: 1px solid #4f8ef7; border-radius: 4px;
-      font-size: .9rem; outline: none; height: auto;
-    }
-    #tab-container-match-helper .cmh-order-item .remove-btn {
-      border: none; background: none; color: #bbb; cursor: pointer;
-      font-size: .95rem; padding: 2px 6px; border-radius: 4px;
-    }
-    #tab-container-match-helper .cmh-order-item .remove-btn:hover { color: #b91c1c; background: #fee2e2; }
-    #tab-container-match-helper .cmh-order-add-input {
-      flex: 1; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px;
-      font-size: .9rem; background: #fafafa; outline: none; height: auto;
-    }
-    #tab-container-match-helper .cmh-order-add-input:focus { border-color: #4f8ef7; background: #fff; }
 
 
     /* ══════════════════════════════════════════════════════════
@@ -584,8 +254,8 @@
       border-radius: 12px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.08);
       padding: 32px;
-      max-width: 960px;
-      margin: 0 auto;
+      max-width: none;
+      margin: 0;
     }
 
     #tab-packing-list h1 {
@@ -658,9 +328,6 @@
     #tab-packing-list .btn:hover { background: #16213e; }
     #tab-packing-list .btn:disabled { background: #9ca3af; cursor: default; }
 
-    #tab-packing-list .pl-btn-row { display: flex; gap: 10px; }
-    #tab-packing-list .pl-btn-row .btn { margin-top: 0; }
-    #tab-packing-list .pl-btn-row .btn-secondary { flex: 0 0 auto; padding-left: 24px; padding-right: 24px; }
 
     #tab-packing-list .btn-secondary {
       padding: 10px 16px;
@@ -701,13 +368,6 @@
     }
     #tab-packing-list input[type="number"]:focus { outline: none; border-color: #0f3460; }
 
-    #tab-packing-list .pl-table-wrap {
-      overflow: auto;
-      max-height: 360px;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
     #tab-packing-list .pl-table-wrap table {
       border-collapse: collapse;
       font-size: 0.8rem;
@@ -734,17 +394,24 @@
       position: sticky;
       left: 0;
     }
-    #tab-packing-list .pl-table-wrap tr.pl-row-header td { background: #fef9c3; }
-    #tab-packing-list .pl-table-wrap tr.pl-row-data   td { background: #dcfce7; }
+    /* ── Cell classification in the original-sheet view ───────── */
 
-    #tab-packing-list .pl-preview h2 {
-      font-size: 0.85rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #0f3460;
-      margin: 18px 0 6px;
+    /* Role colours, shared by the legend chips and the table cells. */
+
+    #tab-packing-list .pl-table-wrap thead th .pl-th-role {
+    display: block; font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; opacity: 0.85; margin-top: 2px;
     }
+    /* The role colour belongs to the column, so it overrides the sticky header. */
+
+    /* Header row of the detected table: solid role colour, bold. */
+    /* Data rows: same hue, lightened so the header still stands out. */
+    #tab-packing-list .pl-table-wrap tr.pl-row-data td.pl-k-ignored,
+    /* Rows outside the detected range are not part of the packing list. */
+    /* ── Excel-like sheet grid ────────────────────────────────── */
+    /* Selection. The header band is the first row of the rectangle. */
+    /* A role tint wins over the plain selection fill. */
+
 
     .spinner {
       display: inline-block;
@@ -792,31 +459,11 @@
 
     #tab-packing-list .cfg-db-status { font-size: 0.78rem; color: #6b7280; }
 
-    #tab-packing-list .cfg-db-form {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px 14px;
-      margin-bottom: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    #tab-packing-list .cfg-db-form label {
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: #6b7280;
-      text-transform: none;
-      letter-spacing: normal;
-    }
-    #tab-packing-list .cfg-db-form input {
-      margin-top: 4px;
-      padding: 7px 10px;
-      font-size: 0.85rem;
-    }
-    #tab-packing-list .cfg-db-actions { margin-top: 4px; }
 
     #tab-packing-list .cfg-section { margin-bottom: 14px; }
+    #tab-packing-list .cfg-settings-body { margin-top: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fafbfc; }
+    #tab-packing-list .cfg-settings-body .cfg-section:last-child { margin-bottom: 0; }
+    #tab-packing-list .cfg-caret { display: inline-block; width: 0.8em; font-size: 0.8em; }
 
     #tab-packing-list .cfg-label {
       font-size: 11px;
@@ -905,8 +552,8 @@
        TAB 3 — Excel Group & Sum
     ══════════════════════════════════════════════════════════ */
     #tab-excel-groupby .gb-container {
-      max-width: 1200px;
-      margin: 0 auto;
+      max-width: none;
+      margin: 0;
     }
 
     #tab-excel-groupby h1 {
@@ -948,7 +595,20 @@
       flex-wrap: wrap;
       align-items: flex-end;
       margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #eef2f6;
     }
+
+    /* Sheet and header row say where the table is; the rest say what to do
+       with it. A divider between them saves reading the labels every time. */
+    #tab-excel-groupby .gb-sep {
+      align-self: stretch;
+      width: 1px;
+      background: #e5e7eb;
+      margin: 2px 4px;
+    }
+
+    #tab-excel-groupby .gb-controls button { align-self: flex-end; height: 38px; }
 
     #tab-excel-groupby .field { display: flex; flex-direction: column; gap: 4px; }
 
@@ -961,16 +621,29 @@
     }
 
     #tab-excel-groupby select,
+    #tab-excel-groupby input[type="number"],
     #tab-excel-groupby .tag-input-wrap {
       padding: 8px 10px;
       border: 1px solid #ccc;
       border-radius: 6px;
       font-size: .92rem;
+      font-family: inherit;
       background: #fafafa;
       min-width: 160px;
+      line-height: 1.25;
     }
 
-    #tab-excel-groupby select:focus { outline: 2px solid #4f8ef7; border-color: transparent; }
+    /* A row number needs far less room than a column name. */
+    #tab-excel-groupby input[type="number"] { min-width: 0; width: 92px; }
+
+    /* A select and a text box compute different intrinsic heights, so they
+       sat a pixel apart. Pin both; the tag box grows with its tags. */
+    #tab-excel-groupby select,
+    #tab-excel-groupby input[type="number"] { height: 38px; }
+    #tab-excel-groupby .tag-input-wrap { min-height: 38px; }
+
+    #tab-excel-groupby select:focus,
+    #tab-excel-groupby input[type="number"]:focus { outline: 2px solid #4f8ef7; border-color: transparent; }
 
     #tab-excel-groupby .tag-input-wrap {
       display: flex;
@@ -1012,6 +685,9 @@
       font-size: .88rem;
       min-width: 110px;
       flex: 1;
+      /* It sits inside the tag box, so it must not carry the standalone
+         control height or the box grows to 56px beside 38px neighbours. */
+      height: auto;
     }
 
     #tab-excel-groupby .tag-input-wrap select.tag-picker:focus { outline: none; }
@@ -1036,7 +712,7 @@
     #gb-status { color: #888; font-size: .88rem; margin-top: 10px; min-height: 1.2em; }
     #gb-status.error { color: #d32f2f; }
 
-    #tab-excel-groupby .table-wrap { overflow-x: auto; max-height: 420px; }
+    #tab-excel-groupby .table-wrap { overflow-x: auto; max-height: min(70vh, 720px); }
     #tab-excel-groupby table { width: 100%; border-collapse: collapse; font-size: .88rem; }
 
     #tab-excel-groupby thead th {
@@ -1085,7 +761,208 @@
     }
 
     #tab-excel-groupby .section-header strong { font-size: 1rem; }
-  </style>
+      /* ── Data range panel ─────────────────────────────────────── */
+    #tab-packing-list .pl-legend { margin-top: 12px; padding: 14px 16px 12px; border: 1px solid #e2e8f0; border-bottom: none; border-radius: 10px 10px 0 0; background: #fbfcfd; }
+    #tab-packing-list .pl-range-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    #tab-packing-list .pl-range-ref { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; font-weight: 700; color: #1e3a8a; background: #dbeafe; padding: 3px 9px; border-radius: 6px; }
+    #tab-packing-list .pl-range-mode { font-size: 0.72rem; font-weight: 600; color: #64748b; }
+    #tab-packing-list .pl-range-manual { color: #166534; }
+    #tab-packing-list .pl-range-reset { margin-left: auto; padding: 5px 11px; font-size: 0.75rem; font-weight: 600; font-family: inherit; color: #475569; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; }
+    #tab-packing-list .pl-range-reset:hover { background: #f1f5f9; }
+    #tab-packing-list .pl-range-explain { font-size: 0.84rem; line-height: 1.55; color: #334155; margin: 0 0 4px; }
+    #tab-packing-list .pl-range-explain strong { color: #0f3460; font-weight: 700; }
+    #tab-packing-list .pl-range-hint { font-size: 0.76rem; line-height: 1.5; color: #94a3b8; margin: 0 0 10px; }
+    #tab-packing-list .pl-role-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 10px; border-top: 1px solid #eef2f6; }
+    #tab-packing-list .pl-role-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-right: 2px; }
+    #tab-packing-list .pl-role-aside { font-size: 0.74rem; color: #94a3b8; margin-left: 4px; }
+    #tab-packing-list .pl-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 6px; font-size: 0.74rem; font-weight: 600; color: #334155; background: #fff; border: 1px solid #e2e8f0; }
+    #tab-packing-list .pl-chip em { font-style: normal; font-weight: 400; color: #94a3b8; }
+    #tab-packing-list .pl-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+    #tab-packing-list .pl-legend-warn { font-size: 0.78rem; line-height: 1.55; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 9px 11px; margin-top: 10px; }
+    #tab-packing-list .pl-legend-warn strong { font-weight: 700; }
+
+    /* ── Sheet grid ───────────────────────────────────────────── */
+    #tab-packing-list .pl-table-wrap { overflow: auto; max-height: min(66vh, 700px); border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px; margin-top: 0; background: #fff; }
+    #tab-packing-list .pl-grid { border-collapse: separate; border-spacing: 0; font-size: 0.78rem; white-space: nowrap; user-select: none; }
+    #tab-packing-list .pl-grid th, .pl-grid td { border-right: 1px solid #eef2f6; border-bottom: 1px solid #eef2f6; padding: 5px 9px; text-align: left; background: #fff; }
+    #tab-packing-list .pl-grid td { min-width: 62px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; color: #334155; }
+    #tab-packing-list .pl-grid-corner { position: sticky; top: 0; left: 0; z-index: 4; min-width: 46px; background: #f1f5f9 !important; border-bottom: 1px solid #cbd5e1 !important; }
+    #tab-packing-list .pl-grid-colhdr { position: sticky; top: 0; z-index: 3; background: #f8fafc; color: #64748b; font-weight: 700; text-align: center; cursor: pointer; border-bottom: 2px solid #cbd5e1; }
+    #tab-packing-list .pl-grid-rownum { position: sticky; left: 0; z-index: 2; background: #f8fafc; color: #94a3b8; font-weight: 600; text-align: right; min-width: 46px; cursor: pointer; }
+    #tab-packing-list .pl-grid-colhdr .pl-th-role { display: block; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; min-height: 0.85em; color: #94a3b8; }
+    #tab-packing-list .pl-grid-colhdr-sel, .pl-grid-rownum-sel { background: #dbeafe !important; color: #1e3a8a !important; }
+
+    /* Role identity lives in the column letter strip, not in every cell. */
+    #tab-packing-list .pl-grid-colhdr.pl-k-dest { border-bottom-color: #2563eb; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-dest .pl-th-role { color: #2563eb; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-carton { border-bottom-color: #16a34a; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-carton .pl-th-role { color: #16a34a; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-fba { border-bottom-color: #d97706; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-fba .pl-th-role { color: #d97706; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-po { border-bottom-color: #db2777; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-po .pl-th-role { color: #db2777; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-weight { border-bottom-color: #7c3aed; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-weight .pl-th-role { color: #7c3aed; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-cbm { border-bottom-color: #0891b2; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-cbm .pl-th-role { color: #0891b2; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-ignored .pl-th-role { color: #cbd5e1; }
+    #tab-packing-list .pl-grid-colhdr.pl-k-empty   .pl-th-role { color: #e2e8f0; }
+
+    /* Selection: one accent, so the eye reads the box and not a rainbow. */
+    #tab-packing-list .pl-grid td.pl-sel { background: #f5f9ff; }
+    #tab-packing-list .pl-grid td.pl-sel-hdr { background: #e6effd; font-weight: 700; color: #0f3460; }
+    #tab-packing-list .pl-grid td.pl-sel-t { border-top: 2px solid #2563eb; }
+    #tab-packing-list .pl-grid td.pl-sel-b { border-bottom: 2px solid #2563eb; }
+    #tab-packing-list .pl-grid td.pl-sel-l { border-left: 2px solid #2563eb; }
+    #tab-packing-list .pl-grid td.pl-sel-r { border-right: 2px solid #2563eb; }
+    #tab-packing-list .pl-grid td.pl-k-ignored { color: #cbd5e1; text-decoration: line-through; }
+    #tab-packing-list .pl-grid td.pl-k-empty { color: #e2e8f0; }
+    #tab-packing-list .pl-grid tr td:not(.pl-sel) { color: #cbd5e1; }
+    #tab-packing-list .pl-range-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    #tab-packing-list .pl-range-tools .btn-secondary { margin-top: 0; }
+    #tab-packing-list .pl-tool-gap { flex: 1 1 auto; }
+    #tab-packing-list .pl-tool-label { font-size: 0.74rem; font-weight: 600; color: #94a3b8; text-transform: none; letter-spacing: normal; margin: 0; }
+    #tab-packing-list .pl-range-tools input[type="number"] { width: 78px; padding: 6px 9px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.8rem; font-family: inherit; }
+    #tab-packing-list .pl-range-tools input[type="number"]:focus { outline: none; border-color: #2563eb; }
+    #tab-packing-list .pl-range-tools label.pl-tool-label { display: inline-block; font-size: 0.74rem; font-weight: 600; color: #94a3b8; text-transform: none; letter-spacing: normal; margin: 0; }
+    #tab-packing-list .pl-drop-compact { padding: 12px 16px !important; }
+    #tab-packing-list .pl-drop-compact .drop-icon { display: none; }
+    #tab-packing-list .pl-grid-trunc { padding: 9px 11px; font-size: 0.75rem; color: #92400e; background: #fffbeb; border-top: 1px solid #fde68a; }
+    /* ── Preview shaped like the sheet it generates ───────────── */
+    #tab-packing-list .pl-preview h2 { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin: 22px 0 8px; padding-top: 0; border-top: none; }
+    #tab-packing-list .pl-out { border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; background: #fff; }
+    #tab-packing-list .pl-out-head { padding: 16px 18px; background: #f8fafc; }
+    #tab-packing-list .pl-out-title { font-size: 0.95rem; font-weight: 700; color: #0f3460; text-align: center; letter-spacing: 0.02em; margin-bottom: 12px; }
+    #tab-packing-list .pl-out-grid { display: grid; grid-template-columns: max-content minmax(120px, 1fr) max-content minmax(120px, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; }
+    #tab-packing-list .pl-out-k, .pl-out-v { background: #fff; padding: 7px 11px; font-size: 0.82rem; }
+    #tab-packing-list .pl-out-k { font-weight: 700; color: #475569; }
+    #tab-packing-list .pl-out-v { color: #0f3460; font-weight: 600; }
+    #tab-packing-list .pl-out-blank { color: #cbd5e1; font-weight: 400; font-style: italic; }
+    #tab-packing-list .pl-out-band { padding: 8px 18px; background: #0f3460; color: #fff; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    #tab-packing-list .pl-out-table { border: none !important; border-radius: 0 !important; margin-top: 0 !important; max-height: 420px; }
+    
+    /* ── Action bar ───────────────────────────────────────────── */
+    #tab-packing-list .pl-btn-row { display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e8f0; }
+    #tab-packing-list .pl-btn-row .btn { margin-top: 0; flex: 0 0 auto; width: auto; min-width: 230px; }
+    #tab-packing-list .pl-btn-row .btn-secondary { flex: 0 0 auto; margin-top: 0; padding-left: 20px; padding-right: 20px; }
+    /* ── Two-cell shipment field, laid out like a spreadsheet ──── */
+    #tab-packing-list .pl-cells { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) minmax(170px, 1.1fr); border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #cbd5e1; gap: 1px; max-width: 860px; }
+    #tab-packing-list .pl-cell { display: flex; flex-direction: column; background: #fff; }
+    #tab-packing-list .pl-cell-head { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; background: #f1f5f9; padding: 6px 11px; margin: 0; border-bottom: 1px solid #e2e8f0; }
+    #tab-packing-list .pl-cell input[type="text"] { border: none !important; border-radius: 0 !important; padding: 10px 11px; font-size: 0.9rem; width: 100%; background: transparent; }
+    #tab-packing-list .pl-cell input[type="text"]:focus { outline: 2px solid #2563eb; outline-offset: -2px; }
+    
+    /* ── Clickable column chips ───────────────────────────────── */
+    #tab-packing-list .pl-chip-btn { cursor: pointer; font-family: inherit; }
+    #tab-packing-list .pl-chip-btn:hover { border-color: #94a3b8; background: #f8fafc; }
+    #tab-packing-list .pl-chip-on { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
+    #tab-packing-list .pl-chip-col { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.68rem; font-weight: 700; color: #64748b; background: #f1f5f9; border-radius: 4px; padding: 1px 4px; }
+    #tab-packing-list .pl-grid td.pl-col-focus { background: #fffbeb !important; }
+    #tab-packing-list .pl-grid th.pl-col-focus-hdr { background: #fde68a !important; color: #92400e !important; }
+    /* ── Pop-up menu ──────────────────────────────────────────── */
+    .pl-menu { position: absolute; z-index: 9999; min-width: 230px; max-height: 60vh; overflow-y: auto; padding: 5px; background: #fff; border: 1px solid #cbd5e1; border-radius: 9px; box-shadow: 0 8px 24px rgba(15,23,42,.14); font-size: 0.82rem; }
+    .pl-menu-title { padding: 6px 9px 7px; font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #f1f5f9; margin-bottom: 4px; }
+    .pl-menu-item { display: flex; align-items: center; gap: 7px; width: 100%; padding: 6px 9px; background: none; border: none; border-radius: 6px; font: inherit; color: #334155; text-align: left; cursor: pointer; }
+    .pl-menu-item:hover:not(:disabled) { background: #eff6ff; color: #1e3a8a; }
+    .pl-menu-item:disabled { color: #cbd5e1; cursor: default; }
+    .pl-menu-on { font-weight: 700; color: #1e3a8a; }
+    .pl-menu-tick { width: 12px; flex: none; color: #2563eb; }
+    .pl-menu-label { flex: 1 1 auto; }
+    .pl-menu-note { font-size: 0.72rem; color: #94a3b8; }
+    .pl-menu-sep { height: 1px; background: #f1f5f9; margin: 4px 0; }
+    #tab-packing-list .pl-chip-caret { color: #94a3b8; font-size: 0.65rem; }
+    #tab-packing-list .pl-chip-unset { border-style: dashed; color: #94a3b8; }
+    #tab-packing-list .pl-chip-unset em { color: #cbd5e1; font-style: italic; }
+    /* ── Selection corner handles ─────────────────────────────── */
+    #tab-packing-list .pl-grid-canvas { position: relative; display: inline-block; min-width: 100%; }
+    #tab-packing-list .pl-handle { position: absolute; width: 11px; height: 11px; margin: -6px 0 0 -6px; background: #fff; border: 2px solid #2563eb; border-radius: 3px; z-index: 5; }
+    #tab-packing-list .pl-handle-tl, .pl-handle-br { cursor: nwse-resize; }
+    #tab-packing-list .pl-handle-tr, .pl-handle-bl { cursor: nesw-resize; }
+    #tab-packing-list .pl-handle:hover { background: #2563eb; }
+    #tab-packing-list .pl-grid-resizing .pl-handle { pointer-events: none; }
+    #tab-packing-list .pl-grid-resizing { cursor: crosshair; }
+    
+    /* ── Sheet picker ─────────────────────────────────────────── */
+    #tab-packing-list .pl-sheet-pick { display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; color: #64748b; }
+    #tab-packing-list .pl-sheet-pick select { padding: 3px 7px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.76rem; font-family: inherit; background: #fff; color: #334155; max-width: 220px; }
+    #tab-packing-list .pl-sheet-pick select:focus { outline: none; border-color: #2563eb; }
+    /* ── Editable preview cells ───────────────────────────────── */
+    #tab-packing-list .pl-edit-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 8px; font-size: 0.78rem; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; }
+    #tab-packing-list .pl-edit-bar span { flex: 1 1 auto; }
+    #tab-packing-list .pl-out-table td.pl-edit { cursor: text; }
+    #tab-packing-list .pl-out-table td.pl-edit:hover { background: #f8fafc; }
+    #tab-packing-list .pl-out-table td.pl-edit:focus { outline: 2px solid #2563eb; outline-offset: -2px; background: #fff; }
+    #tab-packing-list .pl-out-table td.pl-edited { background: #fffbeb; box-shadow: inset 3px 0 0 #f59e0b; }
+    /* ── Short names for unrecognised destinations ────────────── */
+    #tab-packing-list .pl-dest-panel { padding: 12px 14px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 9px; }
+    #tab-packing-list .pl-dest-head { font-size: 0.78rem; color: #475569; margin-bottom: 9px; }
+    #tab-packing-list .pl-dest-row { padding: 9px 0; border-top: 1px solid #eef2f6; }
+    #tab-packing-list .pl-dest-orig { font-size: 0.76rem; line-height: 1.55; color: #475569; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 9px; margin-bottom: 7px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; cursor: text; max-height: 8.5em; overflow-y: auto; }
+    #tab-packing-list .pl-dest-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    #tab-packing-list .pl-dest-copy { padding: 5px 10px; font-size: 0.74rem; font-weight: 600; font-family: inherit; color: #475569; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    #tab-packing-list .pl-dest-copy:hover { background: #f1f5f9; }
+    #tab-packing-list .pl-dest-copied { color: #166534; background: #dcfce7; border-color: #bbf7d0; }
+    #tab-packing-list .pl-dest-row:first-of-type { border-top: none; }
+    #tab-packing-list .pl-dest-meta { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; }
+    #tab-packing-list .pl-dest-panel input.pl-dest-input { width: 220px; padding: 5px 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.8rem; font-family: inherit; }
+    #tab-packing-list .pl-dest-panel input.pl-dest-input:focus { outline: none; border-color: #2563eb; }
+    #tab-packing-list .pl-dest-use, .pl-dest-clear { padding: 5px 10px; font-size: 0.74rem; font-weight: 600; font-family: inherit; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    #tab-packing-list .pl-dest-use { color: #1e3a8a; background: #dbeafe; border: 1px solid #bfdbfe; }
+    #tab-packing-list .pl-dest-use:hover { background: #bfdbfe; }
+    #tab-packing-list .pl-dest-clear { color: #475569; background: #fff; border: 1px solid #cbd5e1; }
+    #tab-packing-list .pl-dest-clear:hover { background: #f1f5f9; }
+    #tab-packing-list .pl-cell[draggable="true"] .pl-cell-head { cursor: grab; user-select: none; }
+    #tab-packing-list .pl-cell[draggable="true"] .pl-cell-head::before { content: "⠿"; margin-right: 6px; opacity: 0.45; letter-spacing: -1px; }
+    #tab-packing-list .pl-cell-dragging { opacity: 0.45; }
+    #tab-packing-list .pl-cell-over { box-shadow: inset 3px 0 0 #2563eb; }
+    /* ── Settings anchored to the card's top right ────────────── */
+    #tab-packing-list .pl-card, .card { position: relative; }
+    #tab-packing-list .cfg-corner { position: absolute; top: 18px; right: 20px; z-index: 30; display: flex; justify-content: flex-end; }
+    #tab-packing-list .cfg-corner .cfg-db-bar { display: flex; align-items: center; gap: 10px; margin: 0; }
+    /* The keyword lists open as a panel rather than pushing the page around. */
+    #tab-packing-list .cfg-corner .cfg-settings-body { position: absolute; top: calc(100% + 8px); right: 0; width: min(760px, 88vw); max-height: 66vh; overflow-y: auto; margin-top: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 12px 32px rgba(15,23,42,.16); padding: 16px 18px; }
+    /* A bar with display:flex beats the browser's [hidden] rule, which left an
+    empty strip above the preview whenever there were no edits. */
+    #tab-packing-list .pl-edit-bar[hidden], .pl-dest-panel[hidden] { display: none !important; }
+    
+    /* The preview is meant to read as the document, so the tables fill it. */
+    #tab-packing-list .pl-out-table table { width: 100%; min-width: 100%; }
+    #tab-packing-list .pl-out-table th { background: #1e4a7a; color: #fff; font-weight: 700; font-size: 0.72rem; line-height: 1.3; vertical-align: bottom; white-space: normal; }
+    #tab-packing-list .pl-out-table td, .pl-out-table th { border-right: 1px solid rgba(148,163,184,.25); }
+    #tab-packing-list .pl-out-table tr:nth-child(even) td { background: #fbfcfe; }
+    #tab-packing-list .pl-out-table td.pl-num { text-align: right; font-variant-numeric: tabular-nums; }
+    #tab-packing-list .pl-out-table th:first-child, .pl-out-table td:first-child { position: sticky; left: 0; z-index: 1; }
+    #tab-packing-list .pl-out-table td:first-child { background: #fff; font-weight: 600; }
+    #tab-packing-list .pl-out-table tr:nth-child(even) td:first-child { background: #fbfcfe; }
+    /* The summary's nine columns include six the warehouse fills in by hand. */
+    #tab-packing-list .pl-out-table td:empty::after { content: ""; display: block; min-height: 1em; }
+    /* ── Offering to remember a hand-made column mapping ──────── */
+    #tab-packing-list .pl-learn-bar { display: flex; flex-wrap: wrap; gap: 10px; padding: 9px 12px; margin-top: 8px; font-size: 0.78rem; color: #1e3a8a; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; }
+    #tab-packing-list .pl-learn-bar[hidden] { display: none !important; }
+    #tab-packing-list .pl-learn-item { display: inline-flex; align-items: center; gap: 8px; }
+    #tab-packing-list .pl-learn-text strong { font-weight: 700; }
+    #tab-packing-list .pl-learn-btn { padding: 4px 10px; font-size: 0.74rem; font-weight: 600; font-family: inherit; color: #1e3a8a; background: #fff; border: 1px solid #93c5fd; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    #tab-packing-list .pl-learn-btn:hover:not(:disabled) { background: #dbeafe; }
+    #tab-packing-list .pl-learn-btn:disabled { opacity: .6; cursor: default; }
+    #tab-packing-list .pl-out-table table th,
+    #tab-packing-list .pl-out-table table td { text-align: center; }
+    #tab-packing-list .pl-out-table table td.pl-num { text-align: center; }
+    #tab-packing-list .pl-out-table table td:first-child { text-align: center; }
+    #tab-packing-list .pl-out-grid .pl-out-k,
+    #tab-packing-list .pl-out-grid .pl-out-v { text-align: center; }
+    #tab-packing-list .pl-mode { display: inline-flex; border: 1px solid #cbd5e1; border-radius: 7px; overflow: hidden; }
+    #tab-packing-list .pl-mode-btn { padding: 4px 11px; font-size: 0.73rem; font-weight: 600; font-family: inherit; color: #64748b; background: #fff; border: none; cursor: pointer; }
+    #tab-packing-list .pl-mode-btn + .pl-mode-btn { border-left: 1px solid #cbd5e1; }
+    #tab-packing-list .pl-mode-btn:hover { background: #f1f5f9; }
+    #tab-packing-list .pl-mode-on { color: #fff; background: #2563eb; }
+    #tab-packing-list .pl-mode-on:hover { background: #1d4ed8; }
+    #tab-excel-groupby .gb-sortable { cursor: pointer; user-select: none; }
+    #tab-excel-groupby .gb-sortable:hover { background: rgba(255,255,255,.14); }
+    #tab-excel-groupby .gb-arrow { margin-left: 6px; font-size: .7em; opacity: .9; }
+    #tab-excel-groupby .gb-run-repeat { color: #94a3b8; }
+    #tab-excel-groupby tbody tr.gb-run-end td { border-bottom: 2px solid #cbd5e1; }
+    #tab-excel-groupby tbody tr.total-row td { border-bottom: none; }
+</style>
 </head>
 <body>
 
@@ -1094,8 +971,6 @@
     <div class="app-title">PL Builder Helper</div>
     <nav class="tab-nav">
       <button class="tab-btn active" data-tab="packing-list">Packing List Builder</button>
-      <button class="tab-btn" data-tab="match-helper">Match Helper</button>
-      <button class="tab-btn" data-tab="container-match-helper">Container Match Helper</button>
       <button class="tab-btn" data-tab="excel-groupby">Excel Group &amp; Sum</button>
       <button class="tab-btn" data-tab="fba-po">FBA PO Builder</button>
     </nav>
@@ -1145,6 +1020,7 @@
   ══════════════════════════════════════════════════════════ -->
   <div class="tab-panel active" id="tab-packing-list">
     <div class="pl-card">
+      <div id="cfgPanel" class="cfg-corner"></div>
       <h1>Packing List Builder</h1>
       <p class="subtitle">Upload an Excel file to generate a formatted packing list</p>
 
@@ -1160,61 +1036,60 @@
         </div>
 
         <div class="form-group">
-          <label>
-            config.properties
-            <span style="font-weight:400;color:#aaa;margin-left:6px;">— optional, overrides built-in keywords</span>
-          </label>
-          <div class="drop-zone" id="cfgDropZone" style="padding:14px 16px;">
-            <div class="drop-text" id="cfgDropText"><strong>Click to browse</strong> or drag &amp; drop config.properties</div>
-            <div id="cfgBadge" style="display:none;align-items:center;gap:6px;background:#e0f2fe;color:#0369a1;padding:4px 10px;border-radius:20px;font-size:.82rem;margin-top:8px;"></div>
-            <input type="file" id="cfgFile" accept=".properties,.txt">
+          <label>Shipment</label>
+          <div class="pl-cells" id="plCells">
+            <div class="pl-cell" data-cell="clientName" draggable="true">
+              <label for="clientName" class="pl-cell-head">Client name</label>
+              <input type="text" id="clientName" placeholder="易达优 EPS" required>
+            </div>
+            <div class="pl-cell" data-cell="containerNo" draggable="true">
+              <label for="containerNo" class="pl-cell-head">Container #</label>
+              <input type="text" id="containerNo" placeholder="CAAU8049388" required>
+            </div>
+            <div class="pl-cell" data-cell="fileNo" draggable="true">
+              <label for="fileNo" class="pl-cell-head">File number</label>
+              <input type="text" id="fileNo">
+            </div>
           </div>
-          <div id="cfgPanel"></div>
         </div>
 
         <div class="form-group">
-          <label for="clientContainer">
-            Client Name &amp; Container #
-            <span style="font-weight:400;color:#aaa;margin-left:6px;">— paste both, separated by a tab</span>
-          </label>
-          <input type="text" id="clientContainer" placeholder="e.g. 易达优 EPS&#9;CAAU8049388" required>
-        </div>
-
-        <div class="form-group">
-          <label>
-            Data Table Row Range
-            <span style="font-weight:400;color:#aaa;margin-left:6px;">— optional, override auto-detection for exceptions</span>
-          </label>
-          <div class="pl-row-range">
-            <div>
-              <label for="hdrRowInput" class="pl-sublabel">Header row #</label>
-              <input type="number" id="hdrRowInput" min="1" placeholder="auto">
-            </div>
-            <div>
-              <label for="lastRowInput" class="pl-sublabel">Last data row #</label>
-              <input type="number" id="lastRowInput" min="1" placeholder="auto">
-            </div>
+          <div class="pl-range-tools">
+            <button type="button" class="btn-secondary" id="btnViewSheet">View &amp; Select Data Range</button>
+            <span class="pl-tool-gap"></span>
+            <label for="hdrRowInput" class="pl-tool-label">Header row</label>
+            <input type="number" id="hdrRowInput" min="1" placeholder="auto" class="pl-tool-num">
+            <label for="lastRowInput" class="pl-tool-label">Last row</label>
+            <input type="number" id="lastRowInput" min="1" placeholder="auto" class="pl-tool-num">
           </div>
-          <button type="button" class="btn-secondary" id="btnViewSheet">View Original Sheet</button>
+          <div id="plSheetLegend" class="pl-legend" style="display:none;"></div>
           <div id="plOriginalSheet" class="pl-table-wrap" style="display:none;"></div>
         </div>
 
+        <!-- ui.js writes to id="status"; #plStatus mirrors it visibly -->
+        <div id="status" style="display:none;"></div>
+        <div id="plStatus"></div>
+
+        <div id="plPreview" class="pl-preview" style="display:none;">
+          <h2>Preview — the packing list that will be generated</h2>
+          <div id="plDestPanel" class="pl-dest-panel" hidden></div>
+          <div id="plEditBar" class="pl-edit-bar" hidden></div>
+          <div class="pl-out">
+            <div id="plPreviewHead" class="pl-out-head"></div>
+            <div class="pl-out-band">Loads</div>
+            <div class="pl-table-wrap pl-out-table" id="plPreviewData"></div>
+            <div class="pl-out-band">Summary</div>
+            <div class="pl-table-wrap pl-out-table" id="plPreviewSummary"></div>
+          </div>
+        </div>
+
+        <div id="plLearnBar" class="pl-learn-bar" hidden></div>
+
         <div class="pl-btn-row">
-          <button type="button" class="btn-secondary" id="btnPreview">Preview</button>
+          <button type="button" class="btn-secondary" id="btnPreview">Refresh preview</button>
           <button type="submit" class="btn" id="submitBtn">Generate Packing List</button>
         </div>
       </form>
-
-      <!-- ui.js writes to id="status"; #plStatus mirrors it visibly -->
-      <div id="status" style="display:none;"></div>
-      <div id="plStatus"></div>
-
-      <div id="plPreview" class="pl-preview" style="display:none;">
-        <h2>Preview — Packing List</h2>
-        <div class="pl-table-wrap" id="plPreviewData"></div>
-        <h2>Preview — Summary</h2>
-        <div class="pl-table-wrap" id="plPreviewSummary"></div>
-      </div>
     </div>
   </div>
 
@@ -1240,6 +1115,11 @@
             <label for="gb-sheet-select">Sheet</label>
             <select id="gb-sheet-select"></select>
           </div>
+          <div class="field">
+            <label for="gb-header-row">Header row</label>
+            <input type="number" id="gb-header-row" min="1" value="1">
+          </div>
+          <span class="gb-sep" aria-hidden="true"></span>
           <div class="field">
             <label>Group By Columns</label>
             <div class="tag-input-wrap" id="gb-group-tags">
@@ -1286,140 +1166,8 @@
   </div>
 
 
-  <!-- ══════════════════════════════════════════════════════════
-       TAB 2 — Match Helper
-  ══════════════════════════════════════════════════════════ -->
-  <div class="tab-panel" id="tab-match-helper">
-    <h1>Match Helper</h1>
-
-    <div class="mh-layout">
-      <div class="card">
-        <label for="mhExcelInput">1 · Paste Excel Data</label>
-        <textarea id="mhExcelInput" placeholder="Copy your Excel table (Dest + Value columns) and paste here.&#10;&#10;Example:&#10;Dest&#9;Value&#10;YYZ3&#9;5&#10;YOO1&#9;12&#10;HOLD&#9;3"></textarea>
-        <div class="hint">Copy cells from Excel (including header row) and paste with Ctrl+V.</div>
-      </div>
-
-      <div class="card">
-        <label for="mhOrderInput">2 · Order List</label>
-        <textarea id="mhOrderInput" placeholder="One destination per line, in the order you want them to appear."></textarea>
-        <div class="hint">Edit freely — destinations are matched case-insensitively.</div>
-      </div>
-    </div>
-
-    <div class="mh-btn-row">
-      <button id="mhBtnRun">⚡ Match</button>
-      <button id="mhBtnClear">Clear</button>
-    </div>
-
-    <div class="card" id="mhResultsSection">
-      <div id="mhAlerts" class="mh-alerts"></div>
-      <div class="mh-summary" id="mhSummary"></div>
-
-      <div class="mh-section-header">
-        <span class="mh-section-title">Horizontal (copy-friendly)</span>
-        <button id="mhCopyBtn">Copy</button>
-      </div>
-      <div class="mh-horiz-wrap" id="mhHorizTable"></div>
-    </div>
-  </div>
 
 
-  <!-- ══════════════════════════════════════════════════════════
-       TAB — Container Match Helper
-  ══════════════════════════════════════════════════════════ -->
-  <div class="tab-panel" id="tab-container-match-helper">
-    <h1>Container Match Helper</h1>
-
-    <div class="cmh-layout">
-      <div class="card">
-        <label>1 · Input Data</label>
-        <div class="cmh-input-tabs">
-          <button type="button" class="cmh-input-tab active" id="cmhTabUpload">📂 Upload File</button>
-          <button type="button" class="cmh-input-tab" id="cmhTabPaste">📋 Paste Data</button>
-        </div>
-        <div class="cmh-drop-zone" id="cmhDropZone">
-          <input type="file" id="cmhFileInput" accept=".xlsx,.xls,.csv">
-          <div class="cmh-drop-icon">📊</div>
-          <p><strong>Click to upload</strong> or drag &amp; drop your Excel / CSV file</p>
-          <small>.xlsx · .xls · .csv</small>
-        </div>
-        <div id="cmhPasteZone" style="display:none;">
-          <textarea id="cmhPasteInput" rows="10" style="height:auto;"
-            placeholder="Paste rows copied from Excel here (first row = headers).&#10;Columns are tab-separated when copied from Excel, e.g.&#10;Client&#9;Container&#9;Destination&#9;Pallets&#10;ACME&#9;OOLU9286063&#9;YYZ3&#9;5"></textarea>
-          <div style="display:flex; gap:10px; margin-top:8px; align-items:center; flex-wrap:wrap;">
-            <button type="button" id="cmhLoadPasteBtn">Load Pasted Data</button>
-          </div>
-        </div>
-        <div class="cmh-file-status" id="cmhFileStatus"></div>
-
-        <div class="cmh-field-row" id="cmhColumnControls" style="display:none;">
-          <div class="cmh-field" id="cmhSheetField" style="display:none;">
-            <label for="cmhSheetSelect">Sheet</label>
-            <select id="cmhSheetSelect"></select>
-          </div>
-          <div class="cmh-field">
-            <label for="cmhClientCol">Client Column</label>
-            <select id="cmhClientCol"></select>
-          </div>
-          <div class="cmh-field">
-            <label for="cmhContainerCol">Container Column</label>
-            <select id="cmhContainerCol"></select>
-          </div>
-          <div class="cmh-field">
-            <label for="cmhDestCol">Destination Column</label>
-            <select id="cmhDestCol"></select>
-          </div>
-          <div class="cmh-field">
-            <label for="cmhValueCol">Value Column</label>
-            <select id="cmhValueCol"></select>
-          </div>
-        </div>
-        <div class="hint">Drop a file with client, container, destination and value (pallet count) columns. Columns are auto-detected but can be changed above.</div>
-      </div>
-
-      <div class="card">
-        <label>2 · Destination Order List</label>
-        <ul class="cmh-order-list" id="cmhOrderList"></ul>
-        <div style="display:flex; gap:8px; margin-top:10px;">
-          <input type="text" id="cmhNewDestInput" class="cmh-order-add-input" placeholder="New destination, e.g. YVR2">
-          <button type="button" id="cmhAddDestBtn">➕ Add</button>
-        </div>
-        <div class="hint">Drag to reorder · click a name to edit · ✕ removes an item. Matched case-insensitively. Saved on this device automatically.</div>
-        <div style="display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap;">
-          <button type="button" id="cmhSaveOrderBtn">💾 Save Order List</button>
-          <button type="button" id="cmhResetOrderBtn">Reset to Default</button>
-          <span class="hint" id="cmhSaveOrderStatus" style="margin-top:0;"></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" id="cmhContainerSelectCard" style="display:none;">
-      <label for="cmhFilterInput">3 · Filter Containers (optional)</label>
-      <textarea id="cmhFilterInput" rows="5" placeholder="Paste container numbers to include, one per line, e.g.&#10;OOLU9286063&#10;MMPU5012504&#10;&#10;Leave empty to include all containers."></textarea>
-      <div style="display:flex; gap:10px; margin-top:8px; align-items:center; flex-wrap:wrap;">
-        <button type="button" id="cmhApplyFilterBtn">Apply Filter</button>
-        <button type="button" id="cmhClearFilterBtn">Clear Filter</button>
-        <span class="hint" id="cmhFilterStatus" style="margin-top:0;"></span>
-      </div>
-      <div class="hint">Leave empty to include every detected container.</div>
-    </div>
-
-    <div class="mh-btn-row">
-      <button id="cmhMatchBtn" disabled>⚡ Match</button>
-      <button id="cmhClearBtn">Clear</button>
-    </div>
-
-    <div class="card" id="cmhResultsSection">
-      <div id="cmhAlerts" class="mh-alerts"></div>
-      <div class="mh-summary" id="cmhSummary"></div>
-
-      <div class="mh-section-header">
-        <span class="mh-section-title">Match Helper Rows (copy-friendly)</span>
-        <button id="cmhCopyBtn">Copy</button>
-      </div>
-      <div class="mh-horiz-wrap" id="cmhPivotTable"></div>
-    </div>
-  </div>
 
 
   <!-- ── Packing List Builder external scripts ──────────────── -->
@@ -1428,6 +1176,7 @@
   <script src="js/utils.js"></script>
   <script src="js/detect.js"></script>
   <script src="js/columns.js"></script>
+  <script src="js/grid.js"></script>
   <script src="js/process.js"></script>
   <script src="js/writer.js"></script>
   <script src="js/ui.js"></script>
@@ -1545,736 +1294,8 @@
     })();
 
 
-    /* ── Match Helper ───────────────────────────────────────── */
-    (function () {
-      const excelInput = document.getElementById('mhExcelInput');
-      const orderInput = document.getElementById('mhOrderInput');
-      const alertsEl   = document.getElementById('mhAlerts');
-      const summaryEl  = document.getElementById('mhSummary');
-      const section    = document.getElementById('mhResultsSection');
-      const horizTable = document.getElementById('mhHorizTable');
-      const copyBtn    = document.getElementById('mhCopyBtn');
 
-      const DEFAULT_ORDER = [
-        'YYZ3', 'YOO1', 'XYY1', 'YGK1', 'YYZ4', 'YYZ9', 'YYZ7', 'YXU1',
-        'YHM1', 'YOW1', 'YOW3', '私人地址', 'HOLD', 'YYZ1', 'YYC4/6',
-        'YEG1/2', 'YVR3/4', '自提', '换标', '快递'
-      ];
-      // shares the same order list as the Container Match Helper (same storage
-      // key and server endpoint), so edits in either tool apply to both
-      const ORDER_STORAGE_KEY = 'containerMatchHelper.destOrderList';
-      const savedOrder = localStorage.getItem(ORDER_STORAGE_KEY);
-      orderInput.value = (savedOrder && savedOrder.trim()) ? savedOrder : DEFAULT_ORDER.join('\n');
 
-      fetch('/api/match-helper/dest-order')
-        .then(r => r.ok ? r.json() : {})
-        .then(cfg => {
-          if (Array.isArray(cfg.destOrder) && cfg.destOrder.length) {
-            orderInput.value = cfg.destOrder.join('\n');
-          }
-        })
-        .catch(() => {}); // offline / server unavailable — keep local copy
-
-      orderInput.addEventListener('input', () => {
-        localStorage.setItem(ORDER_STORAGE_KEY, orderInput.value);
-      });
-
-      function normDest(s) {
-        if (!s) return '';
-        const u = s.toUpperCase();
-        if (u.includes('私仓')) return '私人地址';
-        if (u.includes('HOLD')) return 'HOLD';
-        if (u.includes('UPS'))  return '快递';
-        const clean = u.replace(/[\s\-]/g, '');
-        if (clean.includes('SELFPICKUP')) return '自提';
-        return s.trim();
-      }
-
-      function normOrderItem(s) {
-        if (!s) return '';
-        const low = s.toLowerCase().replace(/[\s\-]/g, '');
-        if (low.includes('hold'))       return 'HOLD';
-        if (low.includes('ups'))        return '快递';
-        if (low.includes('selfpickup')) return '自提';
-        return s.trim();
-      }
-
-      // Parses pasted Excel rows (Dest + Value columns) into { dest, value } rows.
-      function parseTSV(text) {
-        const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
-        if (lines.length < 2) return null;
-
-        const header   = lines[0].split('\t').map(h => h.trim().toLowerCase());
-        const destIdx  = header.findIndex(h => h === 'dest' || h === 'destination' || h === '目的地');
-        const valueIdx = header.findIndex(h => h === 'value' || h === '值' || h === '金额' || h === 'amount');
-
-        if (destIdx === -1 || valueIdx === -1) {
-          return lines.map(l => {
-            const cols = l.split('\t');
-            return { dest: normDest(cols[0]), value: parseFloat(cols[1]) || 0 };
-          }).filter(r => r.dest);
-        }
-
-        return lines.slice(1).map(l => {
-          const cols = l.split('\t');
-          return { dest: normDest(cols[destIdx]), value: parseFloat(cols[valueIdx]) || 0 };
-        }).filter(r => r.dest);
-      }
-
-      function groupByDest(rows) {
-        const map = {};
-        for (const { dest, value } of rows) map[dest] = (map[dest] || 0) + value;
-        return map;
-      }
-
-      let horizData = [];
-
-      document.getElementById('mhBtnRun').addEventListener('click', () => {
-        const excelRaw = excelInput.value.trim();
-        const orderRaw = orderInput.value.trim();
-
-        alertsEl.innerHTML  = '';
-        summaryEl.innerHTML = '';
-
-        if (!excelRaw) { alert('Please paste your Excel data first.'); return; }
-
-        const rows = parseTSV(excelRaw);
-        if (!rows || rows.length === 0) {
-          alertsEl.innerHTML = `<div class="mh-alert mh-alert-error">Could not parse data. Make sure you copy at least two columns (Dest + Value) from Excel, including the header row.</div>`;
-          section.classList.add('visible');
-          return;
-        }
-
-        const grouped = groupByDest(rows);
-        const order = orderRaw.split(/\r?\n/).map(normOrderItem).filter(Boolean);
-
-        // YYC / YEG / YVR destinations (e.g. "YEG1", "YVR4") fold into the
-        // combined order column that shares the prefix (e.g. "YEG1/2", "YVR3/4").
-        for (const d of Object.keys(grouped)) {
-          if (order.includes(d)) continue;
-          const m = d.toUpperCase().match(/^(YYC|YEG|YVR)/);
-          if (!m) continue;
-          const target = order.find(o => o.toUpperCase().startsWith(m[1]));
-          if (target) {
-            grouped[target] = (grouped[target] || 0) + grouped[d];
-            delete grouped[d];
-          }
-        }
-
-        const extra  = Object.keys(grouped).filter(d => !order.includes(d));
-        const noData = order.filter(d => !(d in grouped));
-
-        const result = order.map(d => ({ dest: d, value: grouped[d] ?? null }));
-        horizData = result;
-
-        const headers = result.map(r => `<th>${r.dest}</th>`).join('');
-        const cells = result.map(r =>
-          (r.value !== null && r.value !== 0)
-            ? `<td class="val">${r.value.toLocaleString()}</td>`
-            : `<td class="empty">—</td>`
-        ).join('');
-        horizTable.innerHTML = `<table><thead><tr>${headers}</tr></thead><tbody><tr>${cells}</tr></tbody></table>`;
-
-        let alertHtml = '';
-        if (extra.length)
-          alertHtml += `<div class="mh-alert mh-alert-error">⚠️ <strong>${extra.length} destination(s) in Excel but NOT in order list:</strong> ${extra.join(', ')}</div>`;
-        if (noData.length)
-          alertHtml += `<div class="mh-alert mh-alert-warn">ℹ️ <strong>${noData.length} destination(s) in order list with no data:</strong> ${noData.join(', ')}</div>`;
-        if (!extra.length && !noData.length)
-          alertHtml += `<div class="mh-alert mh-alert-success">✅ All destinations matched perfectly.</div>`;
-        alertsEl.innerHTML = alertHtml;
-
-        const matched = result.filter(r => r.value !== null && r.value !== 0).length;
-        const total   = result.reduce((s, r) => s + (r.value || 0), 0);
-        summaryEl.innerHTML = `
-          <span class="mh-chip mh-chip-blue">${result.length} destinations</span>
-          <span class="mh-chip mh-chip-green">${matched} with data</span>
-          <span class="mh-chip mh-chip-yellow">${noData.length} empty</span>
-          ${extra.length ? `<span class="mh-chip mh-chip-red">${extra.length} unmatched</span>` : ''}
-          <span class="mh-chip mh-chip-blue">Total: ${total.toLocaleString()}</span>
-        `;
-
-        section.classList.add('visible');
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-
-      document.getElementById('mhBtnClear').addEventListener('click', () => {
-        excelInput.value = '';
-        section.classList.remove('visible');
-        alertsEl.innerHTML  = '';
-        summaryEl.innerHTML = '';
-        horizTable.innerHTML = '';
-        horizData = [];
-        copyBtn.textContent = 'Copy';
-        copyBtn.classList.remove('copied');
-      });
-
-      copyBtn.addEventListener('click', () => {
-        if (!horizData.length) return;
-        const values = horizData.map(r => (r.value !== null && r.value !== 0) ? r.value : '').join('\t');
-        navigator.clipboard.writeText(values).then(() => {
-          copyBtn.textContent = 'Copied!';
-          copyBtn.classList.add('copied');
-          setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 2000);
-        });
-      });
-    })();
-
-
-    /* ── Container Match Helper ─────────────────────────────── */
-    (function () {
-      const DEFAULT_ORDER = [
-        'YYZ3', 'YOO1', 'XYY1', 'YGK1', 'YYZ4', 'YYZ9', 'YYZ7', 'YXU1',
-        'YHM1', 'YOW1', 'YOW3', '私人地址', 'HOLD', 'YYZ1', 'YYC4/6',
-        'YEG1/2', 'YVR3/4', '自提', '换标', '快递'
-      ];
-      const ORDER_STORAGE_KEY = 'containerMatchHelper.destOrderList';
-      const orderListEl = document.getElementById('cmhOrderList');
-
-      let destOrder = (() => {
-        const saved = localStorage.getItem(ORDER_STORAGE_KEY);
-        const list = saved ? saved.split('\n').map(s => s.trim()).filter(Boolean) : [];
-        return list.length ? list : DEFAULT_ORDER.slice();
-      })();
-
-      function persistOrderLocal() {
-        localStorage.setItem(ORDER_STORAGE_KEY, destOrder.join('\n'));
-        document.getElementById('cmhSaveOrderStatus').textContent = 'Saved on this device — 💾 to save online';
-      }
-
-      function renderOrderList() {
-        orderListEl.innerHTML = destOrder.map((d, i) => `
-          <li class="cmh-order-item" draggable="true" data-index="${i}">
-            <span class="drag-handle">⠿</span>
-            <span class="order-num">${i + 1}</span>
-            <span class="dest-name" data-edit="${i}" title="Click to edit">${escapeHtml(d)}</span>
-            <button type="button" class="remove-btn" title="Remove" data-remove="${i}">✕</button>
-          </li>
-        `).join('');
-      }
-
-      function addDest() {
-        const input = document.getElementById('cmhNewDestInput');
-        const name = input.value.trim();
-        if (!name) return;
-        if (destOrder.some(d => d.toLowerCase() === name.toLowerCase())) {
-          document.getElementById('cmhSaveOrderStatus').textContent = `"${name}" is already in the list`;
-          return;
-        }
-        destOrder.push(name);
-        input.value = '';
-        renderOrderList();
-        persistOrderLocal();
-        orderListEl.scrollTop = orderListEl.scrollHeight;
-      }
-      document.getElementById('cmhAddDestBtn').addEventListener('click', addDest);
-      document.getElementById('cmhNewDestInput').addEventListener('keydown', e => { if (e.key === 'Enter') addDest(); });
-
-      document.getElementById('cmhResetOrderBtn').addEventListener('click', () => {
-        destOrder = DEFAULT_ORDER.slice();
-        renderOrderList();
-        persistOrderLocal();
-      });
-
-      // remove item / click-to-edit
-      orderListEl.addEventListener('click', e => {
-        const btn = e.target.closest('[data-remove]');
-        if (btn) {
-          destOrder.splice(Number(btn.dataset.remove), 1);
-          renderOrderList();
-          persistOrderLocal();
-          return;
-        }
-        const nameEl = e.target.closest('[data-edit]');
-        if (nameEl) startEditDest(nameEl);
-      });
-
-      function startEditDest(nameEl) {
-        const idx = Number(nameEl.dataset.edit);
-        const item = nameEl.closest('.cmh-order-item');
-        item.draggable = false; // don't let a text-select drag reorder the row
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'dest-edit';
-        input.value = destOrder[idx];
-        nameEl.replaceWith(input);
-        input.focus();
-        input.select();
-
-        let done = false;
-        const commit = () => {
-          if (done) return;
-          done = true;
-          const name = input.value.trim();
-          const isDup = name && destOrder.some((d, i) => i !== idx && d.toLowerCase() === name.toLowerCase());
-          if (name && !isDup) {
-            destOrder[idx] = name;
-            persistOrderLocal();
-          } else if (isDup) {
-            document.getElementById('cmhSaveOrderStatus').textContent = `"${name}" is already in the list`;
-          }
-          renderOrderList();
-        };
-        input.addEventListener('blur', commit);
-        input.addEventListener('keydown', ev => {
-          if (ev.key === 'Enter') commit();
-          if (ev.key === 'Escape') { done = true; renderOrderList(); }
-        });
-      }
-
-      // drag & drop reorder
-      let _dragIndex = null;
-      orderListEl.addEventListener('dragstart', e => {
-        const item = e.target.closest('.cmh-order-item');
-        if (!item) return;
-        _dragIndex = Number(item.dataset.index);
-        item.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-      });
-      orderListEl.addEventListener('dragover', e => {
-        e.preventDefault();
-        const item = e.target.closest('.cmh-order-item');
-        orderListEl.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
-        if (item && Number(item.dataset.index) !== _dragIndex) item.classList.add('drag-target');
-      });
-      orderListEl.addEventListener('drop', e => {
-        e.preventDefault();
-        const item = e.target.closest('.cmh-order-item');
-        if (item && _dragIndex !== null) {
-          const to = Number(item.dataset.index);
-          if (to !== _dragIndex) {
-            const [moved] = destOrder.splice(_dragIndex, 1);
-            destOrder.splice(to, 0, moved);
-            renderOrderList();
-            persistOrderLocal();
-          }
-        }
-      });
-      orderListEl.addEventListener('dragend', () => {
-        _dragIndex = null;
-        orderListEl.querySelectorAll('.dragging, .drag-target').forEach(el => el.classList.remove('dragging', 'drag-target'));
-      });
-
-      // load the shared list from the server (overrides the local copy when available)
-      fetch('/api/match-helper/dest-order')
-        .then(r => r.ok ? r.json() : {})
-        .then(cfg => {
-          if (Array.isArray(cfg.destOrder) && cfg.destOrder.length) {
-            destOrder = cfg.destOrder.slice();
-            renderOrderList();
-            localStorage.setItem(ORDER_STORAGE_KEY, destOrder.join('\n'));
-          }
-        })
-        .catch(() => {}); // offline / server unavailable — keep local copy
-
-      document.getElementById('cmhSaveOrderBtn').addEventListener('click', () => {
-        const btn    = document.getElementById('cmhSaveOrderBtn');
-        const status = document.getElementById('cmhSaveOrderStatus');
-        btn.disabled = true;
-        status.textContent = 'Saving…';
-        fetch('/api/match-helper/dest-order', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ destOrder })
-        })
-          .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-          .then(() => { status.textContent = '✅ Saved online'; })
-          .catch(() => { status.textContent = '⚠️ Save failed — saved on this device only'; })
-          .finally(() => { btn.disabled = false; });
-      });
-
-      renderOrderList();
-
-      let workbook  = null;
-      let sheetData = [];
-      let allCols   = [];
-      let _pivot    = null;
-
-      let detectedContainers = [];
-      let selectedContainers = new Set();
-
-      const CLIENT_HINTS    = ['client', 'client name', '客户', '客户名称'];
-      const CONTAINER_HINTS = ['container', 'container#', 'container #', 'container no', 'container no.', '柜号', '箱号', '集装箱号'];
-      const DEST_HINTS      = ['destination', 'dest', '目的地'];
-      const VALUE_HINTS     = ['value', '值', '金额', 'amount', 'qty', 'quantity', '数量', 'pallet', '板数', 'skid'];
-
-      function guessColumn(cols, hints) {
-        const lower = cols.map(c => String(c).toLowerCase().trim());
-        for (const hint of hints) {
-          const idx = lower.findIndex(c => c === hint);
-          if (idx !== -1) return cols[idx];
-        }
-        for (const hint of hints) {
-          const idx = lower.findIndex(c => c.includes(hint));
-          if (idx !== -1) return cols[idx];
-        }
-        return '';
-      }
-
-      // Container cells sometimes carry a prefix before the real container number,
-      // e.g. "DS-TIIU8097334" — pull out the standard ISO 6346 code (4 letters + 7 digits).
-      function normContainer(s) {
-        if (s == null) return '';
-        const str = String(s).trim().toUpperCase();
-        const match = str.match(/[A-Z]{4}\d{7}/);
-        return match ? match[0] : str.replace(/[^A-Z0-9]/g, '');
-      }
-
-      function normDest(s) {
-        if (!s) return '';
-        const u = String(s).toUpperCase();
-        if (u.includes('私仓')) return '私人地址';
-        if (u.includes('HOLD')) return 'HOLD';
-        if (u.includes('UPS'))  return '快递';
-        const clean = u.replace(/[\s\-]/g, '');
-        if (clean.includes('SELFPICKUP')) return '自提';
-        return String(s).trim();
-      }
-
-      function normOrderItem(s) {
-        if (!s) return '';
-        const low = s.toLowerCase().replace(/[\s\-]/g, '');
-        if (low.includes('hold'))       return 'HOLD';
-        if (low.includes('ups'))        return '快递';
-        if (low.includes('selfpickup')) return '自提';
-        return s.trim();
-      }
-
-      function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-      }
-
-      // navigator.clipboard requires a secure context; fall back to the classic
-      // hidden-textarea + execCommand('copy') trick when it's unavailable.
-      function copyToClipboard(text) {
-        if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
-          return navigator.clipboard.writeText(text).catch(() => legacyCopy(text));
-        }
-        return Promise.resolve().then(() => legacyCopy(text));
-      }
-
-      function legacyCopy(text) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        try { document.execCommand('copy'); } catch (e) { /* ignore */ }
-        document.body.removeChild(ta);
-      }
-
-      const dropZone   = document.getElementById('cmhDropZone');
-      const fileInput  = document.getElementById('cmhFileInput');
-      const fileStatus = document.getElementById('cmhFileStatus');
-      const matchBtn   = document.getElementById('cmhMatchBtn');
-
-      // input mode tabs (upload vs paste)
-      function setInputMode(mode) {
-        document.getElementById('cmhTabUpload').classList.toggle('active', mode === 'upload');
-        document.getElementById('cmhTabPaste').classList.toggle('active', mode === 'paste');
-        dropZone.style.display = mode === 'upload' ? '' : 'none';
-        document.getElementById('cmhPasteZone').style.display = mode === 'paste' ? '' : 'none';
-      }
-      document.getElementById('cmhTabUpload').addEventListener('click', () => setInputMode('upload'));
-      document.getElementById('cmhTabPaste').addEventListener('click', () => setInputMode('paste'));
-
-      document.getElementById('cmhLoadPasteBtn').addEventListener('click', () => {
-        const raw = document.getElementById('cmhPasteInput').value.replace(/\r/g, '');
-        const lines = raw.split('\n').filter(l => l.trim() !== '');
-        if (lines.length < 2) {
-          fileStatus.className = 'cmh-file-status error';
-          fileStatus.textContent = '✖ Paste at least a header row and one data row.';
-          return;
-        }
-        // Excel copies are tab-separated; fall back to commas for hand-typed CSV.
-        const delim = lines[0].includes('\t') ? '\t' : ',';
-        const headers = lines[0].split(delim).map((h, i) => h.trim() || `Column ${i + 1}`);
-        sheetData = lines.slice(1).map(line => {
-          const cells = line.split(delim);
-          const row = {};
-          headers.forEach((h, i) => { row[h] = (cells[i] ?? '').trim(); });
-          return row;
-        });
-        workbook = null;
-        allCols = headers;
-        sheetField.style.display = 'none';
-        document.getElementById('cmhColumnControls').style.display = 'flex';
-        populateColumnPickers();
-        populateContainerList();
-        matchBtn.disabled = false;
-        fileStatus.className = 'cmh-file-status ok';
-        fileStatus.textContent = `✔ Loaded ${sheetData.length} pasted row(s), ${headers.length} column(s)`;
-      });
-
-      dropZone.addEventListener('click', () => fileInput.click());
-      dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-      dropZone.addEventListener('drop', e => {
-        e.preventDefault(); dropZone.classList.remove('drag-over');
-        handleFile(e.dataTransfer.files[0]);
-      });
-      fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
-
-      function handleFile(file) {
-        if (!file) return;
-        matchBtn.disabled = true;
-        fileStatus.className = 'cmh-file-status';
-        fileStatus.textContent = `Loading "${file.name}" …`;
-        const reader = new FileReader();
-        reader.onload = e => {
-          try {
-            workbook = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
-            populateSheets();
-            fileStatus.className = 'cmh-file-status ok';
-            fileStatus.textContent = `✔ Loaded "${file.name}"`;
-          } catch (err) {
-            fileStatus.className = 'cmh-file-status error';
-            fileStatus.textContent = '✖ Failed to read file: ' + err.message;
-          }
-        };
-        reader.readAsBinaryString(file);
-      }
-
-      const sheetField  = document.getElementById('cmhSheetField');
-      const sheetSelect = document.getElementById('cmhSheetSelect');
-
-      function populateSheets() {
-        sheetSelect.innerHTML = '';
-        workbook.SheetNames.forEach(name => {
-          const opt = document.createElement('option');
-          opt.value = opt.textContent = name;
-          sheetSelect.appendChild(opt);
-        });
-        sheetField.style.display = workbook.SheetNames.length > 1 ? 'flex' : 'none';
-        document.getElementById('cmhColumnControls').style.display = 'flex';
-        loadSheet(workbook.SheetNames[0]);
-      }
-
-      sheetSelect.addEventListener('change', () => loadSheet(sheetSelect.value));
-
-      function loadSheet(name) {
-        const ws = workbook.Sheets[name];
-        sheetData = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        if (!sheetData.length) {
-          fileStatus.className = 'cmh-file-status error';
-          fileStatus.textContent = '✖ Sheet is empty.';
-          matchBtn.disabled = true;
-          return;
-        }
-        allCols = Object.keys(sheetData[0]);
-        populateColumnPickers();
-        populateContainerList();
-        matchBtn.disabled = false;
-      }
-
-      const clientColSel    = document.getElementById('cmhClientCol');
-      const containerColSel = document.getElementById('cmhContainerCol');
-      const destColSel      = document.getElementById('cmhDestCol');
-      const valueColSel     = document.getElementById('cmhValueCol');
-
-      function populateColumnPickers() {
-        [clientColSel, containerColSel, destColSel, valueColSel].forEach(sel => sel.innerHTML = '');
-        allCols.forEach(c => {
-          clientColSel.appendChild(new Option(c, c));
-          containerColSel.appendChild(new Option(c, c));
-          destColSel.appendChild(new Option(c, c));
-          valueColSel.appendChild(new Option(c, c));
-        });
-        clientColSel.value    = guessColumn(allCols, CLIENT_HINTS) || allCols[0];
-        containerColSel.value = guessColumn(allCols, CONTAINER_HINTS) || allCols[0];
-        destColSel.value      = guessColumn(allCols, DEST_HINTS) || allCols[0];
-        valueColSel.value     = guessColumn(allCols, VALUE_HINTS) || allCols[allCols.length > 1 ? 1 : 0];
-      }
-
-      containerColSel.addEventListener('change', populateContainerList);
-      clientColSel.addEventListener('change', populateContainerList);
-
-      const containerSelectCard = document.getElementById('cmhContainerSelectCard');
-
-      function populateContainerList() {
-        const containerCol = containerColSel.value;
-        const clientCol    = clientColSel.value;
-        const clientByContainer = new Map();
-        const order = [];
-
-        for (const raw of sheetData) {
-          const container = normContainer(raw[containerCol]);
-          if (!container) continue;
-          if (!clientByContainer.has(container)) { clientByContainer.set(container, ''); order.push(container); }
-          if (!clientByContainer.get(container)) {
-            const client = String(raw[clientCol] ?? '').trim();
-            if (client) clientByContainer.set(container, client);
-          }
-        }
-
-        detectedContainers = order.map(c => ({ container: c, client: clientByContainer.get(c) }));
-        selectedContainers = new Set(detectedContainers.map(c => c.container));
-        containerSelectCard.style.display = detectedContainers.length ? 'block' : 'none';
-        applyContainerFilter(); // re-apply any pasted filter to the fresh data
-      }
-
-      function applyContainerFilter() {
-        const statusEl = document.getElementById('cmhFilterStatus');
-        const raw = document.getElementById('cmhFilterInput').value.trim();
-        if (!raw) {
-          selectedContainers = new Set(detectedContainers.map(c => c.container));
-          statusEl.textContent = detectedContainers.length ? `Including all ${detectedContainers.length} containers` : '';
-          return;
-        }
-
-        const wanted      = raw.split(/\r?\n/).map(normContainer).filter(Boolean);
-        const detectedSet = new Set(detectedContainers.map(c => c.container));
-        const found       = wanted.filter(c => detectedSet.has(c));
-        const notFound     = wanted.filter(c => !detectedSet.has(c));
-
-        selectedContainers = new Set(found);
-
-        statusEl.textContent = notFound.length
-          ? `✔ ${found.length} matched · ✖ ${notFound.length} not found: ${notFound.join(', ')}`
-          : `✔ ${found.length} matched`;
-      }
-
-      document.getElementById('cmhApplyFilterBtn').addEventListener('click', applyContainerFilter);
-      document.getElementById('cmhClearFilterBtn').addEventListener('click', () => {
-        document.getElementById('cmhFilterInput').value = '';
-        applyContainerFilter();
-      });
-
-      function buildPivot(order) {
-        const clientCol    = clientColSel.value;
-        const containerCol = containerColSel.value;
-        const destCol      = destColSel.value;
-        const valueCol     = valueColSel.value;
-
-        const orderUpper = order.map(o => o.toUpperCase());
-        const rowsMap = new Map();
-        const rowOrder = [];
-        const unmatchedDest = new Set();
-
-        for (const raw of sheetData) {
-          const container = normContainer(raw[containerCol]);
-          if (!container || !selectedContainers.has(container)) continue;
-
-          if (!rowsMap.has(container)) {
-            rowsMap.set(container, { client: '', container, values: {} });
-            rowOrder.push(container);
-          }
-          const row = rowsMap.get(container);
-
-          const client = String(raw[clientCol] ?? '').trim();
-          if (!row.client && client) row.client = client;
-
-          const dest  = normDest(raw[destCol]);
-          const value = parseFloat(raw[valueCol]) || 0;
-          if (!dest) continue;
-
-          let idx = orderUpper.indexOf(dest.toUpperCase());
-          // YYC / YEG / YVR destinations (e.g. "YYC6", "YVR3") fall into the combined
-          // column that shares the prefix (e.g. "YYC4/6", "YVR3/4").
-          if (idx === -1) {
-            const prefixMatch = dest.toUpperCase().match(/^(YYC|YEG|YVR)/);
-            if (prefixMatch) idx = orderUpper.findIndex(o => o.startsWith(prefixMatch[1]));
-          }
-          if (idx === -1) { unmatchedDest.add(dest); continue; }
-
-          const key = order[idx];
-          row.values[key] = (row.values[key] || 0) + value;
-        }
-
-        return { rows: rowOrder.map(c => rowsMap.get(c)), unmatchedDest: [...unmatchedDest] };
-      }
-
-      const alertsEl     = document.getElementById('cmhAlerts');
-      const summaryEl    = document.getElementById('cmhSummary');
-      const section      = document.getElementById('cmhResultsSection');
-      const pivotTableEl = document.getElementById('cmhPivotTable');
-      const copyBtn      = document.getElementById('cmhCopyBtn');
-
-      matchBtn.addEventListener('click', run);
-
-      function run() {
-        alertsEl.innerHTML = '';
-        summaryEl.innerHTML = '';
-
-        if (!sheetData.length) { alert('Please upload an Excel file first.'); return; }
-
-        const order = destOrder.map(normOrderItem).filter(Boolean);
-        const { rows, unmatchedDest } = buildPivot(order);
-        _pivot = { order, rows };
-
-        const headerCells = ['CLIENT', 'CNTR', ...order].map(h => `<th>${escapeHtml(h)}</th>`).join('');
-        const bodyRows = rows.map(r => {
-          const cells = [
-            `<td>${escapeHtml(r.client)}</td>`,
-            `<td>${escapeHtml(r.container)}</td>`,
-            ...order.map(d => {
-              const v = r.values[d];
-              return v ? `<td class="val">${v.toLocaleString()}</td>` : `<td class="empty"></td>`;
-            })
-          ].join('');
-          return `<tr>${cells}</tr>`;
-        }).join('');
-        pivotTableEl.innerHTML = `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
-
-        let alertHtml = '';
-        if (unmatchedDest.length)
-          alertHtml += `<div class="mh-alert mh-alert-warn">ℹ️ <strong>${unmatchedDest.length} destination value(s) in Excel not in the order list (excluded from table):</strong> ${unmatchedDest.map(escapeHtml).join(', ')}</div>`;
-        if (!unmatchedDest.length)
-          alertHtml += `<div class="mh-alert mh-alert-success">✅ All destination values matched the order list.</div>`;
-        alertsEl.innerHTML = alertHtml;
-
-        const total = rows.reduce((s, r) => s + Object.values(r.values).reduce((a, b) => a + b, 0), 0);
-        summaryEl.innerHTML = `
-          <span class="mh-chip mh-chip-blue">${rows.length} containers</span>
-          <span class="mh-chip mh-chip-blue">${order.length} destination columns</span>
-          <span class="mh-chip mh-chip-blue">Total: ${total.toLocaleString()}</span>
-        `;
-
-        section.classList.add('visible');
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        copyPivot();
-      }
-
-      function copyPivot() {
-        if (!_pivot || !_pivot.rows.length) return;
-        const { order, rows } = _pivot;
-        const lines = rows.map(r => [r.client, r.container, ...order.map(d => r.values[d] || '')].join('\t'));
-        copyToClipboard(lines.join('\r\n')).then(() => {
-          copyBtn.textContent = 'Copied!';
-          copyBtn.classList.add('copied');
-          setTimeout(() => { copyBtn.textContent = 'Copy'; copyBtn.classList.remove('copied'); }, 2000);
-        });
-      }
-
-      copyBtn.addEventListener('click', copyPivot);
-
-      document.getElementById('cmhClearBtn').addEventListener('click', () => {
-        workbook = null;
-        sheetData = [];
-        allCols = [];
-        detectedContainers = [];
-        selectedContainers = new Set();
-        fileInput.value = '';
-        fileStatus.className = 'cmh-file-status';
-        fileStatus.textContent = '';
-        document.getElementById('cmhColumnControls').style.display = 'none';
-        containerSelectCard.style.display = 'none';
-        document.getElementById('cmhFilterInput').value = '';
-        document.getElementById('cmhPasteInput').value = '';
-        document.getElementById('cmhFilterStatus').textContent = '';
-        matchBtn.disabled = true;
-        section.classList.remove('visible');
-        alertsEl.innerHTML = '';
-        summaryEl.innerHTML = '';
-        pivotTableEl.innerHTML = '';
-        _pivot = null;
-        copyBtn.textContent = 'Copy';
-        copyBtn.classList.remove('copied');
-      });
-    })();
 
 
     /* ── Excel Group & Sum ──────────────────────────────────── */
@@ -2334,11 +1355,118 @@
 
       sheetSelect.addEventListener('change', () => loadSheet(sheetSelect.value));
 
-      function loadSheet(name) {
-        const ws = workbook.Sheets[name];
-        sheetData = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        if (!sheetData.length) { status.className = 'error'; status.textContent = 'Sheet is empty.'; return; }
-        allCols = Object.keys(sheetData[0]);
+      const headerRowInput = document.getElementById('gb-header-row');
+      headerRowInput.addEventListener('change', () => {
+        const h = Math.max(parseInt(headerRowInput.value, 10) - 1, 0);
+        if (!sheetRowsAoa.length) return;
+        loadSheet(sheetSelect.value || workbook.SheetNames[0], Math.min(h, sheetRowsAoa.length - 1));
+      });
+
+      /* A merged cell holds its value only in the top-left cell of the range;
+         every other cell in it reads back empty. A destination merged down
+         its rows therefore grouped as one row plus a pile of blanks. The
+         sheet lists its merges, so fill the value across each range before
+         reading the rows. */
+      function fillMergedCells(ws) {
+        const merges = ws['!merges'];
+        if (!merges || !merges.length) return ws;
+        const out = { ...ws };
+        for (const m of merges) {
+          const src = out[XLSX.utils.encode_cell({ r: m.s.r, c: m.s.c })];
+          if (!src || src.v === undefined || src.v === null || src.v === '') continue;
+          for (let r = m.s.r; r <= m.e.r; r++) {
+            for (let c = m.s.c; c <= m.e.c; c++) {
+              if (r === m.s.r && c === m.s.c) continue;
+              out[XLSX.utils.encode_cell({ r, c })] = { t: src.t, v: src.v, w: src.w };
+            }
+          }
+        }
+        return out;
+      }
+
+      /* Column names for one header row. Blanks become the column letter so
+         they can still be picked, and repeats are numbered rather than
+         silently overwriting each other. */
+      function headerNames(row, width) {
+        const seen = new Map();
+        const out = [];
+        for (let c = 0; c < width; c++) {
+          let name = String((row && row[c]) ?? '').trim();
+          if (!name) name = `(${XLSX.utils.encode_col(c)})`;
+          const n = (seen.get(name) || 0) + 1;
+          seen.set(name, n);
+          out.push(n === 1 ? name : `${name} ${n}`);
+        }
+        return out;
+      }
+
+      /* Sheets often open with a title banner, so the real headings sit a row
+         or two down. Guess the row carrying the most labels, and let the
+         operator correct it. */
+      function guessHeaderRow(aoa) {
+        let best = 0, bestScore = -1;
+        for (let i = 0; i < Math.min(aoa.length, 10); i++) {
+          // Distinct labels, not merely filled cells: a title merged across
+          // the sheet fills every column with one repeated word, and counting
+          // cells made that banner look like the richest header on the page.
+          const labels = new Set((aoa[i] || [])
+            .map(v => String(v ?? '').trim())
+            .filter(Boolean));
+          if (labels.size > bestScore) { bestScore = labels.size; best = i; }
+        }
+        return best;
+      }
+
+      let sheetRowsAoa = [];
+
+      // Text out of Excel routinely carries padding, and " YHM1" grouped
+      // apart from "YHM1" while looking identical on screen. Numbers and
+      // dates are left exactly as they are.
+      function trimCell(v) {
+        return typeof v === 'string' ? v.replace(/[\s\u3000]+/g, ' ').trim() : v;
+      }
+
+      function applyHeaderRow(h) {
+        const rows  = sheetRowsAoa.slice(h + 1);
+        const width = Math.max(
+          (sheetRowsAoa[h] || []).length,
+          rows.reduce((m, r) => Math.max(m, (r || []).length), 0));
+
+        // Excel's used range runs far past the data, so a sheet arrives with
+        // columns that are empty top to bottom. Carrying them made the
+        // column pickers unusable and the preview mostly blank.
+        const keep = [];
+        for (let c = 0; c < width; c++) {
+          const head = trimCell((sheetRowsAoa[h] || [])[c] ?? '');
+          const used = rows.some(r => String(trimCell((r || [])[c] ?? '')) !== '');
+          if (String(head) !== '' || used) keep.push(c);
+        }
+
+        const names = headerNames(
+          keep.map(c => trimCell((sheetRowsAoa[h] || [])[c] ?? '')), keep.length);
+
+        sheetData = rows
+          .filter(r => keep.some(c => String(trimCell((r || [])[c] ?? '')) !== ''))
+          .map(r => {
+            const obj = {};
+            keep.forEach((c, i) => {
+              obj[names[i]] = (r && r[c] !== undefined) ? trimCell(r[c]) : '';
+            });
+            return obj;
+          });
+        allCols = names;
+      }
+
+      function loadSheet(name, headerRow) {
+        const ws = fillMergedCells(workbook.Sheets[name]);
+        sheetRowsAoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (!sheetRowsAoa.length) { status.className = 'error'; status.textContent = 'Sheet is empty.'; return; }
+
+        prevSortCol = null; prevSortDir = 1;
+        const h = headerRow === undefined ? guessHeaderRow(sheetRowsAoa) : headerRow;
+        headerRowInput.value = h + 1;
+        applyHeaderRow(h);
+        if (!sheetData.length) { status.className = 'error'; status.textContent = 'No rows below that header row.'; return; }
         groupCols = [];
         populateColumns(allCols);
         renderPreview();
@@ -2382,15 +1510,46 @@
         runBtn.disabled = false;
       }
 
+      // The preview sorts the same way the result does: click a heading to
+      // order by it, click again to reverse. Sorting the whole sheet, not
+      // just the rows on screen, so the first page is the real first page.
+      let prevSortCol = null, prevSortDir = 1;
+
+      function previewRows() {
+        if (!prevSortCol) return sheetData;
+        const dir = prevSortDir;
+        return [...sheetData].sort((a, b) => {
+          const x = a[prevSortCol], y = b[prevSortCol];
+          if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
+          return String(x ?? '').localeCompare(String(y ?? '')) * dir;
+        });
+      }
+
       function renderPreview() {
         const previewCard  = document.getElementById('gb-preview-card');
         const previewHead  = document.getElementById('gb-preview-head');
         const previewBody  = document.getElementById('gb-preview-body');
         const previewCount = document.getElementById('gb-preview-count');
 
-        previewHead.innerHTML = '<tr>' + allCols.map(c => `<th>${c}</th>`).join('') + '</tr>';
+        previewHead.innerHTML = '<tr>' + allCols.map(c => {
+          const on = c === prevSortCol;
+          return `<th class="gb-sortable${on ? ' gb-sorted' : ''}" data-col="${
+            String(c).replace(/"/g, '&quot;')}" title="Sort by ${
+            String(c).replace(/"/g, '&quot;')}">${c}${
+            on ? `<span class="gb-arrow">${prevSortDir > 0 ? '▲' : '▼'}</span>` : ''}</th>`;
+        }).join('') + '</tr>';
+
+        previewHead.querySelectorAll('.gb-sortable').forEach(th => {
+          th.addEventListener('click', () => {
+            const c = th.dataset.col;
+            if (prevSortCol === c) prevSortDir = -prevSortDir;
+            else { prevSortCol = c; prevSortDir = 1; }
+            renderPreview();
+          });
+        });
+
         previewBody.innerHTML = '';
-        sheetData.slice(0, PREVIEW_ROWS).forEach(row => {
+        previewRows().slice(0, PREVIEW_ROWS).forEach(row => {
           const tr = document.createElement('tr');
           tr.innerHTML = allCols.map(c => {
             const v = row[c];
@@ -2448,6 +1607,7 @@
         groupCols.forEach((c, i) => totals[c] = i === 0 ? 'TOTAL' : '');
         numericCols.forEach(c => totals[c] = resultRows.reduce((s, r) => s + r[c], 0));
 
+        sortCol = null; sortDir = 1;
         renderResult(groupCols, numericCols, resultRows, totals);
         status.className = '';
         status.textContent = '';
@@ -2460,22 +1620,74 @@
           : n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
-      function renderResult(gCols, nCols, rows, totals) {
+      /* Which column the result is ordered by. Null keeps the grouping order
+         (first group column, then the next). Clicking a heading re-orders,
+         which is how rows sharing a warehouse code are brought together. */
+      let sortCol = null, sortDir = 1;
+      let lastResult = null;
+
+      function sortedRows(gCols, rows) {
+        const out = [...rows];
+        const cmp = (a, b, c) => {
+          const x = a[c], y = b[c];
+          if (typeof x === 'number' && typeof y === 'number') return x - y;
+          // Plain text order. Numeric collation read "19QIGEAT" as nineteen
+          // and filed it after "2CA86HYS", which is not how a reference
+          // list reads.
+          return String(x ?? '').localeCompare(String(y ?? ''));
+        };
+        out.sort((a, b) => {
+          if (sortCol) {
+            const d = cmp(a, b, sortCol) * sortDir;
+            if (d !== 0) return d;
+          }
+          // Within equal values, keep the grouping order so the block reads
+          // the same way every time.
+          for (const c of gCols) {
+            if (c === sortCol) continue;
+            const d = cmp(a, b, c);
+            if (d !== 0) return d;
+          }
+          return 0;
+        });
+        return out;
+      }
+
+      function renderResult(gCols, nCols, rowsIn, totals) {
+        lastResult = { gCols, nCols, rows: rowsIn, totals };
         const cols = [...gCols, ...nCols];
+        const rows = sortedRows(gCols, rowsIn);
         exportData = [cols, ...rows.map(r => cols.map(c => r[c])), cols.map(c => totals[c])];
 
         document.getElementById('gb-result-head').innerHTML =
-          '<tr>' + cols.map((c, i) =>
-            `<th${i < gCols.length ? '' : ' style="text-align:right"'}>${c}</th>`
-          ).join('') + '</tr>';
+          '<tr>' + cols.map((c, i) => {
+            const on = c === sortCol;
+            return `<th class="gb-sortable${on ? ' gb-sorted' : ''}" data-col="${
+              String(c).replace(/"/g, '&quot;')}"${i < gCols.length ? '' : ' style="text-align:right"'}
+              title="Sort by ${String(c).replace(/"/g, '&quot;')}">${c}${
+              on ? `<span class="gb-arrow">${sortDir > 0 ? '▲' : '▼'}</span>` : ''}</th>`;
+          }).join('') + '</tr>';
 
         const tbody = document.getElementById('gb-result-body');
         tbody.innerHTML = '';
-        rows.forEach(row => {
+        rows.forEach((row, ri) => {
           const tr = document.createElement('tr');
-          tr.innerHTML = cols.map((c, i) =>
-            `<td class="${i >= gCols.length ? 'num' : ''}">${i >= gCols.length ? fmt(row[c]) : row[c]}</td>`
-          ).join('');
+          // Repeating the same code down every row buries the grouping, so a
+          // run shows its value once and is ruled off at its end.
+          const runCol = sortCol && gCols.includes(sortCol) ? sortCol : gCols[0];
+          const prev = rows[ri - 1], next = rows[ri + 1];
+          const sameAsPrev = prev && String(prev[runCol]) === String(row[runCol]);
+          const endsRun = !next || String(next[runCol]) !== String(row[runCol]);
+          if (endsRun) tr.className = 'gb-run-end';
+          // Every cell shows its value. Printing a run's code only on its
+          // first row read as missing data, which in a tool for reading
+          // data is the one thing it must never do. The rule below the
+          // last row of a run marks the grouping instead.
+          tr.innerHTML = cols.map((c, i) => {
+            if (i >= gCols.length) return `<td class="num">${fmt(row[c])}</td>`;
+            const repeat = c === runCol && sameAsPrev ? ' class="gb-run-repeat"' : '';
+            return `<td${repeat}>${row[c]}</td>`;
+          }).join('');
           tbody.appendChild(tr);
         });
 
@@ -2485,6 +1697,15 @@
           `<td class="${i >= gCols.length ? 'num' : ''}">${i >= gCols.length ? fmt(totals[c]) : totals[c]}</td>`
         ).join('');
         tbody.appendChild(tr);
+
+        document.getElementById('gb-result-head').querySelectorAll('.gb-sortable').forEach(th => {
+          th.addEventListener('click', () => {
+            const c = th.dataset.col;
+            if (sortCol === c) sortDir = -sortDir; else { sortCol = c; sortDir = 1; }
+            const r = lastResult;
+            renderResult(r.gCols, r.nCols, r.rows, r.totals);
+          });
+        });
 
         document.getElementById('gb-result-title').textContent = `Grouped by: ${gCols.join(' › ')}`;
         document.getElementById('gb-row-count').textContent = `${rows.length} groups`;
