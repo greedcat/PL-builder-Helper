@@ -116,8 +116,17 @@ function getSummaryDF(headers, rows) {
     const plt = parseFloat(row[pi]); if (!isNaN(plt)) g.pallet += plt;
   }
 
+  // A pallet carries cartons, so a destination can never need more pallets
+  // than it has cartons. The estimate divides volume by a nominal pallet
+  // load, which for a few very large cartons produced answers like five
+  // skids for two cartons.
+  const estimate = (g) => {
+    const raw = Math.ceil(g.pallet - 0.05);
+    return g.Carton > 0 ? Math.min(raw, g.Carton) : raw;
+  };
+
   return {
     headers: ['Destination', 'Carton', 'pallet_round_count', 'pallet_number'],
-    rows:    [...groups.values()].map(g => [g.Destination, g.Carton, Math.ceil(g.pallet - 0.05), g.pallet])
+    rows:    [...groups.values()].map(g => [g.Destination, g.Carton, estimate(g), g.pallet])
   };
 }
