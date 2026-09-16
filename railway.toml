@@ -1,0 +1,10 @@
+# Used only by a service whose root directory is the repository root.
+# The original backend service builds from server/ and reads
+# server/railway.toml, so it is unaffected by this file.
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

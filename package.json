@@ -1,0 +1,9 @@
+{
+  "name": "pl-builder-helper-app",
+  "private": true,
+  "description": "Serves the browser app. The config API lives in server/server.js, which needs MongoDB; this entry point serves the static app alone and forwards /api to whichever backend API_TARGET names.",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server/static-server.js"
+  }
+}
