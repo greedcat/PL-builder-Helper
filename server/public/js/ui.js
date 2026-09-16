@@ -411,6 +411,10 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null } = {}) {
   headers.forEach(h => {
     html += `<th>${escapeHtml(h ?? '').replace(/\n/g, '<br>')}</th>`;
   });
+  // Empty trailing column. It takes whatever width is left over, so the
+  // real columns size to their content instead of one of them stretching
+  // across half the card.
+  html += '<th class="pl-fill" aria-hidden="true"></th>';
   html += '</tr></thead><tbody>';
   rows.forEach((row, ri) => {
     const cls = splitAfter && splitAfter.has(ri) && ri < rows.length - 1 ? ' class="pl-group-end"' : '';
@@ -427,6 +431,7 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null } = {}) {
       html += `<td${attrs}${editKey ? '' : (numCls ? ` class="${numCls.trim()}"` : '')}>${
         shown != null ? escapeHtml(String(shown)) : ''}</td>`;
     });
+    html += '<td class="pl-fill"></td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
