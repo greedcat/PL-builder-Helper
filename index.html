@@ -977,8 +977,11 @@
     #tab-packing-list .pl-out-table th.pl-fill,
     #tab-packing-list .pl-out-table td.pl-fill { width: 100%; border-right: none; padding: 0; }
     #tab-packing-list .pl-out-table table th { white-space: nowrap; }
-    #tab-packing-list .pl-out-table table td { max-width: 260px; white-space: normal; overflow-wrap: anywhere; }
+    /* One value per line. A cap keeps a long destination from stretching its
+       column; the full text stays available as a tooltip and while editing. */
+    #tab-packing-list .pl-out-table table td { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #tab-packing-list .pl-out-table table td.pl-fill { max-width: none; }
+    #tab-packing-list .pl-out-table table td.pl-edit:focus { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
     #tab-packing-list .pl-out-table table th br { display: block; }
 </style>
 </head>

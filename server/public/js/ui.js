@@ -430,8 +430,12 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null } = {}) {
         + ` data-table="${editKey}" data-row="${ri}" data-col="${escapeHtml(String(name ?? ''))}"`
         : '';
       const shown = tidyNumber(v);
-      html += `<td${attrs}${editKey ? '' : (numCls ? ` class="${numCls.trim()}"` : '')}>${
-        shown != null ? escapeHtml(String(shown)) : ''}</td>`;
+      const text = shown != null ? String(shown) : '';
+      // Long values are clipped to keep one value per line, so carry the
+      // whole thing in a tooltip.
+      const tip = text.length > 24 ? ` title="${escapeHtml(text)}"` : '';
+      html += `<td${attrs}${editKey ? '' : (numCls ? ` class="${numCls.trim()}"` : '')}${tip}>${
+        escapeHtml(text)}</td>`;
     });
     html += '<td class="pl-fill"></td>';
     html += '</tr>';
