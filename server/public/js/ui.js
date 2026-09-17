@@ -1140,7 +1140,9 @@ restoreCellOrder();
 // The container-detail block that sits at the top of the generated PL sheet.
 // Mirrors writePackingList so the preview shows the real output, not a
 // fragment of it.
+let lastNumDests = 0;
 function renderPreviewHead(numDests) {
+  lastNumDests = numDests;
   const { cName, containerName } = readClientContainer();
   const blank = v => (v ? escapeHtml(v) : '<span class="pl-out-blank">not set</span>');
   document.getElementById('plPreviewHead').innerHTML = `
@@ -1148,6 +1150,7 @@ function renderPreviewHead(numDests) {
     <div class="pl-out-grid">
       <span class="pl-out-k">Client Name</span><span class="pl-out-v">${blank(cName)}</span>
       <span class="pl-out-k">Container #</span><span class="pl-out-v">${blank(containerName)}</span>
+      <span class="pl-out-k">File #</span><span class="pl-out-v">${blank(readFileNo())}</span>
       <span class="pl-out-k"># of Destinations</span><span class="pl-out-v">${numDests}</span>
       <span class="pl-out-k">Destuffing Time</span><span class="pl-out-v"><span class="pl-out-blank">filled in by hand</span></span>
     </div>`;
@@ -1289,15 +1292,13 @@ function renderPreview(modH, modR, sumH, sumR, longDests) {
   previewSec.style.display = 'block';
 }
 
-// Client name and container number appear in the preview header, so keep it
-// live as they are typed.
-[clientNameInput, containerNoInput].forEach(input => {
+// Client name, container number and file number appear in the preview header,
+// so keep it live as they are typed.
+[clientNameInput, containerNoInput, fileNoInput].forEach(input => {
   input.addEventListener('input', () => {
     if (previewSec.style.display !== 'block') return;
-    const head = document.getElementById('plPreviewHead');
-    if (!head) return;
-    const shown = head.querySelectorAll('.pl-out-v')[2];
-    renderPreviewHead(shown ? shown.textContent.trim() : 0);
+    if (!document.getElementById('plPreviewHead')) return;
+    renderPreviewHead(lastNumDests);
   });
 });
 
