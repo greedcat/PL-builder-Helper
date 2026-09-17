@@ -47,6 +47,7 @@ function setExcelFile(file, dt) {
   columnOverrides = {};
   clearPreviewEdits();
   clearDestRenames();
+  clearLearnQueue();
   selectMode      = 'replace';
   hdrRowInput.value  = '';
   lastRowInput.value = '';
@@ -206,6 +207,7 @@ async function setActiveSheet(name) {
   columnOverrides = {};
   clearPreviewEdits();
   clearDestRenames();
+  clearLearnQueue();
   selectMode      = 'replace';
   hdrRowInput.value  = '';
   lastRowInput.value = '';
@@ -733,10 +735,35 @@ function columnMenuItems(abs, info) {
   });
   items.push({
     label: 'Drop from packing list',
-    note: isDrop ? 'current' : '',
+    note: isDrop ? 'current' : 'this file only',
     checked: isDrop,
     onPick: () => { columnOverrides[abs] = 'drop'; reapply(); },
   });
+
+  // Dropping the same wording on every file is a rule, not a decision to
+  // repeat. This writes it to the shared ignore list so the next sheet
+  // that uses the words drops the column without being asked.
+  if (name != null && String(name).trim() !== '' && !alreadyKnown('NO_NEED_COL', name)) {
+    const queued = isQueuedToLearn('NO_NEED_COL', name);
+    items.push({
+      label: 'Always ignore this wording',
+      note: queued ? 'queued' : 'saved when the list is generated',
+      checked: queued,
+      onPick: () => {
+        columnOverrides[abs] = 'drop';
+        if (queued) {
+          unqueueLearn('NO_NEED_COL', name);
+          showStatus(`“${String(name)}” will not be added to the ignore list.`, 'info');
+        } else {
+          queueLearn('NO_NEED_COL', String(name));
+          showStatus(`“${String(name)}” will be added to the shared ignore list `
+            + 'once the packing list is generated.', 'info');
+        }
+        reapply();
+      },
+    });
+  }
+
   if (columnOverrides[abs] !== undefined) {
     items.push({
       label: 'Back to the ignore list',
@@ -791,6 +818,47 @@ function reapply() {
 // ─────────────────────────────────────────────────────────────
 const ROLE_KEYWORD_LIST = { Carton: 'CARTON_KEYWORDS', Weight: 'WEIGHT_KEYWORDS', CMB: 'CBM_KEYWORDS' };
 
+/* Wordings the user has asked the app to learn, held until the packing
+   list is actually written. Nothing reaches the shared lists on the
+   strength of a menu click alone: a mapping is only worth keeping once
+   it has produced a file. */
+let learnQueue = [];
+
+function isQueuedToLearn(listKey, name) {
+  return learnQueue.some(q => q.listKey === listKey && q.name === String(name));
+}
+
+function queueLearn(listKey, name) {
+  if (!isQueuedToLearn(listKey, name)) learnQueue.push({ listKey, name: String(name) });
+}
+
+function unqueueLearn(listKey, name) {
+  learnQueue = learnQueue.filter(q => !(q.listKey === listKey && q.name === String(name)));
+}
+
+function clearLearnQueue() { learnQueue = []; }
+
+// Writes the queue to the shared lists. Called once a packing list has
+// been generated, never before.
+async function flushLearnQueue() {
+  if (!learnQueue.length) return null;
+  const byList = new Map();
+  for (const q of learnQueue) {
+    if (alreadyKnown(q.listKey, q.name)) continue;
+    if (!byList.has(q.listKey)) byList.set(q.listKey, [...(getCfgList(q.listKey) || [])]);
+    byList.get(q.listKey).push(q.name);
+  }
+  const names = learnQueue.map(q => q.name);
+  learnQueue = [];
+  if (!byList.size) return null;
+  for (const [listKey, values] of byList) {
+    setCfgList(listKey, values);
+    await persistConfigList(listKey, values);
+  }
+  renderConfigPanel();
+  return names;
+}
+
 function alreadyKnown(listKey, name) {
   const norm = v => String(v).normalize('NFKC').toLowerCase().replace(/\s+/g, '').trim();
   return (getCfgList(listKey) || []).some(v => norm(v) === norm(name));
@@ -840,12 +908,16 @@ function renderLearnBar(info) {
       const it = items[Number(btn.dataset.i)];
       btn.disabled = true;
       btn.textContent = 'Saving…';
-      const values = [...(getCfgList(it.listKey) || []), String(it.name)];
-      setCfgList(it.listKey, values);
-      await persistConfigList(it.listKey, values);
-      renderConfigPanel();
-      // The wording is known now, so detection finds it without the override.
-      if (it.role) delete roleOverrides[it.role];
+      queueLearn(it.listKey, String(it.name));
+      try {
+        await flushLearnQueue();
+        // The wording is known now, so detection finds it without the override.
+        if (it.role) delete roleOverrides[it.role];
+        showStatus(`“${String(it.name)}” saved. Remove it under Settings if that was wrong.`, 'success');
+      } catch (err) {
+        console.error(err);
+        showStatus('Could not save to the shared lists: ' + err.message, 'error');
+      }
       reapply();
     });
   });
@@ -1325,6 +1397,20 @@ document.getElementById('plForm').addEventListener('submit', async e => {
                            downloadName(containerName), readFileNo());
 
     showStatus('✓ Packing list downloaded successfully.', 'success');
+
+    // The file exists, so anything the user asked the app to learn is now
+    // worth keeping. Nothing was written to the shared lists before this.
+    try {
+      const saved = await flushLearnQueue();
+      if (saved && saved.length) {
+        showStatus(`✓ Packing list downloaded. Saved ${saved.join(', ')} to the `
+          + 'shared lists — remove under Settings if that was wrong.', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      showStatus('Packing list downloaded, but the shared lists could not be '
+        + 'updated: ' + err.message, 'error');
+    }
 
     // The mapping produced a real file, so now it is worth keeping.
     const data  = await loadSheetData(file);
