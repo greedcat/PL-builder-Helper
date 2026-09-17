@@ -38,7 +38,6 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   const pairs = [
     ['Client Name',     cName,     'Container #',       containerName],
     ['File #',          fileNo || '', '# of Destinations', numDests],
-    ['Destuffing Time', '',        '',                  ''],
   ];
   pairs.forEach(([l1, v1, l2, v2], i) => {
     const r = 2 + i;
@@ -50,7 +49,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     styledCell(wsPL, r, 3,        { size: 18, bold: true }).value = v1;
     styledCell(wsPL, r, half + 1, { size: 18, bold: true }).value = l2;
     styledCell(wsPL, r, half + 3, { size: 18, bold: true }).value = v2;
-    wsPL.getRow(r).height = 55; // roomy: Destuffing Time is written in by hand
+    wsPL.getRow(r).height = 55;
   });
 
   const BLANK_ROW = 2 + pairs.length;
