@@ -451,7 +451,7 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
       // spells its header differently.
       const tintCls = (tints && ci === 0 && tints[ri]) ? ' ' + tints[ri] : '';
       const attrs = editKey
-        ? ` contenteditable="true" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}${tintCls}"`
+        ? ` tabindex="0" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}${tintCls}"`
         + ` data-table="${editKey}" data-row="${rowId}" data-col="${escapeHtml(String(name ?? ''))}"`
         : '';
       const shown = tidyNumber(v);
@@ -483,20 +483,97 @@ function commitCellEdit(td) {
   refreshPreview().catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
 }
 
+// ─────────────────────────────────────────────────────────────
+// Cells behave the way a spreadsheet's do. A cell is selected first and
+// edited second: typing on a selected cell replaces the whole value,
+// Backspace empties it, and a double-click opens it with the caret where
+// it was clicked so one character can be corrected.
+// ─────────────────────────────────────────────────────────────
+function isEditing(td) { return td.classList.contains('pl-editing'); }
+
+function caretToEnd(el) {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  r.collapse(false);
+  const s = window.getSelection();
+  s.removeAllRanges();
+  s.addRange(r);
+}
+
+function caretAtPoint(x, y) {
+  let r = null;
+  if (document.caretRangeFromPoint) r = document.caretRangeFromPoint(x, y);
+  else if (document.caretPositionFromPoint) {
+    const p = document.caretPositionFromPoint(x, y);
+    if (p) { r = document.createRange(); r.setStart(p.offsetNode, p.offset); r.collapse(true); }
+  }
+  if (!r) return false;
+  const s = window.getSelection();
+  s.removeAllRanges();
+  s.addRange(r);
+  return true;
+}
+
+// `initial` replaces the value outright — that is a typed character
+// landing on a selected cell. `point` puts the caret where the mouse was.
+function startCellEdit(td, { initial = null, point = null } = {}) {
+  if (isEditing(td)) return;
+  td.dataset.original = td.textContent;
+  td.contentEditable  = 'true';
+  td.classList.add('pl-editing');
+  if (initial != null) td.textContent = initial;
+  td.focus({ preventScroll: true });
+  if (point && caretAtPoint(point.x, point.y)) return;
+  caretToEnd(td);
+}
+
+function endCellEdit(td, { commit = true } = {}) {
+  if (!isEditing(td)) return;
+  if (!commit) td.textContent = td.dataset.original ?? '';
+  td.classList.remove('pl-editing');
+  td.contentEditable = 'false';
+  if (commit) commitCellEdit(td);
+}
+
 // One set of listeners on the preview, so re-rendering never loses them.
-previewSec.addEventListener('focusin', e => {
+// A plain click only selects: the browser gives the cell focus because it
+// carries a tabindex, and nothing opens until a key or a double-click.
+previewSec.addEventListener('dblclick', e => {
   const td = e.target.closest('td.pl-edit');
-  if (td) td.dataset.original = td.textContent;
+  if (!td || isEditing(td)) return;
+  e.preventDefault();
+  startCellEdit(td, { point: { x: e.clientX, y: e.clientY } });
 });
+
 previewSec.addEventListener('focusout', e => {
   const td = e.target.closest('td.pl-edit');
-  if (td) commitCellEdit(td);
+  if (td) endCellEdit(td);
 });
+
 previewSec.addEventListener('keydown', e => {
   const td = e.target.closest('td.pl-edit');
   if (!td) return;
-  if (e.key === 'Enter') { e.preventDefault(); td.blur(); }
-  if (e.key === 'Escape') { td.textContent = td.dataset.original ?? ''; td.blur(); }
+
+  if (isEditing(td)) {
+    if (e.key === 'Enter')  { e.preventDefault(); endCellEdit(td); }
+    if (e.key === 'Escape') { e.preventDefault(); endCellEdit(td, { commit: false }); }
+    return;                                   // every other key edits text
+  }
+
+  // Selected, not open. These are the spreadsheet's keys.
+  if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault();
+    td.dataset.original = td.textContent;
+    td.textContent = '';
+    commitCellEdit(td);
+    return;
+  }
+  if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); startCellEdit(td); return; }
+  if (e.key === 'Escape') { td.blur(); return; }
+  if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    e.preventDefault();
+    startCellEdit(td, { initial: e.key });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────
