@@ -114,11 +114,16 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   const SUM_HDR_ROW    = SUM_TITLE_ROW + 1;
   const SUM_DATA_START = SUM_HDR_ROW + 1;
 
-  wsPL.mergeCells(SUM_TITLE_ROW, 1, SUM_TITLE_ROW, sectionCols);
+  // The summary is its own table of nine fixed columns, A to I. The loads
+  // above it can be wider — every column carried through from the client's
+  // sheet adds one — so the summary is measured against itself, not against
+  // them, or its heading overhangs the table it belongs to.
+  const SUM_HEADERS = PL_SUMMARY_HEADERS;
+  const sumCols     = SUM_HEADERS.length;
+
+  wsPL.mergeCells(SUM_TITLE_ROW, 1, SUM_TITLE_ROW, sumCols);
   styledCell(wsPL, SUM_TITLE_ROW, 1, { size: 24, bold: true }).value = PL_SECTION_SUMMARY;
   wsPL.getRow(SUM_TITLE_ROW).height = 50;
-
-  const SUM_HEADERS = PL_SUMMARY_HEADERS;
   SUM_HEADERS.forEach((lbl, ci) => {
     styledCell(wsPL, SUM_HDR_ROW, ci + 1, { size: 14, bold: true, wrap: true }).value = lbl;
   });
@@ -126,7 +131,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
 
   sumVisR.forEach((row, ri) => {
     const rn = SUM_DATA_START + ri;
-    for (let ci = 0; ci < 9; ci++) {
+    for (let ci = 0; ci < sumCols; ci++) {
       styledCell(wsPL, rn, ci + 1, { size: 16 }).value = ci < row.length ? (tidyNumber(row[ci]) ?? '') : '';
     }
     wsPL.getRow(rn).height = 85; // roomy: actual skid counts are written in by hand
@@ -137,14 +142,14 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   // shared edge (bottom of the blank row / top of the next section header)
   // so Excel shows it regardless of which side it picks.
   const heavy = { style: 'thick' };
-  function sectionLine(blankRow, nextRow) {
-    for (let c = 1; c <= sectionCols; c++) {
+  function sectionLine(blankRow, nextRow, cols = sectionCols) {
+    for (let c = 1; c <= cols; c++) {
       const a = wsPL.getCell(blankRow, c); a.border = { ...a.border, bottom: heavy };
       const b = wsPL.getCell(nextRow,  c); b.border = { ...b.border, top:    heavy };
     }
   }
   sectionLine(LOADS_TITLE_ROW - 1, LOADS_TITLE_ROW); // container detail | loads
-  sectionLine(SUM_TITLE_ROW - 1,   SUM_TITLE_ROW);   // loads | summary
+  sectionLine(SUM_TITLE_ROW - 1,   SUM_TITLE_ROW, Math.max(sectionCols, sumCols)); // loads | summary
 
   // Auto-fit column widths from the table cells only (titles and the
   // container-detail block are merged across columns and must not count).
