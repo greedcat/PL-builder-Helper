@@ -97,10 +97,18 @@ async function showFileOnLoad() {
 
 // The status must agree with the legend: a range with no matched columns is
 // not a success, however many rows it happens to cover. Recomputed whenever
+// Rows the range covers that actually carry something. A gap left between
+// two blocks of the client's sheet sits inside the range but is not a line
+// of the packing list, and counting it said 8 lines where 6 were written.
+function countDataRows(data, range) {
+  return rangeDataRowIndices(range).filter(i =>
+    sliceRow(data.raw[i], range.firstCol, range.lastCol).some(v => !isEmpty(v))).length;
+}
+
 // the range or a column mapping changes.
 function updateLoadStatus(data) {
   const range   = getRange(data);
-  const nData   = range.lastRow - range.hdrRow;
+  const nData   = countDataRows(data, range);
   const missing = classifyColumns(data, range).missing;
 
   if (nData < 1) {
@@ -948,7 +956,7 @@ function renderSheetLegend(info, range, data) {
   const hdrNo     = range.hdrRow + 1;
   const firstData = range.hdrRow + 2;
   const lastData  = range.lastRow + 1;
-  const nData     = rangeDataRowIndices(range).length;
+  const nData     = countDataRows(data, range);
   const colSpan   = `${colLetter(range.firstCol)}–${colLetter(range.lastCol)}`;
 
   const mode = range.auto

@@ -34,15 +34,20 @@ function readExcel(headers, rows, overrides = {}, dropIdx = new Set()) {
 }
 
 function modifyDF(headers, rows, matchDict) {
-  // Forward-fill destination
+  // Forward-fill destination. Blank lines are dropped first: filling one
+  // gave it a destination, which then carried it past the empty-row check
+  // below, and a gap between two blocks of the client's sheet turned into
+  // load lines with nothing on them.
   const destIdx = headers.indexOf(matchDict['Destination']);
   let lastDest  = null;
-  const filled  = rows.map(r => {
+  const filled  = [];
+  for (const r of rows) {
+    if (!r.some(v => !isEmpty(v))) continue;
     const row = [...r];
     if (!isEmpty(row[destIdx])) lastDest = row[destIdx];
     else row[destIdx] = lastDest;
-    return row;
-  });
+    filled.push(row);
+  }
 
   // Reorder: matched columns first, then extras (index-based to preserve null headers)
   const matched    = Object.values(matchDict).filter(v => v && v !== 'null');

@@ -198,24 +198,66 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     for (let c = c1; c <= c2; c++) w += wsPL.getColumn(c).width || 12;
     return w;
   };
-  const fitSpan = (c1, c2, text, size) => {
+  // No column may grow without limit. A client name of five hundred
+  // characters would otherwise widen its columns off the page — and take the
+  // loads table's columns with it, since they are the same columns. Past the
+  // cap the cell wraps instead, and its row grows to show every line.
+  const COL_CAP = 50;
+  const fitSpan = (r, c1, c2, text, size) => {
     const str = String(text ?? '');
-    if (!str) return;
+    if (!str) return 1;
     const need = dispLen(str) * (size / 11) * 1.1 + 3;
-    const have = spanWidth(c1, c2);
-    if (have >= need) return;
-    const add = (need - have) / (c2 - c1 + 1);
-    for (let c = c1; c <= c2; c++) {
-      wsPL.getColumn(c).width = (wsPL.getColumn(c).width || 12) + add;
+    let have = spanWidth(c1, c2);
+    if (have < need) {
+      const room = [];
+      for (let c = c1; c <= c2; c++) room.push(Math.max(0, COL_CAP - (wsPL.getColumn(c).width || 12)));
+      const total = room.reduce((a, b) => a + b, 0);
+      if (total > 0) {
+        const add = Math.min(need - have, total);
+        let i = 0;
+        for (let c = c1; c <= c2; c++, i++) {
+          wsPL.getColumn(c).width = (wsPL.getColumn(c).width || 12) + add * (room[i] / total);
+        }
+      }
+      have = spanWidth(c1, c2);
     }
+    if (have >= need) return 1;
+    const cl = wsPL.getCell(r, c1);
+    cl.alignment = { ...cl.alignment, wrapText: true };
+    return Math.min(12, Math.ceil(need / Math.max(have - 2, 4)));
   };
-  for (const cells of detail) {
+  detail.forEach((cells, i) => {
+    const r = 2 + i;
+    let lines = 1;
     for (const d of cells) {
-      fitSpan(d.l1, d.l2, d.label, 18);
-      fitSpan(d.v1, d.v2, d.value, 18);
+      lines = Math.max(lines, fitSpan(r, d.l1, d.l2, d.label, 18));
+      lines = Math.max(lines, fitSpan(r, d.v1, d.v2, d.value, 18));
     }
-  }
-  fitSpan(1, sectionCols, 'PACKING LIST AND DESTUFFING INSTRUCTION (FBA)', 28);
+    if (lines > 1) wsPL.getRow(r).height = Math.min(409, Math.max(55, lines * 26));
+  });
+  const titleLines = fitSpan(1, 1, sectionCols, 'PACKING LIST AND DESTUFFING INSTRUCTION (FBA)', 28);
+  if (titleLines > 1) wsPL.getRow(1).height = Math.min(409, titleLines * 40);
+
+  // The same promise for the tables: with the widths settled, a value longer
+  // than its column wraps and its row grows, rather than being quietly cut
+  // off at the cell border.
+  const growRow = (r, cols, size, base) => {
+    let lines = 1;
+    for (let c = 1; c <= cols; c++) {
+      const cl = wsPL.getCell(r, c);
+      if (cl.isMerged && cl.master !== cl) continue;
+      const v = cl.value;
+      if (v == null || v === '') continue;
+      const w = wsPL.getColumn(c).width || 12;
+      const need = dispLen(String(v)) * (size / 11) * 1.1;
+      if (need <= w) continue;
+      cl.alignment = { ...cl.alignment, wrapText: true };
+      lines = Math.max(lines, Math.min(12, Math.ceil(need / Math.max(w - 1, 4))));
+    }
+    if (lines > 1) wsPL.getRow(r).height = Math.min(409, Math.max(base, lines * size * 1.5));
+  };
+  for (let r = DATA_START; r <= lastDataRow; r++) growRow(r, visH.length, 16, 30);
+  for (let r = SUM_DATA_START; r <= plLastRow; r++) growRow(r, sumCols, 16, 85);
 
   // Print setup: landscape, one page wide, repeat nothing.
   wsPL.pageSetup = {
