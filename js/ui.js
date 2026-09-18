@@ -518,6 +518,7 @@ function caretAtPoint(x, y) {
 // landing on a selected cell. `point` puts the caret where the mouse was.
 function startCellEdit(td, { initial = null, point = null } = {}) {
   if (isEditing(td)) return;
+  dropRange();                     // a cell being typed into is not a block
   td.dataset.original = td.textContent;
   td.contentEditable  = 'true';
   td.classList.add('pl-editing');
@@ -534,6 +535,106 @@ function endCellEdit(td, { commit = true } = {}) {
   td.contentEditable = 'false';
   if (commit) commitCellEdit(td);
 }
+
+// ─────────────────────────────────────────────────────────────
+// Drag a rectangle across the preview and copy it, the way a spreadsheet
+// does. The range is geometric — row and column positions in the table —
+// so it survives nothing but the current render, which is all it needs.
+// ─────────────────────────────────────────────────────────────
+let rangeAnchor = null;      // { table, r, c }
+let rangeFocus  = null;
+let rangeDrag   = false;
+
+function cellRC(td) {
+  const tr = td.parentElement;
+  return { r: [...tr.parentElement.children].indexOf(tr), c: td.cellIndex };
+}
+
+function rangeCells() {
+  if (!rangeAnchor || !rangeFocus) return [];
+  const t = rangeAnchor.table;
+  const r1 = Math.min(rangeAnchor.r, rangeFocus.r), r2 = Math.max(rangeAnchor.r, rangeFocus.r);
+  const c1 = Math.min(rangeAnchor.c, rangeFocus.c), c2 = Math.max(rangeAnchor.c, rangeFocus.c);
+  const out = [];
+  const rows = [...t.querySelectorAll('tbody tr')];
+  for (let r = r1; r <= r2; r++) {
+    const tr = rows[r];
+    if (!tr) continue;
+    const line = [];
+    for (let c = c1; c <= c2; c++) {
+      const td = tr.children[c];
+      if (td && !td.classList.contains('pl-fill')) line.push(td);
+    }
+    if (line.length) out.push(line);
+  }
+  return out;
+}
+
+function clearRange() {
+  document.querySelectorAll('#tab-packing-list td.pl-range')
+    .forEach(td => td.classList.remove('pl-range'));
+}
+
+// Forgets the block as well as its paint. Clearing only the paint left the
+// copy handler still holding a rectangle, so Ctrl+C inside an open cell
+// copied the old block instead of the text being edited.
+function dropRange() {
+  rangeAnchor = null;
+  rangeFocus  = null;
+  rangeDrag   = false;
+  clearRange();
+}
+
+function paintRange() {
+  clearRange();
+  for (const line of rangeCells()) for (const td of line) td.classList.add('pl-range');
+}
+
+// Only a cell of one of the two preview tables, and never the spacer.
+function previewCell(target) {
+  const td = target && target.closest ? target.closest('#plPreviewData td, #plPreviewSummary td') : null;
+  if (!td || td.classList.contains('pl-fill')) return null;
+  return td;
+}
+
+previewSec.addEventListener('mousedown', e => {
+  const td = previewCell(e.target);
+  if (!td) return;
+  if (isEditing(td)) return;                   // a click inside an open cell
+  if (e.button !== 0) return;
+  // Taking the mousedown stops the browser selecting the table's text as
+  // the pointer moves; the cell is focused by hand instead.
+  e.preventDefault();
+  const rc = cellRC(td);
+  rangeAnchor = { table: td.closest('table'), r: rc.r, c: rc.c };
+  rangeFocus  = { r: rc.r, c: rc.c };
+  rangeDrag   = true;
+  paintRange();
+  if (td.classList.contains('pl-edit')) td.focus({ preventScroll: true });
+});
+
+previewSec.addEventListener('mouseover', e => {
+  if (!rangeDrag) return;
+  const td = previewCell(e.target);
+  if (!td || td.closest('table') !== rangeAnchor.table) return;
+  rangeFocus = cellRC(td);
+  paintRange();
+});
+
+document.addEventListener('mouseup', () => { rangeDrag = false; });
+
+// Copy the rectangle as tab-separated text, which is what a spreadsheet
+// reads back as cells.
+document.addEventListener('copy', e => {
+  const lines = rangeCells();
+  if (lines.length < 1) return;
+  if (lines.length === 1 && lines[0].length === 1) return;   // one cell: let the browser copy
+  const text = lines.map(line => line.map(td => td.textContent.trim()).join('\t')).join('\n');
+  e.clipboardData.setData('text/plain', text);
+  e.preventDefault();
+  showStatus(`Copied ${lines.length} row${lines.length === 1 ? '' : 's'} \u00d7 `
+    + `${lines[0].length} column${lines[0].length === 1 ? '' : 's'}.`, 'success');
+});
 
 // One set of listeners on the preview, so re-rendering never loses them.
 // A plain click only selects: the browser gives the cell focus because it
