@@ -165,15 +165,17 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     const need  = wrap
       ? Math.max(...lines.map(l => Math.max(dispLen(l) / 2, longestRun(l))))
       : Math.max(...lines.map(dispLen));
-    return need * (size / 11) * 1.1 + 2;
+    // The trailing margin is what keeps a value off the cell border. At 2 a
+    // long FBA id ran edge to edge and the sheet read as a solid block.
+    return need * (size / 11) * 1.1 + 4.5;
   };
   const measureRows = [];
   for (let r = DATA_HDR_ROW; r <= lastDataRow; r++) measureRows.push(r);
   for (let r = SUM_HDR_ROW;  r <= plLastRow;   r++) measureRows.push(r);
   for (let c = 1; c <= sectionCols; c++) {
-    let w = 10;
+    let w = 12;
     for (const r of measureRows) w = Math.max(w, measure(r, c));
-    wsPL.getColumn(c).width = Math.min(w, 45);
+    wsPL.getColumn(c).width = Math.min(w, 50);
   }
 
   // Print setup: landscape, one page wide, repeat nothing.
