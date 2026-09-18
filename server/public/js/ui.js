@@ -177,6 +177,17 @@ async function loadSheetData(file) {
   // Done once here, not per render: from this point the sheet has a real
   // value in every row of a merged destination.
   fillMergedRows(wbIn.Sheets[activeSheet], raw);
+
+  // Excel's used range runs well past the data — a sheet with nineteen rows
+  // of content routinely claims a thousand — and the grid would then draw a
+  // screenful of empty rows below the table. Trailing empties only, so every
+  // row index still matches the row number in Excel.
+  let lastUsed = -1;
+  for (let i = raw.length - 1; i >= 0; i--) {
+    if (raw[i] && raw[i].some(v => !isEmpty(v))) { lastUsed = i; break; }
+  }
+  raw.length = Math.max(lastUsed + 1, 1);
+
   const cleaned    = [];
   const cleanedIdx = [];
   raw.forEach((r, i) => {
