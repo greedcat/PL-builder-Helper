@@ -1540,9 +1540,10 @@ function renderPreviewHead(numDests) {
     <div class="pl-out-title">PACKING LIST AND DESTUFFING INSTRUCTION (FBA)</div>
     <div class="pl-out-grid">
       <span class="pl-out-k">Client Name</span><span class="pl-out-v">${blank(cName)}</span>
-      <span class="pl-out-k">Container #</span><span class="pl-out-v">${blank(containerName)}</span>
       <span class="pl-out-k">File #</span><span class="pl-out-v">${blank(readFileNo())}</span>
+      <span class="pl-out-k">Container #</span><span class="pl-out-v">${blank(containerName)}</span>
       <span class="pl-out-k"># of Destinations</span><span class="pl-out-v">${numDests}</span>
+      <span class="pl-out-k">Destuffing Time</span><span class="pl-out-v"><span class="pl-out-blank">filled in by hand</span></span>
     </div>`;
 }
 

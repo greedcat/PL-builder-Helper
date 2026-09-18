@@ -32,27 +32,33 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   styledCell(wsPL, 1, 1, { size: 28, bold: true, wrap: true }).value = 'PACKING LIST AND DESTUFFING INSTRUCTION (FBA)';
   wsPL.getRow(1).height = 60;
 
-  // Two label/value pairs per row. Labels span 2 columns, values span the
-  // rest of the half so the block lines up with the tables below.
-  const half  = Math.ceil(sectionCols / 2);
-  const pairs = [
-    ['Client Name',     cName,     'Container #',       containerName],
-    ['File #',          fileNo || '', '# of Destinations', numDests],
+  // The detail block. Row 2 carries three label/value pairs, row 3 two split
+  // down the middle. Spans are fixed except the last value on each row,
+  // which runs out to the final column however wide the sheet has become.
+  const half   = Math.ceil(sectionCols / 2);
+  const detail = [
+    [ // row 2
+      { label: 'Client Name', value: cName,         l1: 1, l2: 2, v1: 3, v2: 4 },
+      { label: 'File #',      value: fileNo || '',  l1: 5, l2: 5, v1: 6, v2: 6 },
+      { label: 'Container #', value: containerName, l1: 7, l2: 8, v1: 9, v2: sectionCols },
+    ],
+    [ // row 3
+      { label: '# of Destinations', value: numDests, l1: 1,        l2: 2,        v1: 3,        v2: half },
+      { label: 'Destuffing Time',   value: '',       l1: half + 1, l2: half + 2, v1: half + 3, v2: sectionCols },
+    ],
   ];
-  pairs.forEach(([l1, v1, l2, v2], i) => {
+  detail.forEach((cells, i) => {
     const r = 2 + i;
-    wsPL.mergeCells(r, 1, r, 2);
-    wsPL.mergeCells(r, 3, r, half);
-    wsPL.mergeCells(r, half + 1, r, half + 2);
-    wsPL.mergeCells(r, half + 3, r, sectionCols);
-    styledCell(wsPL, r, 1,        { size: 18, bold: true }).value = l1;
-    styledCell(wsPL, r, 3,        { size: 18, bold: true }).value = v1;
-    styledCell(wsPL, r, half + 1, { size: 18, bold: true }).value = l2;
-    styledCell(wsPL, r, half + 3, { size: 18, bold: true }).value = v2;
+    for (const d of cells) {
+      wsPL.mergeCells(r, d.l1, r, d.l2);
+      wsPL.mergeCells(r, d.v1, r, d.v2);
+      styledCell(wsPL, r, d.l1, { size: 18, bold: true }).value = d.label;
+      styledCell(wsPL, r, d.v1, { size: 18, bold: true }).value = d.value;
+    }
     wsPL.getRow(r).height = 55;
   });
 
-  const BLANK_ROW = 2 + pairs.length;
+  const BLANK_ROW = 2 + detail.length;
   wsPL.getRow(BLANK_ROW).height = 20; // blank separator
 
   // Section title row. The word "LOADS" in column A is the marker code uses
@@ -182,6 +188,34 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     for (const r of measureRows) w = Math.max(w, measure(r, c));
     wsPL.getColumn(c).width = Math.min(w, 50);
   }
+
+  // The detail block is merged across columns, so it is measured after the
+  // tables rather than with them — measuring it alongside them once stretched
+  // every column to the width of the title. A merged label or value that
+  // would be cut off widens the columns it sits on, and only those.
+  const spanWidth = (c1, c2) => {
+    let w = 0;
+    for (let c = c1; c <= c2; c++) w += wsPL.getColumn(c).width || 12;
+    return w;
+  };
+  const fitSpan = (c1, c2, text, size) => {
+    const str = String(text ?? '');
+    if (!str) return;
+    const need = dispLen(str) * (size / 11) * 1.1 + 3;
+    const have = spanWidth(c1, c2);
+    if (have >= need) return;
+    const add = (need - have) / (c2 - c1 + 1);
+    for (let c = c1; c <= c2; c++) {
+      wsPL.getColumn(c).width = (wsPL.getColumn(c).width || 12) + add;
+    }
+  };
+  for (const cells of detail) {
+    for (const d of cells) {
+      fitSpan(d.l1, d.l2, d.label, 18);
+      fitSpan(d.v1, d.v2, d.value, 18);
+    }
+  }
+  fitSpan(1, sectionCols, 'PACKING LIST AND DESTUFFING INSTRUCTION (FBA)', 28);
 
   // Print setup: landscape, one page wide, repeat nothing.
   wsPL.pageSetup = {
