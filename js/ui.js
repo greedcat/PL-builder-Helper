@@ -439,19 +439,19 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
   html += '<th class="pl-fill" aria-hidden="true"></th>';
   html += '</tr></thead><tbody>';
   rows.forEach((row, ri) => {
-    const cls = splitAfter && splitAfter.has(ri) && ri < rows.length - 1 ? ' class="pl-group-end"' : '';
+    const rowCls = [];
+    if (splitAfter && splitAfter.has(ri) && ri < rows.length - 1) rowCls.push('pl-group-end');
+    // The destination's colour runs the width of the row, so a group reads
+    // as one band rather than one tinted cell.
+    if (tints && tints[ri]) rowCls.push(tints[ri]);
     const rowId = rowIds ? rowIds[ri] : ri;
-    html += `<tr${cls}>`;
+    html += `<tr${rowCls.length ? ` class="${rowCls.join(' ')}"` : ''}>`;
     row.forEach((v, ci) => {
       const name = headers[ci];
       const edited = edits && edits.has(`${rowId}\u0000${name}`);
       const numCls  = typeof tidyNumber(v) === 'number' ? ' pl-num' : '';
-      // One colour per destination, so a group is one block of colour. The
-      // destination is the first column in both tables, though the summary
-      // spells its header differently.
-      const tintCls = (tints && ci === 0 && tints[ri]) ? ' ' + tints[ri] : '';
       const attrs = editKey
-        ? ` tabindex="0" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}${tintCls}"`
+        ? ` tabindex="0" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}"`
         + ` data-table="${editKey}" data-row="${rowId}" data-col="${escapeHtml(String(name ?? ''))}"`
         : '';
       const shown = tidyNumber(v);
@@ -459,7 +459,7 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
       // Long values are clipped to keep one value per line, so carry the
       // whole thing in a tooltip.
       const tip = text.length > 24 ? ` title="${escapeHtml(text)}"` : '';
-      const plainCls = (numCls + tintCls).trim();
+      const plainCls = numCls.trim();
       html += `<td${attrs}${editKey ? '' : (plainCls ? ` class="${plainCls}"` : '')}${tip}>${
         escapeHtml(text)}</td>`;
     });

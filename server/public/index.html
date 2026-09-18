@@ -850,7 +850,7 @@
     #tab-packing-list .pl-out-v { color: #0f3460; font-weight: 600; }
     #tab-packing-list .pl-out-blank { color: #cbd5e1; font-weight: 400; font-style: italic; }
     #tab-packing-list .pl-out-band { padding: 8px 18px; background: #0f3460; color: #fff; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-    #tab-packing-list .pl-out-table { border: none !important; border-radius: 0 !important; margin-top: 0 !important; max-height: 420px; }
+    #tab-packing-list .pl-out-table { border: none !important; border-radius: 0 !important; margin-top: 0 !important; max-height: none; }
     
     /* ── Action bar ───────────────────────────────────────────── */
     #tab-packing-list .pl-btn-row { display: flex; gap: 10px; justify-content: flex-end; align-items: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e8f0; }
@@ -957,17 +957,31 @@
     #tab-packing-list .pl-out-table td:first-child { background: #fff; font-weight: 600; }
     #tab-packing-list .pl-out-table tr:nth-child(even) td:first-child { background: #fbfcfe; }
     /* One colour per destination, so each group reads as a block at a glance.
-       The first column already has a background, hence !important. */
-    #tab-packing-list .pl-out-table td.pl-dest-c0 { background: #dbeafe !important; }
-    #tab-packing-list .pl-out-table td.pl-dest-c1 { background: #dcfce7 !important; }
-    #tab-packing-list .pl-out-table td.pl-dest-c2 { background: #fef3c7 !important; }
-    #tab-packing-list .pl-out-table td.pl-dest-c3 { background: #fee2e2 !important; }
-    #tab-packing-list .pl-out-table td.pl-dest-c4 { background: #ede9fe !important; }
-    #tab-packing-list .pl-out-table td.pl-dest-c5 { background: #cffafe !important; }
-    #tab-packing-list .pl-out-table td.pl-dest-c6 { background: #fce7f3 !important; }
-    #tab-packing-list .pl-out-table td.pl-dest-c7 { background: #ecfccb !important; }
-    #tab-packing-list .pl-out-table td.pl-dest-c8 { background: #ffedd5 !important; }
-    #tab-packing-list .pl-out-table td.pl-dest-c9 { background: #e2e8f0 !important; }
+       The row carries the class so the whole line is tinted. */
+    #tab-packing-list .pl-out-table tr.pl-dest-c0 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c0 td:first-child { background: #dbeafe; }
+    #tab-packing-list .pl-out-table tr.pl-dest-c1 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c1 td:first-child { background: #dcfce7; }
+    #tab-packing-list .pl-out-table tr.pl-dest-c2 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c2 td:first-child { background: #fef3c7; }
+    #tab-packing-list .pl-out-table tr.pl-dest-c3 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c3 td:first-child { background: #fee2e2; }
+    #tab-packing-list .pl-out-table tr.pl-dest-c4 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c4 td:first-child { background: #ede9fe; }
+    #tab-packing-list .pl-out-table tr.pl-dest-c5 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c5 td:first-child { background: #cffafe; }
+    #tab-packing-list .pl-out-table tr.pl-dest-c6 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c6 td:first-child { background: #fce7f3; }
+    #tab-packing-list .pl-out-table tr.pl-dest-c7 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c7 td:first-child { background: #ecfccb; }
+    #tab-packing-list .pl-out-table tr.pl-dest-c8 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c8 td:first-child { background: #ffedd5; }
+    #tab-packing-list .pl-out-table tr.pl-dest-c9 td,
+    #tab-packing-list .pl-out-table tr.pl-dest-c9 td:first-child { background: #e2e8f0; }
+    /* Declared after the tints and matching their weight, so a hand-edited
+       cell still shows its amber mark and an open one still goes white. */
+    #tab-packing-list .pl-out-table tr td.pl-edited { background: #fffbeb !important; }
+    #tab-packing-list .pl-out-table tr td.pl-editing { background: #fff !important; }
     /* The summary's nine columns include six the warehouse fills in by hand. */
     #tab-packing-list .pl-out-table td:empty::after { content: ""; display: block; min-height: 1em; }
     /* ── Offering to remember a hand-made column mapping ──────── */
