@@ -427,7 +427,7 @@ async function runPipeline(file) {
 // ─────────────────────────────────────────────────────────────
 // splitAfter: row indices that end a destination group, drawn with a thick
 // line. `editKey` ('loads' | 'summary') makes the cells editable in place.
-function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = null } = {}) {
+function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = null, tints = null } = {}) {
   const edits = editKey ? previewEdits[editKey] : null;
   let html = '<table><thead><tr>';
   headers.forEach(h => {
@@ -445,9 +445,13 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
     row.forEach((v, ci) => {
       const name = headers[ci];
       const edited = edits && edits.has(`${rowId}\u0000${name}`);
-      const numCls = typeof tidyNumber(v) === 'number' ? ' pl-num' : '';
+      const numCls  = typeof tidyNumber(v) === 'number' ? ' pl-num' : '';
+      // One colour per destination, so a group is one block of colour. The
+      // destination is the first column in both tables, though the summary
+      // spells its header differently.
+      const tintCls = (tints && ci === 0 && tints[ri]) ? ' ' + tints[ri] : '';
       const attrs = editKey
-        ? ` contenteditable="true" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}"`
+        ? ` contenteditable="true" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}${tintCls}"`
         + ` data-table="${editKey}" data-row="${rowId}" data-col="${escapeHtml(String(name ?? ''))}"`
         : '';
       const shown = tidyNumber(v);
@@ -455,7 +459,8 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
       // Long values are clipped to keep one value per line, so carry the
       // whole thing in a tooltip.
       const tip = text.length > 24 ? ` title="${escapeHtml(text)}"` : '';
-      html += `<td${attrs}${editKey ? '' : (numCls ? ` class="${numCls.trim()}"` : '')}${tip}>${
+      const plainCls = (numCls + tintCls).trim();
+      html += `<td${attrs}${editKey ? '' : (plainCls ? ` class="${plainCls}"` : '')}${tip}>${
         escapeHtml(text)}</td>`;
     });
     html += '<td class="pl-fill"></td>';
@@ -1307,14 +1312,26 @@ function renderPreview(modH, modR, sumH, sumR, longDests) {
     : 0;
 
   renderPreviewHead(numDests);
+
+  // A colour per destination, assigned in the order they appear and shared
+  // with the summary, so the same code is the same colour in both tables.
+  const DEST_TINTS = 10;
+  const tintOf = new Map();
+  const tintFor = v => {
+    const key = v == null ? '' : String(v);
+    if (!tintOf.has(key)) tintOf.set(key, `pl-dest-c${tintOf.size % DEST_TINTS}`);
+    return tintOf.get(key);
+  };
+  const loadTints = di >= 0 ? visRows.map(r => tintFor(r[di])) : null;
+
   const idIdx  = modH.indexOf('_Row');
   const rowIds = idIdx >= 0 ? modR.map(r => r[idIdx]) : null;
   document.getElementById('plPreviewData').innerHTML    =
-    tableHtml(visH, visRows, { splitAfter, editKey: 'loads', rowIds });
+    tableHtml(visH, visRows, { splitAfter, editKey: 'loads', rowIds, tints: loadTints });
   // The summary is read-only: every figure in it is derived from the loads
   // table, so it is corrected by editing the load rows, not the totals.
   document.getElementById('plPreviewSummary').innerHTML =
-    tableHtml(sumVisH, sumVisR);
+    tableHtml(sumVisH, sumVisR, { tints: sumVisR.map(r => tintFor(r[0])) });
   renderEditBar();
   renderDestPanel(longDests);
   previewSec.style.display = 'block';

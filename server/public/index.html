@@ -953,6 +953,18 @@
     #tab-packing-list .pl-out-table thead th:first-child { z-index: 3; }
     #tab-packing-list .pl-out-table td:first-child { background: #fff; font-weight: 600; }
     #tab-packing-list .pl-out-table tr:nth-child(even) td:first-child { background: #fbfcfe; }
+    /* One colour per destination, so each group reads as a block at a glance.
+       The first column already has a background, hence !important. */
+    #tab-packing-list .pl-out-table td.pl-dest-c0 { background: #dbeafe !important; }
+    #tab-packing-list .pl-out-table td.pl-dest-c1 { background: #dcfce7 !important; }
+    #tab-packing-list .pl-out-table td.pl-dest-c2 { background: #fef3c7 !important; }
+    #tab-packing-list .pl-out-table td.pl-dest-c3 { background: #fee2e2 !important; }
+    #tab-packing-list .pl-out-table td.pl-dest-c4 { background: #ede9fe !important; }
+    #tab-packing-list .pl-out-table td.pl-dest-c5 { background: #cffafe !important; }
+    #tab-packing-list .pl-out-table td.pl-dest-c6 { background: #fce7f3 !important; }
+    #tab-packing-list .pl-out-table td.pl-dest-c7 { background: #ecfccb !important; }
+    #tab-packing-list .pl-out-table td.pl-dest-c8 { background: #ffedd5 !important; }
+    #tab-packing-list .pl-out-table td.pl-dest-c9 { background: #e2e8f0 !important; }
     /* The summary's nine columns include six the warehouse fills in by hand. */
     #tab-packing-list .pl-out-table td:empty::after { content: ""; display: block; min-height: 1em; }
     /* ── Offering to remember a hand-made column mapping ──────── */
