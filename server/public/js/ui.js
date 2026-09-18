@@ -48,6 +48,7 @@ function setExcelFile(file, dt) {
   clearPreviewEdits();
   clearDestRenames();
   clearLearnQueue();
+  editHistory = [];
   selectMode      = 'replace';
   hdrRowInput.value  = '';
   lastRowInput.value = '';
@@ -222,6 +223,7 @@ async function setActiveSheet(name) {
   clearPreviewEdits();
   clearDestRenames();
   clearLearnQueue();
+  editHistory = [];
   selectMode      = 'replace';
   hdrRowInput.value  = '';
   lastRowInput.value = '';
@@ -470,6 +472,78 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
   return html;
 }
 
+// ─────────────────────────────────────────────────────────────
+// Undo and reset. Every change to the preview — a typed cell, a pasted
+// block, an emptied cell, an accepted destination name — takes a snapshot
+// of what it is about to change first. Undo puts the last one back; Reset
+// goes the whole way to the file as it was read.
+// ─────────────────────────────────────────────────────────────
+let editHistory = [];
+const EDIT_HISTORY_MAX = 200;
+
+function editSnapshot() {
+  return {
+    loads:   new Map(previewEdits.loads),
+    summary: new Map(previewEdits.summary),
+    renames: { ...destRenames },
+  };
+}
+
+function pushEditHistory() {
+  editHistory.push(editSnapshot());
+  if (editHistory.length > EDIT_HISTORY_MAX) editHistory.shift();
+}
+
+function applySnapshot(s) {
+  previewEdits = { loads: new Map(s.loads), summary: new Map(s.summary) };
+  destRenames  = { ...s.renames };
+}
+
+function undoLastEdit() {
+  if (!editHistory.length) return false;
+  applySnapshot(editHistory.pop());
+  return true;
+}
+
+function resetAllEdits() {
+  editHistory = [];
+  clearPreviewEdits();
+  clearDestRenames();
+}
+
+function hasAnyChange() {
+  return previewEdits.loads.size > 0 || previewEdits.summary.size > 0
+    || Object.keys(destRenames).length > 0;
+}
+
+// The two buttons live in the Loads band and are wired once, since the band
+// is part of the page rather than of the table that gets re-rendered.
+function syncBandTools() {
+  const undo  = document.getElementById('btnUndoEdit');
+  const reset = document.getElementById('btnResetEdits');
+  if (undo)  undo.disabled  = editHistory.length === 0;
+  if (reset) reset.disabled = !hasAnyChange() && editHistory.length === 0;
+}
+
+(function wireBandTools() {
+  const undo  = document.getElementById('btnUndoEdit');
+  const reset = document.getElementById('btnResetEdits');
+  const redraw = () => refreshPreview().catch(err => {
+    console.error(err); showStatus('Error: ' + err.message, 'error');
+  });
+  if (undo) undo.addEventListener('click', () => {
+    if (!undoLastEdit()) return;
+    showStatus('Undid the last change.', 'info');
+    redraw();
+  });
+  if (reset) reset.addEventListener('click', () => {
+    if (!hasAnyChange() && !editHistory.length) return;
+    resetAllEdits();
+    showStatus('Reset to the file as it was read.', 'info');
+    redraw();
+  });
+})();
+
 // Commits a cell the user has finished editing. Re-renders so the summary and
 // the destination split lines follow the change.
 function commitCellEdit(td) {
@@ -479,6 +553,7 @@ function commitCellEdit(td) {
   const value = coerceCell(td.textContent);
   const shown = td.dataset.original === undefined ? null : td.dataset.original;
   if (String(value ?? '') === String(shown ?? '')) return;   // nothing changed
+  pushEditHistory();
   store.set(key, value);
   refreshPreview().catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
 }
@@ -652,6 +727,7 @@ function pasteBlock(startTd, text) {
   const grid  = text.replace(/\r\n?/g, '\n').replace(/\n$/, '')
     .split('\n').map(line => line.split('\t'));
   let filled = 0, unplaced = 0, locked = 0;
+  pushEditHistory();                       // the whole block undoes at once
   grid.forEach((line, ri) => {
     const tr = trs[start.r + ri];
     if (!tr) { unplaced += line.length; return; }        // past the last row
@@ -715,7 +791,12 @@ previewSec.addEventListener('dblclick', e => {
 
 previewSec.addEventListener('focusout', e => {
   const td = e.target.closest('td.pl-edit');
-  if (td) endCellEdit(td);
+  if (!td) return;
+  // Opening a cell moves the focus from the cell to the editor inside it,
+  // which is a focusout on the cell. Closing on that shut the editor in the
+  // same breath as opening it, and no cell could be edited at all.
+  if (e.relatedTarget && td.contains(e.relatedTarget)) return;
+  endCellEdit(td);
 });
 
 previewSec.addEventListener('keydown', e => {
@@ -1479,6 +1560,8 @@ function renderDestPanel(longDests) {
 
   const commit = (i, name) => {
     const d = longDests[i];
+    if ((destRenames[d.text] || '') === (name || '')) return;   // nothing changed
+    pushEditHistory();
     if (name) destRenames[d.text] = name; else delete destRenames[d.text];
     refreshPreview().catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
   };
@@ -1578,6 +1661,7 @@ function renderPreview(modH, modR, sumH, sumR, longDests) {
   document.getElementById('plPreviewSummary').innerHTML =
     tableHtml(sumVisH, sumVisR, { tints: sumVisR.map(r => tintFor(r[0])) });
   renderEditBar();
+  syncBandTools();
   renderDestPanel(longDests);
   previewSec.style.display = 'block';
 }

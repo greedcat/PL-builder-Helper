@@ -849,7 +849,11 @@
     #tab-packing-list .pl-out-k { font-weight: 700; color: #475569; }
     #tab-packing-list .pl-out-v { color: #0f3460; font-weight: 600; }
     #tab-packing-list .pl-out-blank { color: #cbd5e1; font-weight: 400; font-style: italic; }
-    #tab-packing-list .pl-out-band { padding: 8px 18px; background: #0f3460; color: #fff; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    #tab-packing-list .pl-out-band { padding: 8px 18px; background: #0f3460; color: #fff; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    #tab-packing-list .pl-band-tools { display: inline-flex; gap: 6px; }
+    #tab-packing-list .pl-band-btn { font: inherit; letter-spacing: inherit; text-transform: inherit; padding: 3px 12px; border-radius: 5px; cursor: pointer; color: #fff; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.35); }
+    #tab-packing-list .pl-band-btn:hover:not(:disabled) { background: rgba(255,255,255,.26); }
+    #tab-packing-list .pl-band-btn:disabled { opacity: .38; cursor: default; }
     #tab-packing-list .pl-out-table { border: none !important; border-radius: 0 !important; margin-top: 0 !important; max-height: none; }
     
     /* ── Action bar ───────────────────────────────────────────── */
@@ -1170,7 +1174,13 @@
           <div id="plEditBar" class="pl-edit-bar" hidden></div>
           <div class="pl-out">
             <div id="plPreviewHead" class="pl-out-head"></div>
-            <div class="pl-out-band">Loads</div>
+            <div class="pl-out-band">
+              <span>Loads</span>
+              <span class="pl-band-tools">
+                <button type="button" id="btnUndoEdit" class="pl-band-btn" disabled>Undo</button>
+                <button type="button" id="btnResetEdits" class="pl-band-btn" disabled>Reset</button>
+              </span>
+            </div>
             <div class="pl-table-wrap pl-out-table" id="plPreviewData"></div>
             <div class="pl-out-band">Summary</div>
             <div class="pl-table-wrap pl-out-table" id="plPreviewSummary"></div>
