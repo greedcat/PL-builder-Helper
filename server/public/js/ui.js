@@ -406,13 +406,30 @@ async function runPipeline(file) {
     for (const [text, count] of seen) {
       longDests.push({ text, count, suggestion: simplifyPrivateAddress(text), applied: destRenames[text] || null });
     }
-    // Apply only what the user has accepted.
+    // Apply only what the user has accepted, noting which rows it moved so
+    // they can be set apart below.
+    const renamed = new Set();
+    const rowIdIdx = modH.indexOf('_Row');
     for (const row of modR) {
       const v = row[destIdx];
-      if (v != null && destRenames[String(v)]) row[destIdx] = destRenames[String(v)];
+      if (v != null && destRenames[String(v)]) {
+        row[destIdx] = destRenames[String(v)];
+        if (rowIdIdx >= 0) renamed.add(String(row[rowIdIdx]));
+      }
     }
+    // A destination that was changed by hand — renamed here or typed over in
+    // the preview — goes to the end of the loads, where it can be checked
+    // against the paperwork instead of being lost among the codes it now
+    // sorts next to.
+    const destChanged = (row) => {
+      if (rowIdIdx < 0) return false;
+      const id = String(row[rowIdIdx]);
+      return renamed.has(id) || previewEdits.loads.has(`${id}\u0000Destination`);
+    };
     // Renaming can reorder groups, so sort again by destination.
     modR.sort((a, b) => {
+      const ca = destChanged(a) ? 1 : 0, cb = destChanged(b) ? 1 : 0;
+      if (ca !== cb) return ca - cb;                 // changed ones last
       const x = String(a[destIdx] ?? ''), y = String(b[destIdx] ?? '');
       return x < y ? -1 : x > y ? 1 : 0;
     });
