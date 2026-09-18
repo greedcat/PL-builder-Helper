@@ -786,6 +786,9 @@
     #tab-packing-list .pl-grid { border-collapse: separate; border-spacing: 0; font-size: 0.78rem; white-space: nowrap; user-select: none; }
     #tab-packing-list .pl-grid th,
     #tab-packing-list .pl-grid td { border-right: 1px solid #eef2f6; border-bottom: 1px solid #eef2f6; padding: 5px 9px; text-align: center; background: #fff; }
+    /* The sheet grid shows every row it has: the page scrolls, not a box
+       inside it. Horizontal scrolling stays for wide sheets. */
+    #tab-packing-list #plOriginalSheet { max-height: none; }
     #tab-packing-list .pl-grid td { min-width: 62px; max-width: 250px; overflow: hidden; text-overflow: ellipsis; color: #334155; }
     #tab-packing-list .pl-grid-corner { position: sticky; top: 0; left: 0; z-index: 4; min-width: 46px; background: #f1f5f9 !important; border-bottom: 1px solid #cbd5e1 !important; }
     #tab-packing-list .pl-grid-colhdr { position: sticky; top: 0; z-index: 3; background: #f8fafc; color: #64748b; font-weight: 700; text-align: center; cursor: pointer; border-bottom: 2px solid #cbd5e1; }
