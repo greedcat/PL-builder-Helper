@@ -79,7 +79,6 @@ async function showFileOnLoad() {
       return;
     }
 
-    autofillFromSheet(data);
     setSheetToggleLabel(true);
     sheetView.style.display   = 'block';
     sheetLegend.style.display = 'block';
@@ -118,15 +117,6 @@ function updateLoadStatus(data) {
 
 // The container number is usually printed above the table. Fill it in, but
 // never overwrite something the user has already typed.
-function autofillFromSheet(data) {
-  if (containerNoInput.value.trim()) return;
-  const range = getRange(data);
-  const found = findContainerNumber(data.raw.slice(0, range.hdrRow + 1));
-  if (!found) return;
-  containerNoInput.value = found;
-  containerNoInput.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
 function setSheetToggleLabel(shown) {
   btnViewSheet.textContent = shown ? 'Hide Data Range' : 'View & Select Data Range';
 }
