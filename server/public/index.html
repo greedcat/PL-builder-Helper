@@ -1037,7 +1037,12 @@
        way a spreadsheet's editor does. Wrapping inside a narrow column turned
        a long note into a column of single characters. */
     #tab-packing-list .pl-out-table table td.pl-editing {
-      white-space: pre; overflow: visible; text-overflow: clip; max-width: none;
+      /* Wide enough that a note is not wrapped into a column of single
+         characters, capped so a long consignee block cannot run off the
+         side of the card where it cannot be read. Past the cap it wraps
+         and the row grows, which keeps every character in view. */
+      white-space: pre-wrap; overflow-wrap: anywhere; overflow: visible;
+      text-overflow: clip; max-width: 420px; min-width: 220px;
       position: relative; z-index: 4;
       outline: 2px solid #0f172a; outline-offset: -2px;
       box-shadow: 0 2px 10px rgba(15,23,42,.22);

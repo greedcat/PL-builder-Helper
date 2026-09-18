@@ -623,6 +623,61 @@ previewSec.addEventListener('mouseover', e => {
 
 document.addEventListener('mouseup', () => { rangeDrag = false; });
 
+// The cell a block was started from, looked up fresh: the preview is
+// rebuilt on every change, so a held element reference goes stale.
+function anchorCell() {
+  if (!rangeAnchor || !rangeAnchor.table.isConnected) return null;
+  const tr = [...rangeAnchor.table.querySelectorAll('tbody tr')][rangeAnchor.r];
+  return tr ? tr.children[rangeAnchor.c] || null : null;
+}
+
+// Writes a pasted block into the edit store in one go. Going through the
+// per-cell commit would re-render the preview once per value.
+function pasteBlock(startTd, text) {
+  const table = startTd.closest('table');
+  const trs   = [...table.querySelectorAll('tbody tr')];
+  const start = cellRC(startTd);
+  const grid  = text.replace(/\r\n?/g, '\n').replace(/\n$/, '')
+    .split('\n').map(line => line.split('\t'));
+  let filled = 0, unplaced = 0, locked = 0;
+  grid.forEach((line, ri) => {
+    const tr = trs[start.r + ri];
+    if (!tr) { unplaced += line.length; return; }        // past the last row
+    line.forEach((val, ci) => {
+      const td = tr.children[start.c + ci];
+      if (!td || td.classList.contains('pl-fill')) { unplaced++; return; }
+      const store = td.classList.contains('pl-edit') && previewEdits[td.dataset.table];
+      if (!store) { locked++; return; }                  // the summary is derived
+      store.set(`${td.dataset.row}\u0000${td.dataset.col}`, coerceCell(val));
+      filled++;
+    });
+  });
+  return { filled, unplaced, locked };
+}
+
+document.addEventListener('paste', e => {
+  if (previewSec.style.display !== 'block') return;
+  const open = document.querySelector('#tab-packing-list td.pl-editing');
+  if (open) return;                          // a cell being typed into takes it
+  const startTd = anchorCell();
+  if (!startTd) return;
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  if (!text) return;
+  e.preventDefault();
+  const { filled, unplaced, locked } = pasteBlock(startTd, text);
+  dropRange();
+  if (!filled && !unplaced && !locked) return;
+  const notes = [];
+  if (unplaced) notes.push(`${unplaced} had no cell to land on`);
+  if (locked)   notes.push(`${locked} fell on the read-only summary`);
+  showStatus(`Pasted ${filled} cell${filled === 1 ? '' : 's'}`
+    + (notes.length ? ' \u00b7 ' + notes.join(' \u00b7 ') : '') + '.',
+    notes.length ? 'error' : 'success');
+  refreshPreview().catch(err => {
+    console.error(err); showStatus('Error: ' + err.message, 'error');
+  });
+});
+
 // Copy the rectangle as tab-separated text, which is what a spreadsheet
 // reads back as cells.
 document.addEventListener('copy', e => {
