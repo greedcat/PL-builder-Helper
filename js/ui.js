@@ -625,9 +625,34 @@ function startCellEdit(td, { initial = null, point = null } = {}) {
   // The cell keeps its text underneath, hidden behind the editor: emptying
   // it let the column shrink to nothing the moment editing began.
   td.appendChild(ed);
+  placeEditor(td, ed);
+  ed.addEventListener('input', () => placeEditor(td, ed));
   ed.focus({ preventScroll: true });
   if (point && caretAtPoint(point.x, point.y)) return;
   caretToEnd(ed);
+}
+
+// The box drops down, unless down is off the end of the table — on the last
+// rows it opens upward instead. Either way it is never taller than the room
+// it has, so it can always be read in full.
+function placeEditor(td, ed) {
+  const box = td.closest('.pl-out-table');
+  if (!box) return;
+  ed.style.top = '-2px';
+  ed.style.bottom = 'auto';
+  ed.style.maxHeight = '';
+  const cell = td.getBoundingClientRect();
+  const wrap = box.getBoundingClientRect();
+  const below = wrap.bottom - cell.top;
+  const above = cell.bottom - wrap.top;
+  const want  = ed.scrollHeight + 4;
+  if (want > below && above > below) {
+    ed.style.top = 'auto';
+    ed.style.bottom = '-2px';
+    ed.style.maxHeight = `${Math.max(48, Math.floor(above - 4))}px`;
+  } else {
+    ed.style.maxHeight = `${Math.max(48, Math.floor(below - 4))}px`;
+  }
 }
 
 function endCellEdit(td, { commit = true } = {}) {

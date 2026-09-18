@@ -1044,6 +1044,10 @@
        column keeps the width it had. */
     #tab-packing-list .pl-out-table table td.pl-editing {
       position: relative; overflow: visible; z-index: 4;
+      /* The cell's own text stays to hold the column's width, but it must
+         not be seen: letting the box out of the cell also let the text out,
+         and it ran on past the editor. The editor sets its own colour. */
+      color: transparent;
     }
     /* The editor drops down over the rows below. It is as wide as the cell
        and no wider, so nothing in the table shifts; when the text needs
@@ -1052,11 +1056,14 @@
       position: absolute; left: -2px; top: -2px; z-index: 30;
       width: calc(100% + 4px); min-width: 180px; box-sizing: border-box;
       min-height: calc(100% + 4px);
-      white-space: pre-wrap; overflow-wrap: anywhere; text-align: center;
+      /* Left-aligned and a little airier: a wrapped note centred line by
+         line is hard to read and hard to place a caret in. */
+      white-space: pre-wrap; overflow-wrap: anywhere; text-align: left;
+      line-height: 1.45;
       background: #fff; color: #0f172a;
-      border: 2px solid #0f172a; border-radius: 3px;
-      padding: 3px 5px; outline: none;
-      box-shadow: 0 8px 20px rgba(15,23,42,.28);
+      border: 2px solid #0f172a; border-radius: 4px;
+      padding: 4px 7px; outline: none;
+      box-shadow: 0 4px 14px rgba(15,23,42,.18);
       max-height: 240px; overflow-y: auto;
     }
     #tab-packing-list .pl-out-table table th br { display: block; }
