@@ -812,13 +812,16 @@ document.addEventListener('paste', e => {
 // reads back as cells.
 document.addEventListener('copy', e => {
   const lines = rangeCells();
-  if (lines.length < 1) return;
-  if (lines.length === 1 && lines[0].length === 1) return;   // one cell: let the browser copy
+  if (!lines.length) return;
+  // One cell counts too. The table does not allow a text selection, so
+  // leaving a single cell to the browser copied nothing at all.
   const text = lines.map(line => line.map(td => td.textContent.trim()).join('\t')).join('\n');
   e.clipboardData.setData('text/plain', text);
   e.preventDefault();
-  showStatus(`Copied ${lines.length} row${lines.length === 1 ? '' : 's'} \u00d7 `
-    + `${lines[0].length} column${lines[0].length === 1 ? '' : 's'}.`, 'success');
+  const one = lines.length === 1 && lines[0].length === 1;
+  showStatus(one ? 'Copied 1 cell.'
+    : `Copied ${lines.length} row${lines.length === 1 ? '' : 's'} \u00d7 `
+      + `${lines[0].length} column${lines[0].length === 1 ? '' : 's'}.`, 'success');
 });
 
 // One set of listeners on the preview, so re-rendering never loses them.
