@@ -516,23 +516,35 @@ function caretAtPoint(x, y) {
 
 // `initial` replaces the value outright — that is a typed character
 // landing on a selected cell. `point` puts the caret where the mouse was.
+// The editor is its own box sitting on top of the cell, not the cell made
+// editable. A cell that stretched to hold what was typed pushed its column
+// wider and shoved the table about; this keeps the column exactly as it is
+// and drops the box downward over the rows below when the text needs room.
 function startCellEdit(td, { initial = null, point = null } = {}) {
   if (isEditing(td)) return;
   dropRange();                     // a cell being typed into is not a block
   td.dataset.original = td.textContent;
-  td.contentEditable  = 'true';
+  const ed = document.createElement('div');
+  ed.className       = 'pl-cell-editor';
+  ed.contentEditable = 'true';
+  ed.spellcheck      = false;
+  ed.textContent     = initial != null ? initial : td.textContent;
   td.classList.add('pl-editing');
-  if (initial != null) td.textContent = initial;
-  td.focus({ preventScroll: true });
+  // The cell keeps its text underneath, hidden behind the editor: emptying
+  // it let the column shrink to nothing the moment editing began.
+  td.appendChild(ed);
+  ed.focus({ preventScroll: true });
   if (point && caretAtPoint(point.x, point.y)) return;
-  caretToEnd(td);
+  caretToEnd(ed);
 }
 
 function endCellEdit(td, { commit = true } = {}) {
   if (!isEditing(td)) return;
-  if (!commit) td.textContent = td.dataset.original ?? '';
+  const ed    = td.querySelector('.pl-cell-editor');
+  const typed = ed ? ed.textContent : td.textContent;
+  if (ed) ed.remove();
   td.classList.remove('pl-editing');
-  td.contentEditable = 'false';
+  td.textContent = commit ? typed : (td.dataset.original ?? '');
   if (commit) commitCellEdit(td);
 }
 

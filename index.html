@@ -1036,16 +1036,24 @@
     /* An open cell keeps its one line and spills over its neighbours, the
        way a spreadsheet's editor does. Wrapping inside a narrow column turned
        a long note into a column of single characters. */
+    /* The cell itself does not move or grow while it is being edited: the
+       column keeps the width it had. */
     #tab-packing-list .pl-out-table table td.pl-editing {
-      /* Wide enough that a note is not wrapped into a column of single
-         characters, capped so a long consignee block cannot run off the
-         side of the card where it cannot be read. Past the cap it wraps
-         and the row grows, which keeps every character in view. */
-      white-space: pre-wrap; overflow-wrap: anywhere; overflow: visible;
-      text-overflow: clip; max-width: 420px; min-width: 220px;
-      position: relative; z-index: 4;
-      outline: 2px solid #0f172a; outline-offset: -2px;
-      box-shadow: 0 2px 10px rgba(15,23,42,.22);
+      position: relative; overflow: visible; z-index: 4;
+    }
+    /* The editor drops down over the rows below. It is as wide as the cell
+       and no wider, so nothing in the table shifts; when the text needs
+       more room it takes it downward, not sideways. */
+    #tab-packing-list .pl-out-table table td.pl-editing .pl-cell-editor {
+      position: absolute; left: -2px; top: -2px; z-index: 30;
+      width: calc(100% + 4px); min-width: 180px; box-sizing: border-box;
+      min-height: calc(100% + 4px);
+      white-space: pre-wrap; overflow-wrap: anywhere; text-align: center;
+      background: #fff; color: #0f172a;
+      border: 2px solid #0f172a; border-radius: 3px;
+      padding: 3px 5px; outline: none;
+      box-shadow: 0 8px 20px rgba(15,23,42,.28);
+      max-height: 240px; overflow-y: auto;
     }
     #tab-packing-list .pl-out-table table th br { display: block; }
 </style>
