@@ -261,12 +261,18 @@ function coerceCell(text) {
 function applyEdits(headers, rows, edits) {
   if (!edits.size) return rows;
   const out = rows.map(r => [...r]);
+  // Edits are keyed by the row's stable id, so they follow their own row
+  // through the re-sort that a destination rename causes.
+  const idIdx = headers.indexOf('_Row');
+  const byId  = new Map();
+  if (idIdx >= 0) out.forEach(r => byId.set(String(r[idIdx]), r));
   for (const [key, value] of edits) {
     const sep  = key.indexOf('\u0000');
-    const ri   = Number(key.slice(0, sep));
+    const id   = key.slice(0, sep);
     const name = key.slice(sep + 1);
     const ci   = headers.indexOf(name);
-    if (ci >= 0 && out[ri]) out[ri][ci] = value;
+    const row  = idIdx >= 0 ? byId.get(id) : out[Number(id)];
+    if (ci >= 0 && row) row[ci] = value;
   }
   return out;
 }
@@ -407,7 +413,7 @@ async function runPipeline(file) {
 // ─────────────────────────────────────────────────────────────
 // splitAfter: row indices that end a destination group, drawn with a thick
 // line. `editKey` ('loads' | 'summary') makes the cells editable in place.
-function tableHtml(headers, rows, { splitAfter = null, editKey = null } = {}) {
+function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = null } = {}) {
   const edits = editKey ? previewEdits[editKey] : null;
   let html = '<table><thead><tr>';
   headers.forEach(h => {
@@ -420,14 +426,15 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null } = {}) {
   html += '</tr></thead><tbody>';
   rows.forEach((row, ri) => {
     const cls = splitAfter && splitAfter.has(ri) && ri < rows.length - 1 ? ' class="pl-group-end"' : '';
+    const rowId = rowIds ? rowIds[ri] : ri;
     html += `<tr${cls}>`;
     row.forEach((v, ci) => {
       const name = headers[ci];
-      const edited = edits && edits.has(`${ri}\u0000${name}`);
+      const edited = edits && edits.has(`${rowId}\u0000${name}`);
       const numCls = typeof tidyNumber(v) === 'number' ? ' pl-num' : '';
       const attrs = editKey
         ? ` contenteditable="true" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}"`
-        + ` data-table="${editKey}" data-row="${ri}" data-col="${escapeHtml(String(name ?? ''))}"`
+        + ` data-table="${editKey}" data-row="${rowId}" data-col="${escapeHtml(String(name ?? ''))}"`
         : '';
       const shown = tidyNumber(v);
       const text = shown != null ? String(shown) : '';
@@ -1286,8 +1293,10 @@ function renderPreview(modH, modR, sumH, sumR, longDests) {
     : 0;
 
   renderPreviewHead(numDests);
+  const idIdx  = modH.indexOf('_Row');
+  const rowIds = idIdx >= 0 ? modR.map(r => r[idIdx]) : null;
   document.getElementById('plPreviewData').innerHTML    =
-    tableHtml(visH, visRows, { splitAfter, editKey: 'loads' });
+    tableHtml(visH, visRows, { splitAfter, editKey: 'loads', rowIds });
   // The summary is read-only: every figure in it is derived from the loads
   // table, so it is corrected by editing the load rows, not the totals.
   document.getElementById('plPreviewSummary').innerHTML =

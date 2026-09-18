@@ -26,7 +26,7 @@ function normWeight(s) {
 function getVisibleColumns(headers, rows) {
   const cols = headers
     .map((h, ci) => ({ h, ci }))
-    .filter(({ h, ci }) => h !== '_Pallet' && rows.some(r => r[ci] != null));
+    .filter(({ h, ci }) => h !== '_Pallet' && h !== '_Row' && rows.some(r => r[ci] != null));
   return {
     headers: cols.map(x => x.h),
     rows:    rows.map(r => cols.map(x => r[x.ci])),

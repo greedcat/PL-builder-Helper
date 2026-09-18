@@ -63,9 +63,14 @@ function modifyDF(headers, rows, matchDict) {
   );
   data = data.filter(r => r.some(v => v !== null));
 
+  // A stable id per row, handed out before any sorting. Renaming a
+  // destination re-sorts the table, and without this a hand edit would stay
+  // behind at its old position and land on somebody else's row.
+  let finalHeaders = [...newHeaders, '_Row'];
+  data = data.map((r, i) => [...r, i]);
+
   // Add _Pallet column
-  let finalHeaders = [...newHeaders];
-  const cbmIdx     = newHeaders.indexOf('CMB');
+  const cbmIdx = newHeaders.indexOf('CMB');
   if (cbmIdx >= 0) {
     finalHeaders.push('_Pallet');
     data = data.map(r => { const cbm = parseFloat(r[cbmIdx]); return [...r, isNaN(cbm) ? null : cbm / 1.7]; });
