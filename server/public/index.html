@@ -943,7 +943,14 @@
     #tab-packing-list .pl-out-table td, .pl-out-table th { border-right: 1px solid rgba(148,163,184,.25); }
     #tab-packing-list .pl-out-table tr:nth-child(even) td { background: #fbfcfe; }
     #tab-packing-list .pl-out-table td.pl-num { text-align: right; font-variant-numeric: tabular-nums; }
-    #tab-packing-list .pl-out-table th:first-child, .pl-out-table td:first-child { position: sticky; left: 0; z-index: 1; }
+    /* Stacking matters here: the header row is sticky downwards and the first
+       column is sticky sideways, so they meet at the top-left corner. Without
+       an order the data cell wins on document order and prints its value over
+       the header. Header above column, corner above both. */
+    #tab-packing-list .pl-out-table th:first-child,
+    #tab-packing-list .pl-out-table td:first-child { position: sticky; left: 0; z-index: 1; }
+    #tab-packing-list .pl-out-table thead th { z-index: 2; }
+    #tab-packing-list .pl-out-table thead th:first-child { z-index: 3; }
     #tab-packing-list .pl-out-table td:first-child { background: #fff; font-weight: 600; }
     #tab-packing-list .pl-out-table tr:nth-child(even) td:first-child { background: #fbfcfe; }
     /* The summary's nine columns include six the warehouse fills in by hand. */
