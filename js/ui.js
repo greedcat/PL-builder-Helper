@@ -1288,8 +1288,10 @@ function renderPreview(modH, modR, sumH, sumR, longDests) {
   renderPreviewHead(numDests);
   document.getElementById('plPreviewData').innerHTML    =
     tableHtml(visH, visRows, { splitAfter, editKey: 'loads' });
+  // The summary is read-only: every figure in it is derived from the loads
+  // table, so it is corrected by editing the load rows, not the totals.
   document.getElementById('plPreviewSummary').innerHTML =
-    tableHtml(sumVisH, sumVisR, { editKey: 'summary' });
+    tableHtml(sumVisH, sumVisR);
   renderEditBar();
   renderDestPanel(longDests);
   previewSec.style.display = 'block';
