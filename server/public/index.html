@@ -980,6 +980,9 @@
     #tab-packing-list .pl-out-table tr.pl-dest-c9 td:first-child { background: #e2e8f0; }
     /* Declared after the tints and matching their weight, so a hand-edited
        cell still shows its amber mark and an open one still goes white. */
+    /* The trailing spacer is not a cell of the table — it only soaks up the
+       leftover width — so it stays out of the row's colour. */
+    #tab-packing-list .pl-out-table tr td.pl-fill { background: #fff !important; }
     #tab-packing-list .pl-out-table tr td.pl-edited { background: #fffbeb !important; }
     #tab-packing-list .pl-out-table tr td.pl-editing { background: #fff !important; }
     /* The summary's nine columns include six the warehouse fills in by hand. */
