@@ -23,6 +23,30 @@ function normWeight(s) {
 }
 
 // Drops the internal _Pallet column and any column that is null in every row.
+// Excel stores a merged block as one value in its top-left cell and nothing
+// in the rest, so a destination merged down five rows reads as one value and
+// four blanks. Copy the value down the block once, when the sheet is read.
+// Only merges that span rows are filled: a merged banner across the top of a
+// sheet is a title, not data, and filling it would make that row look like a
+// full header row.
+function fillMergedRows(ws, rows) {
+  const merges = ws && ws['!merges'];
+  if (!merges || !merges.length) return rows;
+  for (const m of merges) {
+    if (m.e.r <= m.s.r) continue;                       // single row: a banner
+    const src = rows[m.s.r] ? rows[m.s.r][m.s.c] : undefined;
+    if (isEmpty(src)) continue;
+    for (let r = m.s.r; r <= m.e.r; r++) {
+      if (!rows[r]) rows[r] = [];
+      for (let c = m.s.c; c <= m.e.c; c++) {
+        if (r === m.s.r && c === m.s.c) continue;
+        if (isEmpty(rows[r][c])) rows[r][c] = src;
+      }
+    }
+  }
+  return rows;
+}
+
 function getVisibleColumns(headers, rows) {
   const cols = headers
     .map((h, ci) => ({ h, ci }))

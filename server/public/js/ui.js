@@ -174,6 +174,9 @@ async function loadSheetData(file) {
 
   const raw = XLSX.utils.sheet_to_json(wbIn.Sheets[activeSheet],
                                        { header: 1, defval: null, raw: true });
+  // Done once here, not per render: from this point the sheet has a real
+  // value in every row of a merged destination.
+  fillMergedRows(wbIn.Sheets[activeSheet], raw);
   const cleaned    = [];
   const cleanedIdx = [];
   raw.forEach((r, i) => {
