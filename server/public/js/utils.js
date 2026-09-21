@@ -32,10 +32,17 @@ function normWeight(s) {
 function fillMergedRows(ws, rows) {
   const merges = ws && ws['!merges'];
   if (!merges || !merges.length) return rows;
+  // A merged number is one figure for the whole block, not one per row: a
+  // carton count of 27 merged down two lines is twenty-seven cartons, and
+  // copying it onto both rows counted it twice. Only text is carried down —
+  // a destination, a job number, an FBA id — where every row of the block
+  // really does belong to that value.
+  const isNumeric = v => typeof v === 'number'
+    || (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v.trim())));
   for (const m of merges) {
     if (m.e.r <= m.s.r) continue;                       // single row: a banner
     const src = rows[m.s.r] ? rows[m.s.r][m.s.c] : undefined;
-    if (isEmpty(src)) continue;
+    if (isEmpty(src) || isNumeric(src)) continue;
     for (let r = m.s.r; r <= m.e.r; r++) {
       if (!rows[r]) rows[r] = [];
       for (let c = m.s.c; c <= m.e.c; c++) {
