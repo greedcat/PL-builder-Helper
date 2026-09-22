@@ -174,8 +174,9 @@ async function loadSheetData(file) {
   const raw = XLSX.utils.sheet_to_json(wbIn.Sheets[activeSheet],
                                        { header: 1, defval: null, raw: true });
   // Done once here, not per render: from this point the sheet has a real
-  // value in every row of a merged destination.
-  fillMergedRows(wbIn.Sheets[activeSheet], raw);
+  // value in every row of a merged block. Which cells that filled is kept,
+  // because a merged quantity must still be counted only once.
+  const mergeFilled = fillMergedRows(wbIn.Sheets[activeSheet], raw);
 
   // Excel's used range runs well past the data — a sheet with nineteen rows
   // of content routinely claims a thousand — and the grid would then draw a
@@ -206,7 +207,7 @@ async function loadSheetData(file) {
   maxCols = Math.max(maxCols, 1);
   cachedSheetName = activeSheet;
   cachedSheetData = { wbIn, sheetNames: wbIn.SheetNames, sheetName: activeSheet,
-                      raw, cleaned, cleanedIdx, maxCols };
+                      raw, cleaned, cleanedIdx, maxCols, mergeFilled };
   return cachedSheetData;
 }
 
@@ -369,12 +370,27 @@ async function runPipeline(file) {
 
   const headers = sliceRow(data.raw[hdrRow] || [], firstCol, lastCol)
     .map(h => (h != null ? String(h) : null));
-  const rows = rangeDataRowIndices(range)
-    .map(i => sliceRow(data.raw[i], firstCol, lastCol));
+  const dataIdx = rangeDataRowIndices(range);
+  const rows = dataIdx.map(i => sliceRow(data.raw[i], firstCol, lastCol));
+
+  // Where a merged block wrote a copy of its value, in this slice's own
+  // coordinates. A quantity is one figure for its whole block, so the copies
+  // must not be added up again — but which columns are quantities is only
+  // known once the columns have been recognised, so the mask travels with
+  // the rows rather than being decided here.
+  const mergeFilled = data.mergeFilled || new Set();
+  const mergedMask = mergeFilled.size
+    ? dataIdx.map(i => {
+        const line = [];
+        for (let c = firstCol; c <= lastCol; c++) line.push(mergeFilled.has(i + ':' + c));
+        return line;
+      })
+    : null;
 
   const dropAbs   = droppedColumns(headers, firstCol);
   const dropLocal = new Set([...dropAbs].map(c => c - firstCol));
-  const { headers: reH, rows: reR, matchDict } = readExcel(headers, rows, roleOverrides, dropLocal);
+  const { headers: reH, rows: reR, matchDict } =
+    readExcel(headers, rows, roleOverrides, dropLocal, mergedMask);
   const { headers: modH, rows: modR0 } = modifyDF(reH, reR, matchDict);
 
   const modR = applyEdits(modH, modR0, previewEdits.loads);

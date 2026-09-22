@@ -4,7 +4,7 @@
 // `overrides` maps a role to the header name the user picked, or to null to
 // leave that role unused. Anything absent falls back to auto-detection.
 // `dropIdx` is a Set of column indices to leave out of the result entirely.
-function readExcel(headers, rows, overrides = {}, dropIdx = new Set()) {
+function readExcel(headers, rows, overrides = {}, dropIdx = new Set(), mergedMask = null) {
   const matchDict = {
     'Destination': detectDestinationColumn(headers, rows),
     'Carton':      detectCartonColumn(headers),
@@ -15,6 +15,25 @@ function readExcel(headers, rows, overrides = {}, dropIdx = new Set()) {
   };
   for (const role of Object.keys(matchDict)) {
     if (Object.prototype.hasOwnProperty.call(overrides, role)) matchDict[role] = overrides[role];
+  }
+
+  // A merged block holds one quantity for the whole block. Its copies are
+  // cleared from the columns that get added up — the cartons, the weight and
+  // the volume — and left everywhere else, so a merged job number or mark
+  // still reads on every line it covers. Deciding this by the look of the
+  // value instead would take a mark like 260800665 for a quantity.
+  if (mergedMask) {
+    const SUMMED = ['Carton', 'Weight', 'CMB'];
+    const cols = SUMMED.map(r => headers.indexOf(matchDict[r])).filter(i => i >= 0);
+    if (cols.length) {
+      rows = rows.map((row, ri) => {
+        const mask = mergedMask[ri];
+        if (!mask) return row;
+        const out = [...row];
+        for (const c of cols) if (mask[c]) out[c] = null;
+        return out;
+      });
+    }
   }
 
   // Use indices to preserve null/empty-header columns
