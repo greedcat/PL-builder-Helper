@@ -1,0 +1,176 @@
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f0f2f5;
+    color: #1a1a2e;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 32px;
+    letter-spacing: 0.02em;
+    color: #0f3460;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    padding: 28px 32px;
+    width: 100%;
+    max-width: 680px;
+  }
+
+  .inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555;
+    margin-bottom: 6px;
+  }
+
+  textarea {
+    width: 100%;
+    height: 140px;
+    padding: 10px 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+    resize: vertical;
+    transition: border-color 0.2s;
+    line-height: 1.6;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: #0f3460;
+  }
+
+  .hint {
+    font-size: 0.74rem;
+    color: #9ca3af;
+    margin-top: 4px;
+  }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  button {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  button:active { transform: scale(0.97); }
+
+  #btnGenerate {
+    background: #0f3460;
+    color: #fff;
+    flex: 1;
+  }
+
+  #btnGenerate:hover { background: #16213e; }
+
+  #btnClear {
+    background: #f3f4f6;
+    color: #555;
+  }
+
+  #btnClear:hover { background: #e5e7eb; }
+
+  #btnCopy {
+    background: #f3f4f6;
+    color: #555;
+  }
+
+  #btnCopy:hover { background: #e5e7eb; }
+
+  #btnCopy.copied {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .output-section { display: none; }
+  .output-section.visible { display: block; }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .output-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555;
+  }
+
+  .output-count {
+    font-size: 0.78rem;
+    color: #9ca3af;
+  }
+
+  #output {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px 14px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+    background: #f9fafb;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .line-item {
+    display: flex;
+    gap: 8px;
+    padding: 2px 0;
+  }
+
+  .line-num {
+    color: #9ca3af;
+    user-select: none;
+    min-width: 24px;
+    text-align: right;
+  }
+
+  .line-fba { color: #0f3460; font-weight: 600; }
+  .line-po  { color: #c05621; }
+  .line-sep { color: #9ca3af; }
+
+  .error {
+    font-size: 0.85rem;
+    color: #dc2626;
+    margin-top: 10px;
+    display: none;
+  }
