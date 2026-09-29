@@ -2,14 +2,14 @@
 // COLUMN DETECTION
 // ─────────────────────────────────────────────────────────────
 function detectDestinationColumn(headers, rows) {
-  const destSet = new Set(DEST_LIST.map(normalizeText));
+  const destNames = [...new Set(DEST_LIST.map(normalizeText))];
   let bestCol = null, bestScore = 0;
   for (const col of headers) {
     if (!col) continue;
     const ci   = headers.indexOf(col);
     const vals = rows.map(r => r[ci]).filter(v => !isEmpty(v)).map(normalizeText);
     if (!vals.length) continue;
-    const matchCount = vals.filter(v => [...destSet].some(d => v.includes(d))).length;
+    const matchCount = vals.filter(v => destNames.some(d => v.includes(d))).length;
     const r     = matchCount / vals.length;
     const score = r > 0.3 ? 5 : r > 0.1 ? 2 : 0;
     if (score > bestScore) { bestScore = score; bestCol = col; }
