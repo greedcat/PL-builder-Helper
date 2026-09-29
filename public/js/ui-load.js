@@ -49,8 +49,6 @@ function setExcelFile(file, dt) {
   clearPreviewEdits();
   clearDestRenames();
   clearLearnQueue();
-  editHistory = [];
-  selectMode      = 'replace';
   hdrRowInput.value  = '';
   lastRowInput.value = '';
   sheetView.style.display   = 'none';
@@ -60,6 +58,7 @@ function setExcelFile(file, dt) {
   previewSec.style.display  = 'none';
   hideLearnBar();
 
+  setSteps({ upload: ['done', file.name], read: 'active', table: 'todo', preview: 'todo', download: 'todo' });
   showFileOnLoad();
 }
 
@@ -76,10 +75,12 @@ async function showFileOnLoad() {
       sheetView.style.display   = 'none';
       sheetLegend.style.display = 'none';
       setSheetToggleLabel(false);
+      setSteps({ read: ['error', 'No readable rows'] });
       showStatus('That file has no readable rows. Check it opens in Excel and is not password protected.', 'error');
       return;
     }
 
+    setSteps({ read: ['done', `Sheet “${data.sheetName}”`], table: 'active' });
     setSheetToggleLabel(true);
     sheetView.style.display   = 'block';
     sheetLegend.style.display = 'block';
@@ -92,6 +93,7 @@ async function showFileOnLoad() {
     sheetView.style.display   = 'none';
     sheetLegend.style.display = 'none';
     setSheetToggleLabel(false);
+    setSteps({ read: ['error', 'Could not read the file'] });
     showStatus('Could not read that file: ' + err.message, 'error');
   }
 }
@@ -112,15 +114,21 @@ function updateLoadStatus(data) {
   const nData   = countDataRows(data, range);
   const missing = classifyColumns(data, range).missing;
 
+  const s        = nData === 1 ? '' : 's';
+  const rowsText = `${nData} row${s}`;
   if (nData < 1) {
-    showStatus('Sheet loaded, but no data rows were found below the header. Drag on the grid to set the range.', 'error');
+    setSteps({ table: ['error', 'No data rows found'] });
+    showStatus('Sheet loaded, but no data rows were found below the header. Drag the box\'s corners on the grid, or highlight the table and right-click → Use as data range.', 'error');
   } else if (missing.length === PL_ROLES.length) {
-    showStatus('Sheet loaded, but no columns were recognised. The header row is probably wrong — drag on the grid to select it.', 'error');
+    setSteps({ table: ['error', 'No columns recognised'] });
+    showStatus('Sheet loaded, but no columns were recognised. The header row is probably wrong — highlight the table on the grid and right-click → Use as data range.', 'error');
   } else if (missing.length) {
-    showStatus(`${nData} data row${nData === 1 ? '' : 's'} selected, but no column matched ${missing.join(', ')}. `
-             + 'Click that chip to pick its column, or right-click the column in the grid.', 'error');
+    setSteps({ table: ['warn', `${rowsText} · pick ${missing.join(', ')}`] });
+    showStatus(`${nData} data row${s} selected, but no column matched ${missing.join(', ')}. `
+             + 'Click that chip to pick its column, or right-click the column letter in the grid.', 'error');
   } else {
-    showStatus(`✓ ${nData} data row${nData === 1 ? '' : 's'} selected, all columns matched.`, 'success');
+    setSteps({ table: ['done', `${rowsText} · all columns`] });
+    showStatus(`✓ ${nData} data row${s} selected, all columns matched.`, 'success');
   }
 }
 
@@ -223,8 +231,6 @@ async function setActiveSheet(name) {
   clearPreviewEdits();
   clearDestRenames();
   clearLearnQueue();
-  editHistory = [];
-  selectMode      = 'replace';
   hdrRowInput.value  = '';
   lastRowInput.value = '';
   await refreshSheetView({ rebuild: true });
@@ -239,9 +245,6 @@ async function setActiveSheet(name) {
 // 0-based raw row/column indices, matching the grid.
 // ─────────────────────────────────────────────────────────────
 let manualRange = null;   // null = fall back to auto-detection
-
-// How a plain drag behaves: replace the selection, or add another block.
-let selectMode = 'replace';
 
 // Role → header name the user picked, or null for "not used". A role absent
 // from this map is left to auto-detection.
@@ -262,9 +265,11 @@ function hasPreviewEdits() {
 }
 
 // Structural changes move rows around, so edits keyed by row would land on
-// the wrong data. Drop them rather than silently misapply them.
+// the wrong data. Drop them rather than silently misapply them — and drop
+// the undo history with them, which holds the same row keys.
 function clearPreviewEdits() {
   previewEdits = { loads: new Map(), summary: new Map() };
+  clearEditHistory();
 }
 
 // Numbers typed into the preview must reach the workbook as numbers.

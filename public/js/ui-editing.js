@@ -49,10 +49,12 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
 // ─────────────────────────────────────────────────────────────
 // Undo and reset. Every change to the preview — a typed cell, a pasted
 // block, an emptied cell, an accepted destination name — takes a snapshot
-// of what it is about to change first. Undo puts the last one back; Reset
-// goes the whole way to the file as it was read.
+// of what it is about to change first. Undo puts the last one back and keeps
+// the state it left for Redo; Reset goes the whole way to the file as it was
+// read, and can itself be undone. Ctrl+Z / ⌘Z and Ctrl+Y / ⇧⌘Z work too.
 // ─────────────────────────────────────────────────────────────
 let editHistory = [];
+let redoHistory = [];
 const EDIT_HISTORY_MAX = 200;
 
 function editSnapshot() {
@@ -63,9 +65,12 @@ function editSnapshot() {
   };
 }
 
+// Called before every change. A new change ends the chain Redo could
+// replay, the way a spreadsheet drops its redo list once you type again.
 function pushEditHistory() {
   editHistory.push(editSnapshot());
   if (editHistory.length > EDIT_HISTORY_MAX) editHistory.shift();
+  redoHistory = [];
 }
 
 function applySnapshot(s) {
@@ -75,14 +80,35 @@ function applySnapshot(s) {
 
 function undoLastEdit() {
   if (!editHistory.length) return false;
+  redoHistory.push(editSnapshot());
   applySnapshot(editHistory.pop());
   return true;
 }
 
+function redoLastEdit() {
+  if (!redoHistory.length) return false;
+  editHistory.push(editSnapshot());
+  applySnapshot(redoHistory.pop());
+  return true;
+}
+
+// Not clearPreviewEdits(): that also wipes the history this has just added to.
 function resetAllEdits() {
-  editHistory = [];
-  clearPreviewEdits();
+  pushEditHistory();
+  previewEdits = { loads: new Map(), summary: new Map() };
   clearDestRenames();
+}
+
+// Drops only the hand-typed cells, keeping accepted destination names.
+function clearCellEdits() {
+  pushEditHistory();
+  previewEdits = { loads: new Map(), summary: new Map() };
+}
+
+// A new file, sheet or row range starts with nothing to undo or redo.
+function clearEditHistory() {
+  editHistory = [];
+  redoHistory = [];
 }
 
 function hasAnyChange() {
@@ -90,33 +116,64 @@ function hasAnyChange() {
     || Object.keys(destRenames).length > 0;
 }
 
-// The two buttons live in the Loads band and are wired once, since the band
-// is part of the page rather than of the table that gets re-rendered.
+// The buttons live in the Loads band and are wired once, since the band is
+// part of the page rather than of the table that gets re-rendered.
 function syncBandTools() {
   const undo  = document.getElementById('btnUndoEdit');
+  const redo  = document.getElementById('btnRedoEdit');
   const reset = document.getElementById('btnResetEdits');
   if (undo)  undo.disabled  = editHistory.length === 0;
-  if (reset) reset.disabled = !hasAnyChange() && editHistory.length === 0;
+  if (redo)  redo.disabled  = redoHistory.length === 0;
+  if (reset) reset.disabled = !hasAnyChange();
+}
+
+function redrawAfterHistory() {
+  refreshPreview().catch(err => {
+    console.error(err); showStatus('Error: ' + err.message, 'error');
+  });
+}
+
+function runUndo() {
+  if (!undoLastEdit()) { showStatus('Nothing to undo.', 'info'); return; }
+  showStatus('Undid the last change.', 'info');
+  redrawAfterHistory();
+}
+
+function runRedo() {
+  if (!redoLastEdit()) { showStatus('Nothing to redo.', 'info'); return; }
+  showStatus('Redid the change.', 'info');
+  redrawAfterHistory();
 }
 
 (function wireBandTools() {
   const undo  = document.getElementById('btnUndoEdit');
+  const redo  = document.getElementById('btnRedoEdit');
   const reset = document.getElementById('btnResetEdits');
-  const redraw = () => refreshPreview().catch(err => {
-    console.error(err); showStatus('Error: ' + err.message, 'error');
-  });
-  if (undo) undo.addEventListener('click', () => {
-    if (!undoLastEdit()) return;
-    showStatus('Undid the last change.', 'info');
-    redraw();
-  });
+  if (undo) undo.addEventListener('click', runUndo);
+  if (redo) redo.addEventListener('click', runRedo);
   if (reset) reset.addEventListener('click', () => {
-    if (!hasAnyChange() && !editHistory.length) return;
+    if (!hasAnyChange()) return;
     resetAllEdits();
-    showStatus('Reset to the file as it was read.', 'info');
-    redraw();
+    showStatus('Reset to the file as it was read. Ctrl+Z brings the edits back.', 'info');
+    redrawAfterHistory();
   });
 })();
+
+// Ctrl+Z / ⌘Z undoes, Ctrl+Y / ⇧⌘Z / Ctrl+Shift+Z redoes, as in Excel.
+// Text boxes and a cell that is open for typing keep the browser's own undo,
+// which steps back through the characters being typed.
+document.addEventListener('keydown', e => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const key    = e.key.toLowerCase();
+  const isUndo = key === 'z' && !e.shiftKey;
+  const isRedo = key === 'y' || (key === 'z' && e.shiftKey);
+  if (!isUndo && !isRedo) return;
+  if (previewSec.style.display !== 'block') return;
+  const t = e.target;
+  if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+  e.preventDefault();
+  if (isUndo) runUndo(); else runRedo();
+});
 
 // Commits a cell the user has finished editing. Re-renders so the summary and
 // the destination split lines follow the change.
@@ -216,8 +273,10 @@ function endCellEdit(td, { commit = true } = {}) {
   if (!isEditing(td)) return;
   const ed    = td.querySelector('.pl-cell-editor');
   const typed = ed ? ed.textContent : td.textContent;
-  if (ed) ed.remove();
+  // Not editing any more before the editor goes: removing the focused editor
+  // fires a focusout that calls back in here, and a second remove() threw.
   td.classList.remove('pl-editing');
+  if (ed) ed.remove();
   td.textContent = commit ? typed : (td.dataset.original ?? '');
   if (commit) commitCellEdit(td);
 }
@@ -257,7 +316,7 @@ function rangeCells() {
 }
 
 function clearRange() {
-  document.querySelectorAll('#tab-packing-list td.pl-range')
+  document.querySelectorAll('.pl-out-table td.pl-range')
     .forEach(td => td.classList.remove('pl-range'));
 }
 
@@ -269,6 +328,26 @@ function dropRange() {
   rangeFocus  = null;
   rangeDrag   = false;
   clearRange();
+  hideQuickSum('Preview');
+}
+
+// Feeds the dragged block to the floating quick summary. The preview has no
+// column letters, so the block is named by its table, rows and headers.
+function updatePreviewQuickSum() {
+  const lines = rangeCells();
+  if (!lines.length || !rangeAnchor.table.isConnected) { hideQuickSum('Preview'); return; }
+  const table = rangeAnchor.table;
+  const name  = table.closest('#plPreviewSummary') ? 'Summary' : 'Loads';
+  const ths   = [...table.querySelectorAll('thead th')];
+  const c1    = lines[0][0].cellIndex;
+  const c2    = lines[0][lines[0].length - 1].cellIndex;
+  const head  = c => (ths[c] ? ths[c].textContent.trim() : '') || `column ${c + 1}`;
+  const r1    = Math.min(rangeAnchor.r, rangeFocus.r) + 1;
+  const r2    = r1 + lines.length - 1;
+  const ref   = `${name} · ${r1 === r2 ? `line ${r1}` : `lines ${r1}–${r2}`} · `
+    + (c1 === c2 ? head(c1) : `${head(c1)} → ${head(c2)}`);
+  showQuickSum({ source: 'Preview', ref, rows: lines.length, cols: lines[0].length,
+                 values: lines.flat().map(td => td.textContent) });
 }
 
 function paintRange() {
@@ -307,7 +386,11 @@ previewSec.addEventListener('mouseover', e => {
   paintRange();
 });
 
-document.addEventListener('mouseup', () => { rangeDrag = false; });
+document.addEventListener('mouseup', () => {
+  if (!rangeDrag) return;
+  rangeDrag = false;
+  updatePreviewQuickSum();
+});
 
 // The cell a block was started from, looked up fresh: the preview is
 // rebuilt on every change, so a held element reference goes stale.
@@ -344,7 +427,7 @@ function pasteBlock(startTd, text) {
 
 document.addEventListener('paste', e => {
   if (previewSec.style.display !== 'block') return;
-  const open = document.querySelector('#tab-packing-list td.pl-editing');
+  const open = document.querySelector('.pl-out-table td.pl-editing');
   if (open) return;                          // a cell being typed into takes it
   const startTd = anchorCell();
   if (!startTd) return;

@@ -109,7 +109,8 @@ function renderEditBar() {
   bar.innerHTML = `<span><strong>${n}</strong> hand edit${n === 1 ? '' : 's'} will be written into the file.</span>
     <button type="button" id="btnClearEdits" class="pl-range-reset">Undo all edits</button>`;
   document.getElementById('btnClearEdits').addEventListener('click', () => {
-    clearPreviewEdits();
+    clearCellEdits();
+    showStatus('Cleared the hand edits. Ctrl+Z brings them back.', 'info');
     refreshPreview().catch(err => console.error(err));
   });
 }
@@ -252,6 +253,12 @@ function renderPreview(modH, modR, sumH, sumR, longDests) {
   syncBandTools();
   renderDestPanel(longDests);
   previewSec.style.display = 'block';
+  // The tables were just rebuilt, so a block dragged on the old ones is gone.
+  hideQuickSum('Preview');
+
+  // Any change to the preview means the last download, if any, is out of date.
+  setSteps({ preview: ['active', `${visRows.length} load line${visRows.length === 1 ? '' : 's'}`],
+             download: 'todo' });
 }
 
 // Client name, container number and file number appear in the preview header,
@@ -343,6 +350,7 @@ document.getElementById('plForm').addEventListener('submit', async e => {
 
   const { cName, containerName } = readClientContainer();
   if (!cName || !containerName) {
+    setSteps({ download: ['warn', 'Enter client name and container #'] });
     showStatus('Enter both the client name and the container number.', 'error');
     (cName ? containerNoInput : clientNameInput).focus();
     return;
@@ -352,13 +360,16 @@ document.getElementById('plForm').addEventListener('submit', async e => {
   btn.disabled = true;
 
   try {
+    setSteps({ download: ['active', 'Building the file…'] });
     showStatus('Reading file…', 'info', true);
     const { wbIn, modH, modR, sumH, sumR } = await runPipeline(file);
 
     showStatus('Building Excel file…', 'info', true);
+    const outName = downloadName(containerName);
     await writePackingList(modH, modR, sumH, sumR, cName, containerName, wbIn,
-                           downloadName(containerName), readFileNo());
+                           outName, readFileNo());
 
+    setSteps({ preview: 'done', download: ['done', outName] });
     showStatus('✓ Packing list downloaded successfully.', 'success');
 
     // The file exists, so anything the user asked the app to learn is now
@@ -380,6 +391,7 @@ document.getElementById('plForm').addEventListener('submit', async e => {
     renderLearnBar(classifyColumns(data, getRange(data)));
   } catch (err) {
     console.error(err);
+    setSteps({ download: ['error', 'Could not build the file'] });
     showStatus('Error: ' + err.message, 'error');
   } finally {
     btn.disabled = false;

@@ -22,39 +22,81 @@ function normWeight(s) {
   return String(s).normalize('NFKC').toLowerCase().replace(/\s+/g, '').trim();
 }
 
-// Drops the internal _Pallet column and any column that is null in every row.
-// Excel stores a merged block as one value in its top-left cell and nothing
-// in the rest, so a destination merged down five rows reads as one value and
-// four blanks. Copy the value down the block once, when the sheet is read.
-// Only merges that span rows are filled: a merged banner across the top of a
-// sheet is a title, not data, and filling it would make that row look like a
-// full header row.
+// ─────────────────────────────────────────────────────────────
+// fillMergedRows(ws, rows)
+//
+// Excel keeps a merged cell's value only in its top-left cell; the other
+// cells of the merge are empty. A destination merged over rows 2–4:
+//
+//     row 2: YYZ1  | 5        row 2: YYZ1 | 5
+//     row 3: ____  | 3   →    row 3: YYZ1 | 3    ← filled
+//     row 4: ____  | 2        row 4: YYZ1 | 2    ← filled
+//
+// This copies the value into the empty cells, so every row has it.
+//
+//   ws    the SheetJS worksheet; ws['!merges'] lists the merged blocks
+//   rows  the sheet as rows of values; changed in place
+//
+// Returns a Set of the cells it filled, as "row:col" strings. Later,
+// readExcel clears those copies in the Carton / Weight / CBM columns, so a
+// merged "20 cartons" is counted once and not once per row.
+//
+// Rules:
+//   1. Merges inside one row (a title banner) are skipped.
+//   2. A merge whose top-left cell is empty is skipped.
+//   3. A row that was completely empty stays empty (see `hasOwnData`).
+//   4. A cell that already holds a value is never overwritten.
+// ─────────────────────────────────────────────────────────────
 function fillMergedRows(ws, rows) {
-  const filled = new Set();                 // "row:col" of every cell written
+  const filledCells = new Set();
+
+  // No merged cells in this sheet: nothing to do.
   const merges = ws && ws['!merges'];
-  if (!merges || !merges.length) return filled;
-  // Which rows carried something of their own before any filling. A merge is
-  // never allowed to bring a row to life: a two-row header with its labels
-  // merged down would otherwise turn its empty second half into a data row
-  // full of column names.
-  const alive = rows.map(r => !!(r && r.some(v => !isEmpty(v))));
-  for (const m of merges) {
-    if (m.e.r <= m.s.r) continue;                       // single row: a banner
-    const src = rows[m.s.r] ? rows[m.s.r][m.s.c] : undefined;
-    if (isEmpty(src) || String(src).trim() === '') continue;
-    for (let r = m.s.r; r <= m.e.r; r++) {
-      if (!alive[r]) continue;
-      for (let c = m.s.c; c <= m.e.c; c++) {
-        if (r === m.s.r && c === m.s.c) continue;
+  if (!merges || !merges.length) return filledCells;
+
+  // Before filling anything, note which rows have data of their own.
+  // Rule 3 needs this: a header merged down over rows 3–4 with row 4
+  // otherwise blank must not turn row 4 into a data row reading
+  // "Destination | Cartons | CBM".
+  const hasOwnData = rows.map(row => !!(row && row.some(v => !isEmpty(v))));
+
+  for (const merge of merges) {
+    // A merge is { s: top-left, e: bottom-right }, each { r: row, c: col },
+    // counted from 0. A1:A3 is { s: { r: 0, c: 0 }, e: { r: 2, c: 0 } }.
+    const top    = merge.s.r;
+    const bottom = merge.e.r;
+    const left   = merge.s.c;
+    const right  = merge.e.c;
+
+    // Rule 1: a merge that stays in one row is a title banner, not data.
+    if (bottom <= top) continue;
+
+    // The value to copy lives in the top-left cell.
+    // Rule 2: nothing there (or only spaces), nothing to copy.
+    const value = rows[top] ? rows[top][left] : undefined;
+    if (isEmpty(value) || String(value).trim() === '') continue;
+
+    for (let r = top; r <= bottom; r++) {
+      // Rule 3: never bring an empty row to life.
+      if (!hasOwnData[r]) continue;
+
+      for (let c = left; c <= right; c++) {
+        // The top-left cell is the source itself.
+        if (r === top && c === left) continue;
+        // Rule 4: keep any value already in the cell.
         if (!isEmpty(rows[r][c])) continue;
-        rows[r][c] = src;
-        filled.add(r + ':' + c);
+
+        rows[r][c] = value;
+        filledCells.add(r + ':' + c);
       }
     }
   }
-  return filled;
+
+  return filledCells;
 }
 
+// Drops the internal _Pallet and _Row columns and any column that is null in
+// every row.
 function getVisibleColumns(headers, rows) {
   const cols = headers
     .map((h, ci) => ({ h, ci }))

@@ -14,6 +14,7 @@
   <div id="cfgPanel" class="cfg-corner"></div>
   <h1>Packing List Builder</h1>
   <p class="subtitle">Upload an Excel file to generate a formatted packing list</p>
+  <ol id="plSteps" class="pl-steps" aria-label="Progress"></ol>
 
   <form id="plForm">
 
@@ -32,11 +33,11 @@
       <div class="pl-cells" id="plCells">
         <div class="pl-cell" data-cell="clientName" draggable="true">
           <label for="clientName" class="pl-cell-head">Client name</label>
-          <input type="text" id="clientName" placeholder="易达优 EPS" required>
+          <input type="text" id="clientName" required>
         </div>
         <div class="pl-cell" data-cell="containerNo" draggable="true">
           <label for="containerNo" class="pl-cell-head">Container #</label>
-          <input type="text" id="containerNo" placeholder="CAAU8049388" required>
+          <input type="text" id="containerNo" required>
         </div>
         <div class="pl-cell" data-cell="fileNo" draggable="true">
           <label for="fileNo" class="pl-cell-head">File number</label>
@@ -66,7 +67,14 @@
       <div id="plEditBar" class="pl-edit-bar" hidden></div>
       <div class="pl-out">
         <div id="plPreviewHead" class="pl-out-head"></div>
-        <div class="pl-out-band">Loads</div>
+        <div class="pl-out-band">
+          <span>Loads</span>
+          <span class="pl-band-tools">
+            <button type="button" id="btnUndoEdit" class="pl-band-btn" title="Undo (Ctrl+Z / ⌘Z)" disabled>Undo</button>
+            <button type="button" id="btnRedoEdit" class="pl-band-btn" title="Redo (Ctrl+Y / ⇧⌘Z)" disabled>Redo</button>
+            <button type="button" id="btnResetEdits" class="pl-band-btn" title="Back to the file as it was read" disabled>Reset</button>
+          </span>
+        </div>
         <div class="pl-table-wrap pl-out-table" id="plPreviewData"></div>
         <div class="pl-out-band">Summary</div>
         <div class="pl-table-wrap pl-out-table" id="plPreviewSummary"></div>
@@ -82,6 +90,9 @@
   </form>
 </div>
 
+<!-- Count / Sum / Average of whatever is selected in the grid or the preview -->
+<div id="plQuickSum" class="pl-quick-sum" role="status" aria-live="polite" hidden></div>
+
 <!-- load order matters: each file depends on those above it -->
 <script src="js/db.js"></script>
 <script src="js/config.js"></script>
@@ -91,6 +102,8 @@
 <script src="js/grid.js"></script>
 <script src="js/process.js"></script>
 <script src="js/writer.js"></script>
+<script src="js/steps.js"></script>
+<script src="js/quick-sum.js"></script>
 <script src="js/ui-load.js"></script>
 <script src="js/ui-editing.js"></script>
 <script src="js/ui-classify.js"></script>

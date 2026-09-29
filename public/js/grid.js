@@ -35,33 +35,52 @@ function normalizeSel(a, b) {
   };
 }
 
-function createSheetGrid({ mount, onSelect }) {
+// Two separate things live on the grid:
+//   - the RANGE (`sel` plus `extras`): what the packing list reads. It changes
+//     only by dragging its corner handles, or by right-clicking a highlight
+//     and choosing "Use as data range" / "Add as extra block".
+//   - the HIGHLIGHT (`hl`): what a plain drag marks, the way Excel selects.
+//     It never changes what is read; Ctrl+C copies it.
+function createSheetGrid({ mount, onSelect, onCopy }) {
   let rows     = [];
   let nRows    = 0;
   let nCols    = 0;
   let shown    = 0;
   let sel      = null;
   // Data is not always in one run: a sheet can carry a block, a gap, then
-  // more of the same table. Ctrl or Cmd held while dragging adds a block
-  // instead of replacing the selection.
+  // more of the same table. Those further blocks share the range's columns.
   let extras   = [];
   let colInfo  = [];
   let cellEls  = [];   // cellEls[r][c], body cells only
   let rowEls   = [];   // row-number header cells
   let colEls   = [];   // column-letter header cells
 
-  // Drag state. mode: 'cell' | 'row' | 'col'
+  // Drag state. 'resize' moves a range corner; 'hl-cell' | 'hl-row' |
+  // 'hl-col' draws a highlight from a cell, a row number or a column letter.
   let dragging = null;
   let anchor   = null;
-  let addingExtra = null;
-  // 'replace' starts a fresh selection on every drag; 'add' appends a block.
-  // Ctrl or Cmd forces 'add' whatever the mode is.
-  let selectMode = 'replace';
-  function setSelectMode(m) { selectMode = m === 'add' ? 'add' : 'replace'; }
-  function getSelectMode() { return selectMode; }
+
+  let hl       = null;   // { r1, r2, c1, c2 } or null
+  let hlAnchor = null;   // where the highlight started, for Shift+click
+  let hlEl     = null;   // the box drawn over it
+  let hlActive = false;  // the last click was in this grid, so Ctrl+C is ours
 
   let canvas    = null;
   let handleEls = {};
+
+  // Merged blocks, drawn the way Excel shows them. Every cell of a block
+  // stays in the table, so selection and handles work exactly as before;
+  // the lines inside the block are hidden, the cells' own text is hidden,
+  // and one label laid over the block shows the value once.
+  let merges   = [];   // [{ r1, c1, r2, c2, el }] clipped to what is drawn
+  let mergeCopies = new Set();   // "r:c" of cells that only repeat a merge's value
+  const mergeObserver = new ResizeObserver(() => placeMerges());
+  mergeObserver.observe(mount);
+
+  // The class a cell always carries, whatever the selection does to it.
+  function baseClass(el) {
+    return [el.dataset.baseCls, el.dataset.mergeCls].filter(Boolean).join(' ');
+  }
 
   // Set by the caller; receives (absoluteColumn, pageX, pageY).
   let contextHandler = null;
@@ -131,7 +150,7 @@ function createSheetGrid({ mount, onSelect }) {
     // rectangle was fragile: several callers cleared that cache and the
     // repaint then left the previous selection on screen, so a shrunken
     // block still looked like its old self.
-    for (const el of paintedEls) el.className = el.dataset.baseCls || '';
+    for (const el of paintedEls) el.className = baseClass(el);
     for (const el of paintedRowHdrs) el.classList.remove('pl-grid-rownum-sel');
     for (const el of paintedColHdrs) el.classList.remove('pl-grid-colhdr-sel');
     paintedEls = [];
@@ -149,7 +168,7 @@ function createSheetGrid({ mount, onSelect }) {
           ].filter(Boolean).join(' ');
           // Only the main block's first row is the header row.
           const band = (isMain && i === b.r1) ? 'pl-sel-hdr' : 'pl-sel-data';
-          el.className = `${el.dataset.baseCls || ''} pl-sel ${band} ${edges}`.trim();
+          el.className = `${baseClass(el)} pl-sel ${band} ${edges}`.trim();
           paintedEls.push(el);
         }
         if (rowEls[i]) {
@@ -170,6 +189,158 @@ function createSheetGrid({ mount, onSelect }) {
 
     applyFocus(focusCol);
     placeHandles();
+    placeHighlight();
+    styleMergeLabels();
+  }
+
+  // One box over the highlighted rectangle, positioned from its corner cells.
+  function placeHighlight() {
+    if (!hlEl) return;
+    const a = hl && cellEls[hl.r1] && cellEls[hl.r1][hl.c1];
+    const b = hl && cellEls[hl.r2] && cellEls[hl.r2][hl.c2];
+    if (!a || !b) { hlEl.hidden = true; return; }
+    const base = canvas.getBoundingClientRect();
+    const ra = a.getBoundingClientRect();
+    const rb = b.getBoundingClientRect();
+    hlEl.hidden       = false;
+    hlEl.style.left   = (ra.left - base.left) + 'px';
+    hlEl.style.top    = (ra.top - base.top) + 'px';
+    hlEl.style.width  = (rb.right - ra.left) + 'px';
+    hlEl.style.height = (rb.bottom - ra.top) + 'px';
+  }
+
+  // The rectangle a highlight drag covers, by what it started on.
+  function highlightRect(kind, from, to) {
+    if (kind === 'hl-row') return normalizeSel({ r: from.r, c: 0 }, { r: to.r, c: nCols - 1 });
+    if (kind === 'hl-col') return normalizeSel({ r: 0, c: from.c }, { r: shown - 1, c: to.c });
+    return normalizeSel(from, to);
+  }
+
+  function getHighlight() { return hl ? { ...hl } : null; }
+
+  function clearHighlight() {
+    if (!hl) return;
+    hl = null;
+    placeHighlight();
+  }
+
+  // Rows of the highlight already read by the range, main block or extra.
+  function highlightOverlapsRange() {
+    if (!hl) return false;
+    const busy = occupiedRows(-1);
+    for (let r = hl.r1; r <= hl.r2; r++) if (busy.has(r)) return true;
+    return false;
+  }
+
+  // "Use as data range": the highlight replaces the whole range.
+  function useHighlightAsRange() {
+    if (!hl) return;
+    sel    = { ...hl };
+    extras = [];
+    hl     = null;
+    paint();
+    notifyHighlight();
+    if (onSelect) onSelect(sel, []);
+  }
+
+  // "Add as extra block": the highlighted rows join the range, on the range's
+  // own columns. Refused when any of those rows is already read.
+  function addHighlightAsBlock() {
+    if (!hl || !sel || highlightOverlapsRange()) return false;
+    extras.push({ r1: hl.r1, r2: hl.r2, c1: sel.c1, c2: sel.c2 });
+    extras.sort((a, b) => a.r1 - b.r1);
+    mergeTouchingBlocks();
+    hl = null;
+    paint();
+    notifyHighlight();
+    if (onSelect) onSelect(sel, extras.map(b => ({ ...b })));
+    return true;
+  }
+
+  // Tab-separated, which is what a spreadsheet reads back as cells. A merged
+  // block gives its value once, in its top-left cell, as Excel copies it.
+  function highlightText() {
+    const lines = [];
+    for (let r = hl.r1; r <= hl.r2; r++) {
+      const row = rows[r] || [];
+      const line = [];
+      for (let c = hl.c1; c <= hl.c2; c++) {
+        const v = mergeCopies.has(r + ':' + c) ? null : row[c];
+        line.push(v != null ? String(v) : '');
+      }
+      lines.push(line.join('\t'));
+    }
+    return lines.join('\n');
+  }
+
+  // A label reads like the cell it stands for: faded outside the selection
+  // or in an ignored column, bold on the header row.
+  function styleMergeLabels() {
+    for (const m of merges) {
+      const cell = cellEls[m.r1] && cellEls[m.r1][m.c1];
+      if (!cell) continue;
+      const cls = cell.classList;
+      m.el.classList.toggle('pl-merge-dim',
+        !cls.contains('pl-sel') || cls.contains('pl-k-ignored') || cls.contains('pl-k-empty'));
+      m.el.classList.toggle('pl-merge-hdr', cls.contains('pl-sel-hdr'));
+    }
+  }
+
+  // Positioned from the corner cells, like the handles. Re-run when the grid
+  // is shown or resized: a grid drawn while hidden has no size to measure.
+  function placeMerges() {
+    if (!canvas || !merges.length) return;
+    const base = canvas.getBoundingClientRect();
+    for (const m of merges) {
+      const a = cellEls[m.r1] && cellEls[m.r1][m.c1];
+      const b = cellEls[m.r2] && cellEls[m.r2][m.c2];
+      if (!a || !b) { m.el.hidden = true; continue; }
+      const ra = a.getBoundingClientRect();
+      const rb = b.getBoundingClientRect();
+      m.el.hidden       = false;
+      m.el.style.left   = (ra.left - base.left) + 'px';
+      m.el.style.top    = (ra.top - base.top) + 'px';
+      m.el.style.width  = (rb.right - ra.left) + 'px';
+      m.el.style.height = (rb.bottom - ra.top) + 'px';
+    }
+  }
+
+  // Marks the cells of each merged block and lays one label over it.
+  // `sheetMerges` is SheetJS's ws['!merges']: [{ s: {r, c}, e: {r, c} }].
+  function buildMerges(sheetMerges) {
+    merges = [];
+    mergeCopies = new Set();
+    for (const m of sheetMerges || []) {
+      const r1 = m.s.r, c1 = m.s.c;
+      const r2 = Math.min(m.e.r, shown - 1);
+      const c2 = Math.min(m.e.c, nCols - 1);
+      if (r1 >= shown || c1 >= nCols || (r1 === r2 && c1 === c2)) continue;
+
+      const ref   = `${cellRef(m.s.r, m.s.c)}:${cellRef(m.e.r, m.e.c)}`;
+      const value = rows[r1] ? rows[r1][c1] : null;
+      for (let r = r1; r <= r2; r++) {
+        for (let c = c1; c <= c2; c++) {
+          const el = cellEls[r] && cellEls[r][c];
+          if (!el) continue;
+          el.dataset.mergeCls = ['pl-merged',
+            c < c2 ? 'pl-merge-noright' : '', r < r2 ? 'pl-merge-nobottom' : '']
+            .filter(Boolean).join(' ');
+          el.className = baseClass(el);
+          if (r !== r1 || c !== c1) mergeCopies.add(r + ':' + c);
+          el.title = (r === r1 && c === c1)
+            ? `Merged cell ${ref}`
+            : `Part of merged cell ${ref}. The builder reads ${cellRef(r1, c1)}'s value here too.`;
+        }
+      }
+
+      const label = document.createElement('div');
+      label.className = 'pl-merge-label';
+      const text = document.createElement('span');
+      text.textContent = value != null ? String(value) : '';
+      label.appendChild(text);
+      canvas.appendChild(label);
+      merges.push({ r1, c1, r2, c2, el: label });
+    }
   }
 
   // Corners are positioned from the cells themselves, so they stay correct
@@ -332,7 +503,8 @@ function createSheetGrid({ mount, onSelect }) {
 
   // `colCount` is the caller's measure of how many columns actually hold
   // data. Excel's used range is not a safe substitute.
-  function render(rawRows, initialSel, colCount) {
+  // `sheetMerges` is the worksheet's merge list, drawn as merged blocks.
+  function render(rawRows, initialSel, colCount, sheetMerges = []) {
     rows  = rawRows || [];
     nRows = rows.length;
     const wide = colCount || rows.reduce((m, r) => Math.max(m, r ? r.length : 0), 1);
@@ -390,7 +562,15 @@ function createSheetGrid({ mount, onSelect }) {
     extras   = [];
     focusCol = null;
     sel      = clampSel(initialSel);
+    hl       = null;
+    hlEl     = document.createElement('div');
+    hlEl.className = 'pl-grid-hl';
+    hlEl.hidden    = true;
+    canvas.appendChild(hlEl);
+    buildMerges(sheetMerges);
     paint();
+    placeMerges();
+    notifyHighlight();
     attach(table);
     attachHandles();
   }
@@ -408,10 +588,8 @@ function createSheetGrid({ mount, onSelect }) {
   function extendTo(p) {
     if (!anchor) return;
 
-    if (dragging === 'extra' && addingExtra) {
-      const span = clampSpan(Math.min(anchor.r, p.r), Math.max(anchor.r, p.r),
-                             anchor.r, extras.indexOf(addingExtra));
-      if (span) { addingExtra.r1 = span.r1; addingExtra.r2 = span.r2; }
+    if (dragging && dragging.startsWith('hl-')) {
+      hl = highlightRect(dragging, anchor, p);
       schedulePaint();
       return;
     }
@@ -431,10 +609,6 @@ function createSheetGrid({ mount, onSelect }) {
       schedulePaint();
       return;
     }
-    if (dragging === 'row')      sel = normalizeSel({ r: anchor.r, c: 0 }, { r: p.r, c: nCols - 1 });
-    else if (dragging === 'col') sel = normalizeSel({ r: 0, c: anchor.c }, { r: shown - 1, c: p.c });
-    else                         sel = normalizeSel(anchor, p);
-    if (dragging) schedulePaint(); else paint();
   }
 
   // The corner that stays put while its opposite is dragged.
@@ -469,36 +643,39 @@ function createSheetGrid({ mount, onSelect }) {
       if (!p) return;
       e.preventDefault();                 // stop the browser's own text selection
 
-      // Ctrl or Cmd starts an additional block rather than a new selection.
-      if ((e.ctrlKey || e.metaKey || selectMode === 'add') && sel) {
-        if (occupiedRows(-1).has(p.r)) return;   // that row is already taken
-        addingExtra = { r1: p.r, r2: p.r, c1: sel.c1, c2: sel.c2 };
-        extras.push(addingExtra);
-        anchor   = p;
-        dragging = 'extra';
-        paint();
-        return;
-      }
-
-      if (e.shiftKey && sel && p.kind === 'cell') {
-        anchor   = anchor || { r: sel.r1, c: sel.c1 };
-        dragging = 'cell';
+      // A drag only highlights. Shift extends the highlight from where it
+      // started, as in a spreadsheet.
+      if (e.shiftKey && hl && hlAnchor && p.kind === 'cell') {
+        dragging = 'hl-cell';
+        anchor   = hlAnchor;
         extendTo(p);
         return;
       }
-      dragging = p.kind;
-      anchor   = p;
-      if (extras.length) extras = [];
+      dragging = 'hl-' + p.kind;
+      anchor   = hlAnchor = p;
       extendTo(p);
     });
 
+    // Right-clicking outside the highlight moves it to the clicked cell, row
+    // or column first, the way a spreadsheet does, so the menu acts on it.
     table.addEventListener('contextmenu', e => {
       const p = pointFrom(e.target);
       if (!p || !contextHandler) return;
       e.preventDefault();
-      focusColumn(p.c, { toggle: false });
+      hlActive = true;
+      const inside = hl && p.r >= hl.r1 && p.r <= hl.r2 && p.c >= hl.c1 && p.c <= hl.c2;
+      if (!inside) {
+        hlAnchor = p;
+        hl = highlightRect('hl-' + p.kind, p, p);
+        paint();
+        notifyHighlight();
+      }
+      // The column marker only belongs to a column-letter click: that menu is
+      // about the column. A cell's menu is about the highlight.
+      if (p.kind === 'col') focusColumn(p.c, { toggle: false });
       contextHandler(p.c, e.pageX, e.pageY,
-        { row: p.r, extraIndex: extraAt(p.r), inSelection: rowsSelected(p.r) });
+        { kind: p.kind, row: p.r, extraIndex: extraAt(p.r), inSelection: rowsSelected(p.r),
+          highlight: getHighlight(), highlightOverlaps: highlightOverlapsRange() });
     });
 
     const track = e => {
@@ -511,20 +688,59 @@ function createSheetGrid({ mount, onSelect }) {
   }
 
   // Finish the drag wherever the mouse is released, including outside the grid.
+  // Only a corner drag changes the range; a highlight drag changes nothing
+  // the packing list reads.
   document.addEventListener('mouseup', e => {
     if (canvas) canvas.classList.remove('pl-grid-resizing');
     if (!dragging || (e && e.button !== 0)) return;
+    const wasResize = dragging === 'resize';
     dragging = null;
-    addingExtra = null;
     resizing = null;
-    // A block dragged to nothing is a mis-click, not an empty block.
-    extras = extras.filter(b => b.r2 >= b.r1);
+    if (!wasResize) { notifyHighlight(); return; }
     extras.sort((a, b) => a.r1 - b.r1);
     if (mergeTouchingBlocks()) paint();
     if (onSelect) onSelect(sel, extras.map(b => ({ ...b })));
   });
 
+  // Ctrl+C belongs to the grid only when the last click was in it; otherwise
+  // the preview (or the browser) handles the copy. Capture phase, so the
+  // preview's own copy handler does not also run.
+  document.addEventListener('mousedown', e => {
+    hlActive = !!(canvas && canvas.contains(e.target));
+  }, true);
+  document.addEventListener('copy', e => {
+    if (!hl || !hlActive) return;
+    e.clipboardData.setData('text/plain', highlightText());
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (onCopy) onCopy(hl.r2 - hl.r1 + 1, hl.c2 - hl.c1 + 1);
+  }, true);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && hl && hlActive) { clearHighlight(); notifyHighlight(); }
+  });
+
+  // Listeners that want to follow the highlight (the floating summary).
+  const highlightListeners = [];
+  function onHighlightChange(fn) { highlightListeners.push(fn); }
+  function notifyHighlight() { for (const fn of highlightListeners) fn(getHighlightCells()); }
+
+  // The highlighted values as the summary needs them: one entry per cell, a
+  // merged block counted once at its top-left cell.
+  function getHighlightCells() {
+    if (!hl) return null;
+    const values = [];
+    for (let r = hl.r1; r <= hl.r2; r++) {
+      const row = rows[r] || [];
+      for (let c = hl.c1; c <= hl.c2; c++) {
+        values.push(mergeCopies.has(r + ':' + c) ? null : row[c]);
+      }
+    }
+    return { ref: rangeRef(hl), rows: hl.r2 - hl.r1 + 1, cols: hl.c2 - hl.c1 + 1, values };
+  }
+
   return { render, setSelection, getSelection, getExtras, setExtras, removeExtra, extraAt,
-           setSelectMode, getSelectMode, setColumnInfo, focusColumn, clearFocus,
-           onColumnContextMenu, rangeRef: () => rangeRef(sel) };
+           setColumnInfo, focusColumn, clearFocus, onColumnContextMenu,
+           getHighlight, clearHighlight, useHighlightAsRange, addHighlightAsBlock,
+           highlightText: () => (hl ? highlightText() : ''),
+           onHighlightChange, rangeRef: () => rangeRef(sel) };
 }

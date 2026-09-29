@@ -142,23 +142,15 @@ function renderSheetLegend(info, range, data) {
       </select>
     </span>` : '';
 
-  const modeBtns = `
-    <span class="pl-mode" role="group" aria-label="What a drag does">
-      <button type="button" class="pl-mode-btn${selectMode === 'replace' ? ' pl-mode-on' : ''}"
-              data-mode="replace">Select</button>
-      <button type="button" class="pl-mode-btn${selectMode === 'add' ? ' pl-mode-on' : ''}"
-              data-mode="add">Add block</button>
-    </span>`;
-
   return `
     <div class="pl-range-bar">
-      <span class="pl-range-ref">${ref}</span>${mode}${modeBtns}${picker}${reset}
+      <span class="pl-range-ref">${ref}</span>${mode}${picker}${reset}
     </div>
     <p class="pl-range-explain">${explain}</p>
-    <p class="pl-range-hint">Drag across the grid to change it. The top row of the box is always the header.
-      Click a row number or column letter to take the whole line.
-      When the table is split by a gap, hold <strong>⌘</strong> or <strong>Ctrl</strong>
-      and drag the other block to add it.</p>
+    <p class="pl-range-hint">Drag the four blue corners to resize the box. The top row of the box is always the header.
+      Dragging across the grid only highlights cells (Ctrl+C copies them) — right-click a highlight
+      to <strong>use it as the data range</strong>, or, when the table is split by a gap,
+      to <strong>add it as an extra block</strong>.</p>
     <div class="pl-role-row">
       <span class="pl-role-label">Columns found</span>${chips}
       ${asides ? `<span class="pl-role-aside">${asides}</span>` : ''}
@@ -459,6 +451,8 @@ function ensureGrid() {
   if (sheetGrid) return sheetGrid;
   sheetGrid = createSheetGrid({
     mount: sheetView,
+    onCopy: (nRows, nCols) => showStatus(nRows === 1 && nCols === 1 ? 'Copied 1 cell.'
+      : `Copied ${nRows} row${nRows === 1 ? '' : 's'} × ${nCols} column${nCols === 1 ? '' : 's'}.`, 'success'),
     onSelect: (sel, extras) => {
       if (!sel) return;
       const blocks = (extras || []).map(b => ({ r1: b.r1, r2: b.r2 }));
@@ -478,6 +472,8 @@ function ensureGrid() {
         .catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
     },
   });
+  sheetGrid.onHighlightChange(cells =>
+    cells ? showQuickSum({ source: 'Sheet', ...cells }) : hideQuickSum('Sheet'));
   return sheetGrid;
 }
 
@@ -496,7 +492,11 @@ async function refreshSheetView({ rebuild = false, keepSelection = false } = {})
 
   // The grid must be told about the extra blocks too, or a reset leaves the
   // old ones drawn over a range that no longer has them.
-  if (rebuild) { grid.render(data.raw, sel, data.maxCols); grid.setExtras(blocks); }
+  if (rebuild) {
+    const ws = data.wbIn.Sheets[data.sheetName];
+    grid.render(data.raw, sel, data.maxCols, (ws && ws['!merges']) || []);
+    grid.setExtras(blocks);
+  }
   else if (!keepSelection) { grid.setSelection(sel); grid.setExtras(blocks); }
 
   const info = classifyColumns(data, range);
@@ -517,34 +517,68 @@ async function refreshSheetView({ rebuild = false, keepSelection = false } = {})
     });
   });
 
-  // Right-clicking a column offers the same choices plus keep / drop.
+  // Two menus. A column letter opens the column's menu: which role it fills,
+  // keep or drop. A cell or row number opens the menu for the highlighted
+  // cells: use them as the range, add them as a block, copy them.
   grid.onColumnContextMenu((abs, x, y, where) => {
-    const meta = info.choices.find(c => c.col === abs);
-    const name = meta && meta.name != null && meta.name !== '' ? escapeHtml(String(meta.name)) : '(no header)';
-    const items = [];
+    const meta  = info.choices.find(c => c.col === abs);
+    const name  = meta && meta.name != null && meta.name !== '' ? escapeHtml(String(meta.name)) : '(no header)';
+    const colTitle = `Column ${colLetter(abs)} — ${name}`;
+    const openColumnMenu = () => {
+      grid.focusColumn(abs, { toggle: false });
+      openPlMenu(x, y, colTitle, columnMenuItems(abs, info));
+    };
 
-    // A block added on top of the main selection can be taken back out here.
-    if (where && where.extraIndex >= 0) {
-      const b = grid.getExtras()[where.extraIndex];
+    if (where && where.kind === 'col') { openColumnMenu(); return; }
+
+    const items = [];
+    const h = where && where.highlight;
+    if (h) {
+      const ref      = `${cellRef(h.r1, h.c1)}:${cellRef(h.r2, h.c2)}`;
+      const rowsText = h.r1 === h.r2 ? `row ${h.r1 + 1}` : `rows ${h.r1 + 1}–${h.r2 + 1}`;
       items.push({
-        label: `Remove this block (rows ${b.r1 + 1}–${b.r2 + 1})`,
-        onPick: () => grid.removeExtra(where.extraIndex),
-      }, { sep: true });
+        label: 'Use as data range',
+        note:  h.r2 <= h.r1 ? 'needs a header and a data row' : ref,
+        disabled: h.r2 <= h.r1,
+        onPick: () => grid.useHighlightAsRange(),
+      }, {
+        label: `Add ${rowsText} as extra block`,
+        note:  where.highlightOverlaps ? 'already in the range' : '',
+        disabled: where.highlightOverlaps,
+        onPick: () => grid.addHighlightAsBlock(),
+      }, {
+        label: 'Copy',
+        note:  'Ctrl+C',
+        onPick: () => {
+          const text = grid.highlightText();
+          navigator.clipboard.writeText(text)
+            .then(() => showStatus(`Copied ${ref}.`, 'success'))
+            .catch(() => showStatus('Could not copy — press Ctrl+C instead.', 'error'));
+        },
+      });
     }
 
-    openPlMenu(x, y, `Column ${colLetter(abs)} — ${name}`,
-               items.concat(columnMenuItems(abs, info)));
-  });
+    // A block added on top of the main range can be taken back out here.
+    if (where && where.extraIndex >= 0) {
+      const b = grid.getExtras()[where.extraIndex];
+      items.push({ sep: true }, {
+        label: `Remove this block (rows ${b.r1 + 1}–${b.r2 + 1})`,
+        onPick: () => grid.removeExtra(where.extraIndex),
+      });
+    }
 
-  sheetLegend.querySelectorAll('.pl-mode-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      selectMode = btn.dataset.mode;
-      grid.setSelectMode(selectMode);
-      sheetLegend.querySelectorAll('.pl-mode-btn').forEach(b =>
-        b.classList.toggle('pl-mode-on', b.dataset.mode === selectMode));
+    // The column's own menu stays one step away.
+    items.push({ sep: true }, {
+      label: `Column ${colLetter(abs)} options…`,
+      note:  name,
+      onPick: openColumnMenu,
     });
+
+    const title = !h ? 'Cells'
+      : (h.r1 === h.r2 && h.c1 === h.c2) ? `Cell ${cellRef(h.r1, h.c1)}`
+      : `Cells ${cellRef(h.r1, h.c1)}:${cellRef(h.r2, h.c2)}`;
+    openPlMenu(x, y, title, items);
   });
-  grid.setSelectMode(selectMode);
 
   const pick = document.getElementById('plSheetPick');
   if (pick) pick.addEventListener('change', () => {
