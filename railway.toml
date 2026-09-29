@@ -1,6 +1,5 @@
-# Used only by a service whose root directory is the repository root.
-# The original backend service builds from server/ and reads
-# server/railway.toml, so it is unaffected by this file.
+# One service, repository root. `npm start` runs server.js, which serves
+# public/ and the config API (MongoDB optional via MONGO_URI / MONGO_DB).
 [build]
 builder = "NIXPACKS"
 

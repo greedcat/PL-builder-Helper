@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────────
+// PL Builder Helper — the one server.
+// Serves the browser app from public/ and the small config API.
+// MongoDB is optional: without MONGO_URI the app still runs and
+// the config endpoints answer 503, so every page keeps working
+// on its built-in fallback lists.
+// ─────────────────────────────────────────────────────────────
 require('dotenv').config();
 const path = require('path');
 const express = require('express');
@@ -14,23 +21,25 @@ const FIELDS     = ['DEST_LIST', 'CARTON_KEYWORDS', 'CBM_KEYWORDS', 'WEIGHT_KEYW
 const MATCH_HELPER_DB     = 'match_helper';
 const MATCH_HELPER_DOC_ID = 'container-match-config';
 
-if (!MONGO_URI || !MONGO_DB) {
-  console.error('Missing MONGO_URI or MONGO_DB in environment.');
-  process.exit(1);
-}
-
-const app    = express();
-const client = new MongoClient(MONGO_URI);
-let collection;
-let matchHelperCol;
+const app = express();
+let collection     = null; // PL config collection, null until Mongo connects
+let matchHelperCol = null;
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/api/health', (req, res) => res.json({ ok: true, db: !!collection }));
+
+// Every data endpoint goes through this gate so a missing database reads as
+// one consistent, non-fatal condition on the client.
+function requireDb(res, col) {
+  if (!col) { res.status(503).json({ error: 'Database not configured' }); return false; }
+  return true;
+}
 
 app.get('/api/config', async (req, res) => {
+  if (!requireDb(res, collection)) return;
   try {
     const doc = await collection.findOne({ _id: DOC_ID });
     res.json(doc || {});
@@ -41,6 +50,7 @@ app.get('/api/config', async (req, res) => {
 });
 
 app.put('/api/config', async (req, res) => {
+  if (!requireDb(res, collection)) return;
   try {
     const set = {};
     for (const key of FIELDS) {
@@ -59,6 +69,7 @@ app.put('/api/config', async (req, res) => {
 });
 
 app.get('/api/match-helper/dest-order', async (req, res) => {
+  if (!requireDb(res, matchHelperCol)) return;
   try {
     const doc = await matchHelperCol.findOne({ _id: MATCH_HELPER_DOC_ID });
     res.json({ destOrder: (doc && doc.destOrder) || [] });
@@ -69,6 +80,7 @@ app.get('/api/match-helper/dest-order', async (req, res) => {
 });
 
 app.put('/api/match-helper/dest-order', async (req, res) => {
+  if (!requireDb(res, matchHelperCol)) return;
   try {
     if (!Array.isArray(req.body.destOrder)) {
       return res.status(400).json({ error: 'destOrder must be an array' });
@@ -86,15 +98,21 @@ app.put('/api/match-helper/dest-order', async (req, res) => {
   }
 });
 
-async function start() {
-  await client.connect();
-  collection = client.db(MONGO_DB).collection(COLLECTION);
-  matchHelperCol = client.db(MATCH_HELPER_DB).collection('config');
-  console.log(`Connected to MongoDB database "${MONGO_DB}"`);
-  app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+async function connectDb() {
+  if (!MONGO_URI || !MONGO_DB) {
+    console.warn('MONGO_URI / MONGO_DB not set — serving the app without the config API.');
+    return;
+  }
+  try {
+    const client = new MongoClient(MONGO_URI);
+    await client.connect();
+    collection     = client.db(MONGO_DB).collection(COLLECTION);
+    matchHelperCol = client.db(MATCH_HELPER_DB).collection('config');
+    console.log(`Connected to MongoDB database "${MONGO_DB}"`);
+  } catch (err) {
+    console.error('MongoDB connection failed — continuing without the config API:', err.message);
+  }
 }
 
-start().catch(err => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+connectDb();
