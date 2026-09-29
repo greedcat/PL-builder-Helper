@@ -276,6 +276,10 @@
         <label for="value-col">Value Column</label>
         <select id="value-col"></select>
       </div>
+      <div class="field">
+        <label for="file-col">File No Column</label>
+        <select id="file-col"></select>
+      </div>
     </div>
     <p class="hint">Drop a file with client, container, destination and value (pallet count) columns. Columns are auto-detected but can be changed above.</p>
   </div>
@@ -510,6 +514,7 @@ const CLIENT_HINTS    = ["client", "client name", "客户", "客户名称"];
 const CONTAINER_HINTS = ["container", "container#", "container #", "container no", "container no.", "柜号", "箱号", "集装箱号"];
 const DEST_HINTS      = ["destination", "dest", "目的地"];
 const VALUE_HINTS     = ["value", "值", "金额", "amount", "qty", "quantity", "数量", "pallet", "板数", "skid"];
+const FILE_HINTS      = ["file no", "file#", "file #", "file number", "fileno", "file", "文件号", "档案号", "so no", "job no"];
 
 function guessColumn(cols, hints) {
   const lower = cols.map(c => String(c).toLowerCase().trim());
@@ -531,6 +536,17 @@ function normContainer(s) {
   const str = String(s).trim().toUpperCase();
   const match = str.match(/[A-Z]{4}\d{7}/);
   return match ? match[0] : str.replace(/[^A-Z0-9]/g, "");
+}
+
+// File numbers like "2067-26033-01" belong to container file "2067-26033" —
+// keep the first two dash-separated segments so per-shipment suffixes don't
+// count as different files.
+function normFileNo(s) {
+  if (s == null) return "";
+  const str = String(s).trim();
+  if (!str) return "";
+  const m = str.match(/^([^-\s]+-[^-\s]+)/);
+  return m ? m[1] : str;
 }
 
 // ── normalise destination string ────────────────────────────────────────────
@@ -668,20 +684,24 @@ const clientColSel    = document.getElementById("client-col");
 const containerColSel = document.getElementById("container-col");
 const destColSel      = document.getElementById("dest-col");
 const valueColSel     = document.getElementById("value-col");
+const fileColSel      = document.getElementById("file-col");
 
 function populateColumnPickers() {
-  [clientColSel, containerColSel, destColSel, valueColSel].forEach(sel => sel.innerHTML = "");
+  [clientColSel, containerColSel, destColSel, valueColSel, fileColSel].forEach(sel => sel.innerHTML = "");
+  fileColSel.appendChild(new Option("— none —", ""));
   allCols.forEach(c => {
     clientColSel.appendChild(new Option(c, c));
     containerColSel.appendChild(new Option(c, c));
     destColSel.appendChild(new Option(c, c));
     valueColSel.appendChild(new Option(c, c));
+    fileColSel.appendChild(new Option(c, c));
   });
 
   clientColSel.value    = guessColumn(allCols, CLIENT_HINTS) || allCols[0];
   containerColSel.value = guessColumn(allCols, CONTAINER_HINTS) || allCols[0];
   destColSel.value      = guessColumn(allCols, DEST_HINTS) || allCols[0];
   valueColSel.value      = guessColumn(allCols, VALUE_HINTS) || allCols[allCols.length > 1 ? 1 : 0];
+  fileColSel.value      = guessColumn(allCols, FILE_HINTS) || "";
 }
 
 containerColSel.addEventListener("change", populateContainerList);
@@ -750,6 +770,9 @@ function buildPivot(order) {
   const rowsMap   = new Map(); // "client container" -> row
   const rowOrder  = [];
   const unmatchedDest = new Set();
+  const fileCol = fileColSel.value;
+  // container number -> set of file numbers it appears under (across all rows)
+  const containerFiles = new Map();
 
   for (const raw of sheetData) {
     const container = normContainer(raw[containerCol]);
@@ -764,6 +787,14 @@ function buildPivot(order) {
     }
     const row = rowsMap.get(rowKey);
     if (!row.client && client) row.client = client;
+
+    if (fileCol) {
+      const fileNo = normFileNo(raw[fileCol]);
+      if (fileNo) {
+        if (!containerFiles.has(container)) containerFiles.set(container, new Set());
+        containerFiles.get(container).add(fileNo);
+      }
+    }
 
     const dest  = normDest(raw[destCol]);
     const value = parseFloat(raw[valueCol]) || 0;
@@ -782,8 +813,12 @@ function buildPivot(order) {
     row.values[key] = (row.values[key] || 0) + value;
   }
 
+  const rows = rowOrder.map(k => rowsMap.get(k));
+  // attach the file set so rows whose container spans several files can warn
+  for (const r of rows) r.files = containerFiles.get(r.container) || new Set();
+
   return {
-    rows: rowOrder.map(k => rowsMap.get(k)),
+    rows,
     unmatchedDest: [...unmatchedDest]
   };
 }
@@ -805,21 +840,25 @@ function run() {
   // pivot table
   const headerCells = ["CLIENT", "CNTR", ...order].map(h => `<th>${escapeHtml(h)}</th>`).join("");
   const bodyRows = rows.map(r => {
+    const multiFile = r.files && r.files.size > 1;
     const cells = [
       `<td>${escapeHtml(r.client)}</td>`,
-      `<td>${escapeHtml(r.container)}</td>`,
+      `<td>${escapeHtml(r.container)}${multiFile ? ` ⚠️ <small>(${[...r.files].map(escapeHtml).join(", ")})</small>` : ""}</td>`,
       ...order.map(d => {
         const v = r.values[d];
         return v ? `<td class="val">${v.toLocaleString()}</td>` : `<td class="empty"></td>`;
       })
     ].join("");
-    return `<tr>${cells}</tr>`;
+    return `<tr${multiFile ? ' class="warn-row"' : ""}>${cells}</tr>`;
   }).join("");
   document.getElementById("pivot-table").innerHTML =
     `<table><thead><tr>${headerCells}</tr></thead><tbody>${bodyRows}</tbody></table>`;
 
   // alerts
   let alertHtml = "";
+  const dupFiles = [...new Map(rows.filter(r => r.files && r.files.size > 1).map(r => [r.container, r])).values()];
+  if (dupFiles.length)
+    alertHtml += `<div class="alert alert-error">⚠️ <strong>${dupFiles.length} container(s) appear under more than one file number:</strong> ${dupFiles.map(r => `${escapeHtml(r.container)} (${[...r.files].map(escapeHtml).join(", ")})`).join(" · ")}</div>`;
   if (unmatchedDest.length)
     alertHtml += `<div class="alert alert-warn">ℹ️ <strong>${unmatchedDest.length} destination value(s) in Excel not in the order list (excluded from table):</strong> ${unmatchedDest.map(escapeHtml).join(", ")}</div>`;
   if (!unmatchedDest.length)
