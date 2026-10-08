@@ -30,9 +30,29 @@ dropZone.addEventListener('drop', e => {
 });
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) setExcelFile(fileInput.files[0]); });
 
+// A table copied from Excel can be pasted straight onto the page instead of
+// saving it as a file first. A paste aimed at a text box, an open cell or a
+// selected block of the preview belongs to them and is left alone.
+document.addEventListener('paste', e => {
+  const t = e.target;
+  if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+  if (previewSec.style.display === 'block' && typeof anchorCell === 'function' && anchorCell()) return;
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  if (!looksLikeTable(text)) return;
+  e.preventDefault();
+  setPastedTable(text);
+});
+
+function setPastedTable(text) {
+  const file = new File([text], PASTED_FILE_NAME, { type: 'text/tab-separated-values' });
+  setExcelFile(file, true);
+}
+
 function setExcelFile(file, dt) {
   if (dt) { const dtp = new DataTransfer(); dtp.items.add(file); fileInput.files = dtp.files; }
-  fileBadge.innerHTML     = `<span>📄</span> ${file.name}`;
+  fileBadge.innerHTML     = isPastedTable(file)
+    ? `<span>📋</span> ${escapeHtml(file.name.replace(/\.tsv$/i, ''))} <em>(from the clipboard)</em>`
+    : `<span>📄</span> ${escapeHtml(file.name)}`;
   fileBadge.style.display = 'inline-flex';
   dropZone.querySelector('.drop-text').style.display = 'none';
   dropZone.classList.add('pl-drop-compact');
@@ -58,7 +78,8 @@ function setExcelFile(file, dt) {
   previewSec.style.display  = 'none';
   hideLearnBar();
 
-  setSteps({ upload: ['done', file.name], read: 'active', table: 'todo', preview: 'todo', download: 'todo' });
+  const shownName = isPastedTable(file) ? file.name.replace(/\.tsv$/i, '') : file.name;
+  setSteps({ upload: ['done', shownName], read: 'active', table: 'todo', preview: 'todo', download: 'todo' });
   showFileOnLoad();
 }
 
@@ -66,7 +87,8 @@ function setExcelFile(file, dt) {
 // is chosen, so the detected range and its result are visible without a click.
 async function showFileOnLoad() {
   try {
-    showStatus('Reading file…', 'info', true);
+    const pasted = isPastedTable(fileInput.files[0]);
+    showStatus(pasted ? 'Reading the pasted table…' : 'Reading file…', 'info', true);
     const data = await loadSheetData(fileInput.files[0]);
 
     // SheetJS parses almost anything without throwing, so an unreadable file
@@ -164,10 +186,33 @@ let cachedSheetName = null;
 // Which worksheet the builder reads. Reset whenever a new file arrives.
 let activeSheet = null;
 
+// A pasted table is held as a small text file, so everything that keys off
+// the chosen file — the cache, the badge, the step bar — works unchanged.
+const PASTED_FILE_NAME = 'Pasted table.tsv';
+const PASTED_SHEET     = 'Pasted table';
+
+function isPastedTable(file) {
+  return !!file && /\.tsv$/i.test(file.name);
+}
+
+// Builds a one-sheet workbook from tab-separated text, typing the cells the
+// way Excel would: numbers as numbers, everything else as text.
+function workbookFromText(text) {
+  const rows = parseDelimitedText(text, '\t').map(r => r.map(tableCellValue));
+  const ws   = XLSX.utils.aoa_to_sheet(rows.length ? rows : [[]]);
+  const wb   = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, PASTED_SHEET);
+  return wb;
+}
+
 async function loadWorkbook(file) {
   if (cachedFile === file && cachedWb) return cachedWb;
-  const buf = await file.arrayBuffer();
-  cachedWb  = XLSX.read(buf, { type: 'array', raw: true });
+  if (isPastedTable(file)) {
+    cachedWb = workbookFromText(await file.text());
+  } else {
+    const buf = await file.arrayBuffer();
+    cachedWb  = XLSX.read(buf, { type: 'array', raw: true });
+  }
   cachedFile      = file;
   cachedSheetName = null;
   cachedSheetData = null;

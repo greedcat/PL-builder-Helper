@@ -425,8 +425,16 @@ function pasteBlock(startTd, text) {
   return { filled, unplaced, locked };
 }
 
+// A text box keeps its own paste and copy, even while a block of the preview
+// is selected; before this the block took them.
+function inTextField(target) {
+  return !!(target && target.closest
+    && target.closest('input, textarea, select, [contenteditable="true"]'));
+}
+
 document.addEventListener('paste', e => {
   if (previewSec.style.display !== 'block') return;
+  if (inTextField(e.target)) return;
   const open = document.querySelector('.pl-out-table td.pl-editing');
   if (open) return;                          // a cell being typed into takes it
   const startTd = anchorCell();
@@ -451,6 +459,7 @@ document.addEventListener('paste', e => {
 // Copy the rectangle as tab-separated text, which is what a spreadsheet
 // reads back as cells.
 document.addEventListener('copy', e => {
+  if (inTextField(e.target)) return;
   const lines = rangeCells();
   if (!lines.length) return;
   // One cell counts too. The table does not allow a text selection, so

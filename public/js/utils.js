@@ -108,6 +108,57 @@ function getVisibleColumns(headers, rows) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// PASTED TABLES
+// A table copied out of Excel arrives on the clipboard as tab-separated
+// text, one line per row. A cell holding a line break, a tab or a quote is
+// wrapped in double quotes, with any quote inside it doubled, so a line
+// break inside quotes is part of the cell and not the end of the row.
+// ─────────────────────────────────────────────────────────────
+
+// parseDelimitedText(text, sep) → rows of cell strings. Never throws; an
+// unclosed quote simply runs to the end of the text.
+function parseDelimitedText(text, sep = '\t') {
+  const rows = [];
+  let row = [], cell = '', quoted = false;
+  const s = String(text == null ? '' : text);
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (quoted) {
+      if (ch === '"') {
+        if (s[i + 1] === '"') { cell += '"'; i++; }   // doubled quote
+        else quoted = false;                            // closing quote
+      } else cell += ch;
+      continue;
+    }
+    if (ch === '"' && cell === '') { quoted = true; continue; }
+    if (ch === sep) { row.push(cell); cell = ''; continue; }
+    if (ch === '\r') { if (s[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; continue; }
+    if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; continue; }
+    cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// What a pasted cell means: nothing for blank, a number for anything Excel
+// would show as one (thousands separators allowed), the text otherwise.
+// "007" and "0012" stay text: a leading zero is a code, not a quantity.
+function tableCellValue(text) {
+  const t = String(text == null ? '' : text).trim();
+  if (t === '') return null;
+  if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(t)) return Number(t);
+  if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) return Number(t.replace(/,/g, ''));
+  return t;
+}
+
+// Does this clipboard text look like a copied table rather than a value?
+// At least one tab and at least two lines: a header and a row.
+function looksLikeTable(text) {
+  if (typeof text !== 'string' || !text.includes('\t')) return false;
+  return text.split(/\r\n?|\n/).filter(l => l.trim() !== '').length >= 2;
+}
+
+// ─────────────────────────────────────────────────────────────
 // PL SECTIONS
 // ─────────────────────────────────────────────────────────────
 // A PL sheet has three parts, separated by visible title rows that a person
