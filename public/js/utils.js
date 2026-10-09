@@ -97,13 +97,22 @@ function fillMergedRows(ws, rows) {
 
 // Drops the internal _Pallet and _Row columns and any column that is null in
 // every row.
+// "localCCN#", "CCN", "Cargo Control No." and the like.
+function isCcnHeader(name) {
+  return name != null && /ccn|cargo\s*control|货物控制/i.test(String(name));
+}
+
+// An empty CCN column is still shown: it only reaches the loads when the
+// container is bonded, and then it is there to be filled in.
 function getVisibleColumns(headers, rows) {
   const cols = headers
     .map((h, ci) => ({ h, ci }))
-    .filter(({ h, ci }) => h !== '_Pallet' && h !== '_Row' && rows.some(r => r[ci] != null));
+    .filter(({ h, ci }) => h !== '_Pallet' && h !== '_Row'
+                        && (isCcnHeader(h) || rows.some(r => r[ci] != null)));
   return {
     headers: cols.map(x => x.h),
     rows:    rows.map(r => cols.map(x => r[x.ci])),
+    cols:    cols.map(x => x.ci),
   };
 }
 
@@ -188,6 +197,10 @@ function parsePLSections(rows) {
 // the street: "PA - 3600 Ridgeway Dr".
 // ─────────────────────────────────────────────────────────────
 const PL_PRIVATE_PREFIX = 'PA - ';
+
+// On the destination list, but standing for "a private address" rather
+// than a warehouse, so a line with one is still offered a short name.
+const PL_PLACEHOLDER_DESTS = ['私人地址'];
 
 const STREET_TYPES = {
   rd: 'Rd', road: 'Rd', st: 'St', street: 'St', ave: 'Ave', avenue: 'Ave',

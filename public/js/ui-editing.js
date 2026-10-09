@@ -26,8 +26,11 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
       const name = headers[ci];
       const edited = edits && edits.has(`${rowId}\u0000${name}`);
       const numCls  = typeof tidyNumber(v) === 'number' ? ' pl-num' : '';
+      // A CCN cell is often empty and waiting to be filled in, so it is drawn
+      // wide enough to take one and says so (see .pl-ccn-cell).
+      const ccnCls = editKey && isCcnHeader(name) ? ' pl-ccn-cell' : '';
       const attrs = editKey
-        ? ` tabindex="0" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}"`
+        ? ` tabindex="0" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}${ccnCls}"`
         + ` data-table="${editKey}" data-row="${rowId}" data-col="${escapeHtml(String(name ?? ''))}"`
         : '';
       const shown = tidyNumber(v);
@@ -329,6 +332,7 @@ function dropRange() {
   rangeDrag   = false;
   clearRange();
   hideQuickSum('Preview');
+  hideCcnAssign();
 }
 
 // Feeds the dragged block to the floating quick summary. The preview has no
@@ -371,6 +375,15 @@ previewSec.addEventListener('mousedown', e => {
   // the pointer moves; the cell is focused by hand instead.
   e.preventDefault();
   const rc = cellRC(td);
+  // Shift-click stretches the block to this cell, so a long run of lines
+  // can be picked without dragging all the way down.
+  if (e.shiftKey && rangeAnchor && rangeAnchor.table === td.closest('table')) {
+    rangeFocus = rc;
+    paintRange();
+    updatePreviewQuickSum();
+    showCcnAssign();
+    return;
+  }
   rangeAnchor = { table: td.closest('table'), r: rc.r, c: rc.c };
   rangeFocus  = { r: rc.r, c: rc.c };
   rangeDrag   = true;
@@ -390,6 +403,7 @@ document.addEventListener('mouseup', () => {
   if (!rangeDrag) return;
   rangeDrag = false;
   updatePreviewQuickSum();
+  showCcnAssign();
 });
 
 // The cell a block was started from, looked up fresh: the preview is
@@ -425,8 +439,12 @@ function pasteBlock(startTd, text) {
   return { filled, unplaced, locked };
 }
 
+// A text box (the CCN# bar, the shipment fields) keeps its own paste and copy.
+const inTextField = e => !!(e.target && e.target.closest && e.target.closest('input, textarea'));
+
 document.addEventListener('paste', e => {
   if (previewSec.style.display !== 'block') return;
+  if (inTextField(e)) return;
   const open = document.querySelector('.pl-out-table td.pl-editing');
   if (open) return;                          // a cell being typed into takes it
   const startTd = anchorCell();
@@ -451,6 +469,7 @@ document.addEventListener('paste', e => {
 // Copy the rectangle as tab-separated text, which is what a spreadsheet
 // reads back as cells.
 document.addEventListener('copy', e => {
+  if (inTextField(e)) return;
   const lines = rangeCells();
   if (!lines.length) return;
   // One cell counts too. The table does not allow a text selection, so

@@ -1,7 +1,9 @@
 // ─────────────────────────────────────────────────────────────
 // EXCEL OUTPUT
 // ─────────────────────────────────────────────────────────────
-async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cName, containerName, wbIn, fileName, fileNo) {
+// `opts.sections`, when given, splits the loads into one table per CCN#:
+// [{ ccn, rows }], rows in dataHeaders shape. The summary stays one table.
+async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cName, containerName, wbIn, fileName, fileNo, opts = {}) {
   const wb  = new ExcelJS.Workbook();
   const TNR = 'Times New Roman';
   const bdr = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
@@ -15,12 +17,28 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   }
 
   // Visible columns: drop _Pallet and all-null columns
-  const { headers: visH, rows: visRows } = getVisibleColumns(dataHeaders, dataRows);
+  const { headers: visH, cols: visCols } = getVisibleColumns(dataHeaders, dataRows);
 
   // Summary: drop pallet_number column
   const sumVis  = sumHeaders.map((h, i) => ({ h, i })).filter(x => x.h !== 'pallet_number');
-  const sumVisH = sumVis.map(x => x.h);
-  const sumVisR = sumRows.map(r => sumVis.map(x => r[x.i]));
+  // A bonded PL totals each CCN# on its own, CCN# first: the same
+  // destination under two CCN#s is two lines, since they clear separately.
+  // `ccnSpans` marks each CCN#'s run of summary lines, for merging.
+  const ccnSpans = [];
+  let sumVisH, sumVisR;
+  if (opts.sections && opts.sections.length) {
+    sumVisH = ['CCN', ...sumVis.map(x => x.h)];
+    sumVisR = [];
+    for (const sec of opts.sections) {
+      const lines = getSummaryDF(dataHeaders, sec.rows).rows;
+      if (!lines.length) continue;
+      ccnSpans.push({ from: sumVisR.length, to: sumVisR.length + lines.length - 1 });
+      for (const r of lines) sumVisR.push([sec.ccn || 'not set', ...sumVis.map(x => r[x.i])]);
+    }
+  } else {
+    sumVisH = sumVis.map(x => x.h);
+    sumVisR = sumRows.map(r => sumVis.map(x => r[x.i]));
+  }
 
   // ── PL sheet ──────────────────────────────────────────────
   const wsPL = wb.addWorksheet('PL');
@@ -61,71 +79,106 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   const BLANK_ROW = 2 + detail.length;
   wsPL.getRow(BLANK_ROW).height = 20; // blank separator
 
-  // Section title row. The word "LOADS" in column A is the marker code uses
-  // to find the loads table (see parsePLSections in utils.js), so a hand-made
-  // PL only needs this word typed above its header row to be readable.
-  const LOADS_TITLE_ROW = BLANK_ROW + 1;
-  wsPL.mergeCells(LOADS_TITLE_ROW, 1, LOADS_TITLE_ROW, sectionCols);
-  styledCell(wsPL, LOADS_TITLE_ROW, 1, { size: 24, bold: true }).value = PL_SECTION_LOADS;
-  wsPL.getRow(LOADS_TITLE_ROW).height = 50;
-
-  const DATA_HDR_ROW = LOADS_TITLE_ROW + 1;
-  visH.forEach((h, ci) => { styledCell(wsPL, DATA_HDR_ROW, ci + 1, { bold: true, wrap: true }).value = h; });
-  wsPL.getRow(DATA_HDR_ROW).height = 45;
-
-  const DATA_START = DATA_HDR_ROW + 1;
-  visRows.forEach((row, ri) => {
-    row.forEach((v, ci) => { styledCell(wsPL, DATA_START + ri, ci + 1).value = tidyNumber(v) ?? ''; });
-    wsPL.getRow(DATA_START + ri).height = 30;
-  });
-  const lastDataRow = DATA_START + visRows.length - 1;
-
-  // Destination groups: consecutive rows sharing the same Destination.
-  // Each group is one "part" of the packing list.
-  const destVisIdx = visH.indexOf('Destination') + 1;
-  const groups = [];   // [{ s, e }] as 1-based sheet row numbers
-  if (destVisIdx > 0 && visRows.length) {
-    let s = DATA_START;
-    while (s <= lastDataRow) {
-      let e = s;
-      const val = visRows[s - DATA_START][destVisIdx - 1];
-      while (e + 1 <= lastDataRow && visRows[e + 1 - DATA_START][destVisIdx - 1] === val) e++;
-      groups.push({ s, e });
-      s = e + 1;
+  // Section split lines: a thick full-width line between the container
+  // detail block, each loads table and each summary. Each line is drawn on
+  // the shared edge (bottom of the blank row / top of the next section
+  // title) so Excel shows it regardless of which side it picks.
+  const heavy = { style: 'thick' };
+  function sectionLine(blankRow, nextRow, cols = sectionCols) {
+    for (let c = 1; c <= cols; c++) {
+      const a = wsPL.getCell(blankRow, c); a.border = { ...a.border, bottom: heavy };
+      const b = wsPL.getCell(nextRow,  c); b.border = { ...b.border, top:    heavy };
     }
   }
-
-  // Merge consecutive identical Destination cells
-  for (const { s, e } of groups) {
-    if (e > s) wsPL.mergeCells(s, destVisIdx, e, destVisIdx);
-  }
-
-  // Split line between parts: a thick line under the last row of every
-  // destination group. Excel draws the shared edge from either cell, so set
-  // the bottom edge of the group end and the top edge of the next group.
-  // A merged Destination cell shares one style across its range, so setting
-  // its top/bottom applies to the top/bottom of the whole merged block.
-  const thick = { style: 'medium' };
-  for (let gi = 0; gi < groups.length - 1; gi++) {
-    const end  = groups[gi].e;
-    const next = groups[gi + 1].s;
-    for (let c = 1; c <= visH.length; c++) {
-      const a = wsPL.getCell(end,  c); a.border = { ...a.border, bottom: thick };
-      const b = wsPL.getCell(next, c); b.border = { ...b.border, top:    thick };
-    }
-  }
-
-  // Embedded summary section
-  const SUM_TITLE_ROW  = lastDataRow + 2;
-  const SUM_HDR_ROW    = SUM_TITLE_ROW + 1;
-  const SUM_DATA_START = SUM_HDR_ROW + 1;
 
   // The summary is its own table of nine fixed columns, A to I. The loads
   // above it can be wider — every column carried through from the client's
   // sheet adds one — so the summary is measured against itself, not against
   // them, or its heading overhangs the table it belongs to.
-  const SUM_HEADERS = PL_SUMMARY_HEADERS;
+  const SUM_HEADERS = ccnSpans.length ? ['CCN', ...PL_SUMMARY_HEADERS] : PL_SUMMARY_HEADERS;
   const sumCols     = SUM_HEADERS.length;
+
+  // An ordinary packing list has one loads table; a bonded one has one per
+  // CCN#, since the warehouse releases and checks the cargo CCN by CCN. Either
+  // way a single summary follows, totalled by destination for the container.
+  const sections = opts.sections && opts.sections.length
+    ? opts.sections
+    : [{ ccn: null, rows: dataRows }];
+
+  const measureRows  = [];   // table rows that size the columns
+  const loadDataRows = [];   // load lines, which may grow to fit
+  const sumDataRows  = [];   // summary lines, likewise
+  let nextRow = BLANK_ROW + 1;
+
+  for (const sec of sections) {
+    const secRows = sec.rows.map(r => visCols.map(i => r[i]));
+    const tag     = sec.ccn == null ? '' : ` — CCN# ${sec.ccn || 'not set'}`;
+
+    // Section title row. The word "LOADS" in column A is the marker code
+    // uses to find the loads table (see parsePLSections in utils.js), so a
+    // hand-made PL only needs this word typed above its header row to be
+    // readable.
+    const LOADS_TITLE_ROW = nextRow;
+    wsPL.mergeCells(LOADS_TITLE_ROW, 1, LOADS_TITLE_ROW, sectionCols);
+    styledCell(wsPL, LOADS_TITLE_ROW, 1, { size: 24, bold: true }).value = PL_SECTION_LOADS + tag;
+    wsPL.getRow(LOADS_TITLE_ROW).height = 50;
+    sectionLine(LOADS_TITLE_ROW - 1, LOADS_TITLE_ROW);
+
+    const DATA_HDR_ROW = LOADS_TITLE_ROW + 1;
+    visH.forEach((h, ci) => { styledCell(wsPL, DATA_HDR_ROW, ci + 1, { bold: true, wrap: true }).value = h; });
+    wsPL.getRow(DATA_HDR_ROW).height = 45;
+
+    const DATA_START = DATA_HDR_ROW + 1;
+    secRows.forEach((row, ri) => {
+      row.forEach((v, ci) => { styledCell(wsPL, DATA_START + ri, ci + 1).value = tidyNumber(v) ?? ''; });
+      wsPL.getRow(DATA_START + ri).height = 30;
+    });
+    const lastDataRow = DATA_START + secRows.length - 1;
+
+    // Destination groups: consecutive rows sharing the same Destination.
+    // Each group is one "part" of the packing list.
+    const destVisIdx = visH.indexOf('Destination') + 1;
+    const groups = [];   // [{ s, e }] as 1-based sheet row numbers
+    if (destVisIdx > 0 && secRows.length) {
+      let s = DATA_START;
+      while (s <= lastDataRow) {
+        let e = s;
+        const val = secRows[s - DATA_START][destVisIdx - 1];
+        while (e + 1 <= lastDataRow && secRows[e + 1 - DATA_START][destVisIdx - 1] === val) e++;
+        groups.push({ s, e });
+        s = e + 1;
+      }
+    }
+
+    // Merge consecutive identical Destination cells
+    for (const { s, e } of groups) {
+      if (e > s) wsPL.mergeCells(s, destVisIdx, e, destVisIdx);
+    }
+
+    // Split line between parts: a thick line under the last row of every
+    // destination group. Excel draws the shared edge from either cell, so
+    // set the bottom edge of the group end and the top edge of the next
+    // group. A merged Destination cell shares one style across its range,
+    // so setting its top/bottom applies to the whole merged block.
+    const thick = { style: 'medium' };
+    for (let gi = 0; gi < groups.length - 1; gi++) {
+      const end  = groups[gi].e;
+      const next = groups[gi + 1].s;
+      for (let c = 1; c <= visH.length; c++) {
+        const a = wsPL.getCell(end,  c); a.border = { ...a.border, bottom: thick };
+        const b = wsPL.getCell(next, c); b.border = { ...b.border, top:    thick };
+      }
+    }
+
+    for (let r = DATA_HDR_ROW; r <= lastDataRow; r++) measureRows.push(r);
+    for (let r = DATA_START;   r <= lastDataRow; r++) loadDataRows.push(r);
+    nextRow = lastDataRow + 2;
+  }
+
+  // Embedded summary section
+  const SUM_TITLE_ROW  = nextRow;
+  const SUM_HDR_ROW    = SUM_TITLE_ROW + 1;
+  const SUM_DATA_START = SUM_HDR_ROW + 1;
 
   wsPL.mergeCells(SUM_TITLE_ROW, 1, SUM_TITLE_ROW, sumCols);
   styledCell(wsPL, SUM_TITLE_ROW, 1, { size: 24, bold: true }).value = PL_SECTION_SUMMARY;
@@ -143,25 +196,27 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     wsPL.getRow(rn).height = 85; // roomy: actual skid counts are written in by hand
   });
 
-  // Section split lines: a thick full-width line between the container
-  // detail block, the loads table and the summary. Each line is drawn on the
-  // shared edge (bottom of the blank row / top of the next section header)
-  // so Excel shows it regardless of which side it picks.
-  const heavy = { style: 'thick' };
-  function sectionLine(blankRow, nextRow, cols = sectionCols) {
-    for (let c = 1; c <= cols; c++) {
-      const a = wsPL.getCell(blankRow, c); a.border = { ...a.border, bottom: heavy };
-      const b = wsPL.getCell(nextRow,  c); b.border = { ...b.border, top:    heavy };
+  // Bonded: one merged CCN cell down each CCN#'s lines, and a heavier line
+  // between one CCN# and the next.
+  ccnSpans.forEach(({ from, to }, gi) => {
+    if (to > from) wsPL.mergeCells(SUM_DATA_START + from, 1, SUM_DATA_START + to, 1);
+    if (gi === ccnSpans.length - 1) return;
+    const end = SUM_DATA_START + to, next = end + 1;
+    for (let c = 1; c <= sumCols; c++) {
+      const a = wsPL.getCell(end,  c); a.border = { ...a.border, bottom: { style: 'medium' } };
+      const b = wsPL.getCell(next, c); b.border = { ...b.border, top:    { style: 'medium' } };
     }
-  }
-  sectionLine(LOADS_TITLE_ROW - 1, LOADS_TITLE_ROW); // container detail | loads
-  sectionLine(SUM_TITLE_ROW - 1,   SUM_TITLE_ROW, Math.max(sectionCols, sumCols)); // loads | summary
+  });
+  sectionLine(SUM_TITLE_ROW - 1, SUM_TITLE_ROW, Math.max(sectionCols, sumCols)); // loads | summary
+
+  const sumLast = SUM_DATA_START + sumVisR.length - 1;
+  for (let r = SUM_HDR_ROW;  r <= sumLast;     r++) measureRows.push(r);
+  for (let r = SUM_DATA_START; r <= sumLast;   r++) sumDataRows.push(r);
 
   // Auto-fit column widths from the table cells only (titles and the
   // container-detail block are merged across columns and must not count).
   // Width units are ~one character of the 11pt default font, so scale by
   // font size and count CJK / full-width characters as two.
-  const plLastRow = SUM_DATA_START + sumVisR.length - 1;
   const CJK       = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/;
   const dispLen   = str => [...str].reduce((n, ch) => n + (CJK.test(ch) ? 2 : 1), 0);
   // Longest run Excel cannot break: whitespace and CJK characters are break points.
@@ -180,9 +235,6 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     // long FBA id ran edge to edge and the sheet read as a solid block.
     return need * (size / 11) * 1.1 + 4.5;
   };
-  const measureRows = [];
-  for (let r = DATA_HDR_ROW; r <= lastDataRow; r++) measureRows.push(r);
-  for (let r = SUM_HDR_ROW;  r <= plLastRow;   r++) measureRows.push(r);
   for (let c = 1; c <= sectionCols; c++) {
     let w = 12;
     for (const r of measureRows) w = Math.max(w, measure(r, c));
@@ -256,8 +308,8 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     }
     if (lines > 1) wsPL.getRow(r).height = Math.min(409, Math.max(base, lines * size * 1.5));
   };
-  for (let r = DATA_START; r <= lastDataRow; r++) growRow(r, visH.length, 16, 30);
-  for (let r = SUM_DATA_START; r <= plLastRow; r++) growRow(r, sumCols, 16, 85);
+  for (const r of loadDataRows) growRow(r, visH.length, 16, 30);
+  for (const r of sumDataRows)  growRow(r, sumCols, 16, 85);
 
   // Print setup: landscape, one page wide, repeat nothing.
   wsPL.pageSetup = {
@@ -274,6 +326,9 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     row.forEach((v, ci) => { styledCell(wsSUM, 2 + ri, ci + 1).value = v ?? ''; });
     wsSUM.getRow(2 + ri).height = 25;
   });
+  for (const { from, to } of ccnSpans) {
+    if (to > from) wsSUM.mergeCells(2 + from, 1, 2 + to, 1);
+  }
   for (let c = 1; c <= sumVisH.length; c++) {
     let maxLen = 0;
     for (let r = 1; r <= 1 + sumVisR.length; r++) {

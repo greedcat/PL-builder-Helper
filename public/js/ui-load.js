@@ -30,8 +30,104 @@ dropZone.addEventListener('drop', e => {
 });
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) setExcelFile(fileInput.files[0]); });
 
+// Pasted cells become a one-sheet workbook and then follow exactly the path
+// of an uploaded file — same grid, same detection, and the pasted sheet is
+// copied into the output as its source sheet.
+const pasteBox = document.getElementById('pasteBox');
+
+// Some apps put only a formatted table on the clipboard, with no plain text
+// beside it — Numbers, WPS and some browser spreadsheets among them. Read
+// the table's cells straight from its HTML. A merged cell counts once, in
+// its top-left position, as it does in a plain-text copy.
+function rowsFromHtml(html) {
+  const doc   = new DOMParser().parseFromString(html, 'text/html');
+  const table = doc.querySelector('table');
+  if (!table) return [];
+  const grid  = [];
+  [...table.rows].forEach((tr, r) => {
+    grid[r] = grid[r] || [];
+    let c = 0;
+    for (const td of tr.cells) {
+      while (grid[r][c] !== undefined) c++;
+      td.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+      const text = td.textContent.replace(/\u00a0/g, ' ').replace(/[ \t]*\n[ \t]*/g, '\n').trim();
+      const rs = Math.max(1, td.rowSpan || 1), cs = Math.max(1, td.colSpan || 1);
+      for (let dr = 0; dr < rs; dr++) {
+        grid[r + dr] = grid[r + dr] || [];
+        for (let dc = 0; dc < cs; dc++) grid[r + dr][c + dc] = dr || dc ? null : pastedValue(text);
+      }
+      c += cs;
+    }
+  });
+  return grid.map(row => Array.from(row, v => (v === undefined ? null : v)));
+}
+
+const hasCells = rows => rows.some(r => r.some(v => v != null));
+
+// Everything a paste can carry, best source first: a copied .xlsx file,
+// tab-separated text, then an HTML table.
+function loadClipboard(cd) {
+  const file = [...(cd.files || [])].find(f => /\.(xlsx|xls|xlsm|csv)$/i.test(f.name));
+  if (file) { setExcelFile(file, true); return; }
+
+  let rows = parseTsv(cd.getData('text/plain'));
+  if (!hasCells(rows) || rows.every(r => r.length < 2)) {
+    const fromHtml = rowsFromHtml(cd.getData('text/html'));
+    if (hasCells(fromHtml)) rows = fromHtml;
+  }
+  if (!hasCells(rows)) {
+    const kinds = [...(cd.types || [])].filter(t => t !== 'Files');
+    const what  = cd.files && cd.files.length ? 'a file that is not a spreadsheet'
+                : kinds.length ? kinds.join(', ') : 'nothing';
+    showStatus(`Nothing to read in what was pasted (the clipboard held ${escapeHtml(what)}). `
+             + 'Select the cells in Excel, press Ctrl+C / ⌘C, then paste here — '
+             + 'or drop the Excel file in the box above.', 'error');
+    return;
+  }
+  loadPastedRows(rows);
+}
+
+function loadPastedRows(rows) {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Source');
+  const buf  = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const file = new File([buf], 'Pasted from Excel.xlsx',
+    { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  setExcelFile(file, true);
+}
+
+pasteBox.addEventListener('paste', e => {
+  e.preventDefault();
+  loadClipboard(e.clipboardData);
+  pasteBox.blur();
+});
+
+// Typed or dropped text lands in the box without a paste event; read it
+// once the user leaves the box.
+pasteBox.addEventListener('change', () => {
+  const rows = parseTsv(pasteBox.value);
+  if (hasCells(rows)) loadPastedRows(rows);
+});
+
+// Ctrl/⌘+V anywhere on the page, as long as the user isn't typing in a field
+// or pasting into the preview grid, which handles its own paste.
+document.addEventListener('paste', e => {
+  if (e.defaultPrevented || !e.clipboardData) return;
+  const t = e.target;
+  if (t && t.closest && t.closest('input, textarea, [contenteditable], .pl-table-wrap')) return;
+  if (previewSec.style.display === 'block' && anchorCell()) return;
+  const cd = e.clipboardData;
+  const looksLikeTable = (cd.files && cd.files.length)
+    || (cd.getData('text/plain') || '').includes('\t')
+    || /<table/i.test(cd.getData('text/html') || '');
+  if (!looksLikeTable) return;                 // a single word isn't a table
+  e.preventDefault();
+  loadClipboard(cd);
+});
+
 function setExcelFile(file, dt) {
   if (dt) { const dtp = new DataTransfer(); dtp.items.add(file); fileInput.files = dtp.files; }
+  pasteBox.value = '';
   fileBadge.innerHTML     = `<span>📄</span> ${file.name}`;
   fileBadge.style.display = 'inline-flex';
   dropZone.querySelector('.drop-text').style.display = 'none';
@@ -49,6 +145,7 @@ function setExcelFile(file, dt) {
   clearPreviewEdits();
   clearDestRenames();
   clearLearnQueue();
+  ccnOrder = [];
   hdrRowInput.value  = '';
   lastRowInput.value = '';
   sheetView.style.display   = 'none';
@@ -109,6 +206,10 @@ function countDataRows(data, range) {
 }
 
 // the range or a column mapping changes.
+function ccnInRange(data, range) {
+  return sliceRow(data.raw[range.hdrRow] || [], range.firstCol, range.lastCol).some(isCcnHeader);
+}
+
 function updateLoadStatus(data) {
   const range   = getRange(data);
   const nData   = countDataRows(data, range);
@@ -126,6 +227,13 @@ function updateLoadStatus(data) {
     setSteps({ table: ['warn', `${rowsText} · pick ${missing.join(', ')}`] });
     showStatus(`${nData} data row${s} selected, but no column matched ${missing.join(', ')}. `
              + 'Click that chip to pick its column, or right-click the column letter in the grid.', 'error');
+  } else if (bondedToggle.checked && !ccnInRange(data, range)) {
+    // Bonded with no CCN# in the sheet: the loads still build, under one
+    // "CCN# not set" table, but the CCN# has to come from the user.
+    setSteps({ table: ['warn', `${rowsText} · no CCN#`] });
+    showStatus(`${nData} data row${s} selected. The sheet has no CCN# column, so an empty one was added — `
+             + 'click Set next to “not set” in the CCN# list, or select lines in the preview (drag, or click then Shift-click) '
+             + 'and type their CCN# in the bar that appears.', 'info');
   } else {
     setSteps({ table: ['done', `${rowsText} · all columns`] });
     showStatus(`✓ ${nData} data row${s} selected, all columns matched.`, 'success');
@@ -142,8 +250,8 @@ function setSheetToggleLabel(shown) {
 async function refreshPreview() {
   const file = fileInput.files[0];
   if (!file) return;
-  const { modH, modR, sumH, sumR, longDests } = await runPipeline(file);
-  renderPreview(modH, modR, sumH, sumR, longDests);
+  const { modH, modR, sumH, sumR, longDests, ccnSections } = await runPipeline(file);
+  renderPreview(modH, modR, sumH, sumR, longDests, ccnSections);
 }
 
 function showStatus(msg, type = 'info', spinner = false) {
@@ -223,6 +331,7 @@ async function loadSheetData(file) {
 // Switching sheet invalidates everything that described the old one.
 async function setActiveSheet(name) {
   activeSheet     = name;
+  ccnOrder        = [];
   cachedSheetName = null;
   cachedSheetData = null;
   manualRange     = null;
@@ -311,10 +420,95 @@ function droppedColumns(headers, firstCol) {
     const ov  = columnOverrides[abs];
     if (ov === 'drop') { out.add(abs); return; }
     if (ov === 'keep') return;
+    // The CCN is what a bonded warehouse releases cargo by, and noise on any
+    // other packing list, so the Bonded toggle alone decides it.
+    if (isCcnHeader(name)) { if (!bondedToggle.checked) out.add(abs); return; }
     if (name != null && NO_NEED_COL.includes(name)) out.add(abs);
   });
   return out;
 }
+
+// ─────────────────────────────────────────────────────────────
+// Bonded warehouse
+// ─────────────────────────────────────────────────────────────
+const bondedToggle = document.getElementById('bondedToggle');
+
+// A client writes the CCN once at the top of its block (or merges the cells).
+// The loads are re-sorted by destination, which would strand every row but
+// the first without one, so it is carried down in sheet order first. Rows
+// with nothing else on them stay empty, or a gap would become a load line.
+function fillDownCcn(headers, rows) {
+  const ci = headers.findIndex(isCcnHeader);
+  if (ci < 0) return rows;
+  let last = null;
+  return rows.map(r => {
+    if (!isEmpty(r[ci])) { last = r[ci]; return r; }
+    if (last == null || !r.some((v, i) => i !== ci && !isEmpty(v))) return r;
+    const out = [...r]; out[ci] = last; return out;
+  });
+}
+
+const ccnAllRow    = document.getElementById('ccnAllRow');
+
+// With Bonded on there is always a CCN column, even when the client's sheet
+// has none or it is unreadable: the column is added empty, and the CCN# is
+// then typed in from the CCN# list or the preview like any other cell.
+function withCcnColumn(headers, rows) {
+  let ci = headers.findIndex(isCcnHeader);
+  if (ci < 0) {
+    const ROLES = ['Destination', 'Carton', 'FBA_ID', 'REF ID', 'Weight', 'CMB'];
+    ci = headers.reduce((at, h, i) => (ROLES.includes(h) ? i + 1 : at), 0);
+    headers = [...headers.slice(0, ci), 'CCN', ...headers.slice(ci)];
+    rows    = rows.map(r => [...r.slice(0, ci), null, ...r.slice(ci)]);
+  }
+  return { headers, rows };
+}
+
+// The order CCN#s were added in: those in the client's sheet first, in sheet
+// order, then each one typed in by hand as it arrives. Tables and the CCN#
+// list both follow it, so a new CCN# never jumps in among the earlier ones.
+// A new file starts it over.
+let ccnOrder = [];
+
+function noteCcn(ccn) {
+  if (ccn && !ccnOrder.includes(ccn)) ccnOrder.push(ccn);
+}
+
+// A bonded PL gives each CCN# its own loads table; one summary follows.
+// Sections come in the order the CCN# was added (see ccnOrder); lines with
+// no CCN# yet are gathered last so they stand out. Inside a section the lines
+// keep the destination order the loads were sorted into.
+function splitByCcn(headers, rows) {
+  const ci    = headers.findIndex(isCcnHeader);
+  const idIdx = headers.indexOf('_Row');
+  const groups = new Map();
+  for (const r of rows) {
+    const key = ci < 0 || isEmpty(r[ci]) ? '' : String(r[ci]).trim();
+    if (!groups.has(key)) groups.set(key, { ccn: key, rows: [], first: Infinity });
+    const g = groups.get(key);
+    g.rows.push(r);
+    if (idIdx >= 0) g.first = Math.min(g.first, Number(r[idIdx]));
+  }
+  // CCN#s not seen before join the order in sheet order, which on the first
+  // read is the client's own order and afterwards is a CCN# typed onto lines.
+  [...groups.values()].sort((a, b) => a.first - b.first).forEach(g => noteCcn(g.ccn));
+  return [...groups.values()]
+    .sort((a, b) => (a.ccn === '') - (b.ccn === '') || ccnOrder.indexOf(a.ccn) - ccnOrder.indexOf(b.ccn))
+    .map(g => ({ ccn: g.ccn, rows: g.rows }));
+}
+
+bondedToggle.addEventListener('change', async () => {
+  ccnAllRow.hidden = !bondedToggle.checked;
+  const file = fileInput.files[0];
+  if (!file) return;
+  try {
+    await refreshSheetView({ keepSelection: true });
+    await refreshPreview();
+    updateLoadStatus(await loadSheetData(file));
+  } catch (err) {
+    console.error(err); showStatus('Error: ' + err.message, 'error');
+  }
+});
 
 function autoRange(data) {
   const { cleaned, cleanedIdx, maxCols } = data;
@@ -377,7 +571,8 @@ async function runPipeline(file) {
   const headers = sliceRow(data.raw[hdrRow] || [], firstCol, lastCol)
     .map(h => (h != null ? String(h) : null));
   const dataIdx = rangeDataRowIndices(range);
-  const rows = dataIdx.map(i => sliceRow(data.raw[i], firstCol, lastCol));
+  let rows = dataIdx.map(i => sliceRow(data.raw[i], firstCol, lastCol));
+  if (bondedToggle.checked) rows = fillDownCcn(headers, rows);
 
   // Where a merged block wrote a copy of its value, in this slice's own
   // coordinates. A quantity is one figure for its whole block, so the copies
@@ -397,7 +592,10 @@ async function runPipeline(file) {
   const dropLocal = new Set([...dropAbs].map(c => c - firstCol));
   const { headers: reH, rows: reR, matchDict } =
     readExcel(headers, rows, roleOverrides, dropLocal, mergedMask);
-  const { headers: modH, rows: modR0 } = modifyDF(reH, reR, matchDict);
+  let { headers: modH, rows: modR0 } = modifyDF(reH, reR, matchDict);
+  if (bondedToggle.checked) {
+    ({ headers: modH, rows: modR0 } = withCcnColumn(modH, modR0));
+  }
 
   const modR = applyEdits(modH, modR0, previewEdits.loads);
 
@@ -415,16 +613,26 @@ async function runPipeline(file) {
   const destIdx = modH.indexOf('Destination');
   const longDests = [];
   if (destIdx >= 0) {
-    const seen = new Map();
+    // "私人地址" sits on the destination list so a private-address line is
+    // recognised, but it names no warehouse: it still wants a short name.
+    const isWarehouse = text => DEST_LIST.some(code => !PL_PLACEHOLDER_DESTS.includes(code) && text.includes(code));
+    const seen = new Map();   // text → { count, row: the first line with it }
     for (const row of modR) {
       const v = row[destIdx];
       if (v == null || v === '') continue;
       const text = String(v);
-      if (DEST_LIST.some(code => text.includes(code))) continue;
-      seen.set(text, (seen.get(text) || 0) + 1);
+      if (isWarehouse(text)) continue;
+      if (!seen.has(text)) seen.set(text, { count: 0, row });
+      seen.get(text).count++;
     }
-    for (const [text, count] of seen) {
-      longDests.push({ text, count, suggestion: simplifyPrivateAddress(text), applied: destRenames[text] || null });
+    // A placeholder carries no address of its own; the street is usually
+    // written in another column of the line (the consignee notes), so the
+    // suggestion is looked for there as well.
+    const suggestFor = (text, row) => simplifyPrivateAddress(text)
+      || row.map(v => (typeof v === 'string' ? simplifyPrivateAddress(v) : null)).find(Boolean)
+      || null;
+    for (const [text, { count, row }] of seen) {
+      longDests.push({ text, count, suggestion: suggestFor(text, row), applied: destRenames[text] || null });
     }
     // Apply only what the user has accepted, noting which rows it moved so
     // they can be set apart below.
@@ -458,7 +666,9 @@ async function runPipeline(file) {
   const { headers: sumH, rows: sumR0 } = getSummaryDF(modH, modR);
   const sumR = applyEdits(sumH, sumR0, previewEdits.summary);
 
-  return { wbIn: data.wbIn, data, range, modH, modR, sumH, sumR, longDests };
+  const ccnSections = bondedToggle.checked ? splitByCcn(modH, modR) : null;
+
+  return { wbIn: data.wbIn, data, range, modH, modR, sumH, sumR, longDests, ccnSections };
 }
 
 // ─────────────────────────────────────────────────────────────

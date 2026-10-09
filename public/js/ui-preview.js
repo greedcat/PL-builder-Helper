@@ -1,82 +1,27 @@
 // ── Packing List Builder UI · part 4: shipment cells, sheet grid toggle, preview, generate ──
 // Shipment cells
-// Drag a cell by its header to reorder it, so the row can be arranged to
-// match whatever order the source sheet uses. The order is remembered per
-// browser, and paste-splitting follows whatever order is on screen.
+// The order is fixed — File number, Client name, Container # — the order
+// the office copies them from its own sheet, so a copied line pastes
+// straight in.
 // ─────────────────────────────────────────────────────────────
-const CELL_ORDER_KEY = 'plBuilder.shipmentCellOrder';
 const cellsRow = document.getElementById('plCells');
 
 function cellEls() { return [...cellsRow.querySelectorAll('.pl-cell')]; }
 
-function saveCellOrder() {
-  try {
-    localStorage.setItem(CELL_ORDER_KEY, JSON.stringify(cellEls().map(el => el.dataset.cell)));
-  } catch (_) { /* private browsing: the order simply will not persist */ }
-}
-
-function restoreCellOrder() {
-  let saved;
-  try { saved = JSON.parse(localStorage.getItem(CELL_ORDER_KEY)); } catch (_) { return; }
-  if (!Array.isArray(saved)) return;
-  for (const name of saved) {
-    const el = cellsRow.querySelector(`.pl-cell[data-cell="${name}"]`);
-    if (el) cellsRow.appendChild(el);          // appending in saved order sorts them
-  }
-}
-
-let draggedCell = null;
-cellsRow.addEventListener('dragstart', e => {
-  const cell = e.target.closest('.pl-cell');
-  if (!cell) return;
-  draggedCell = cell;
-  cell.classList.add('pl-cell-dragging');
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', cell.dataset.cell);
-});
-cellsRow.addEventListener('dragend', () => {
-  if (draggedCell) draggedCell.classList.remove('pl-cell-dragging');
-  cellEls().forEach(c => c.classList.remove('pl-cell-over'));
-  draggedCell = null;
-});
-cellsRow.addEventListener('dragover', e => {
-  const over = e.target.closest('.pl-cell');
-  if (!draggedCell || !over || over === draggedCell) return;
+// Cells copied from Excel arrive as one tab-separated string. Whichever box
+// receives that paste, fill it and the boxes after it, one value each.
+cellsRow.addEventListener('paste', e => {
+  const input = e.target.closest('.pl-cell input');
+  if (!input) return;
+  const text  = (e.clipboardData || window.clipboardData).getData('text') || '';
+  const parts = text.replace(/\r?\n$/, '').split('\t').map(t => t.replace(/\r?\n/g, ' ').trim());
+  if (parts.length < 2) return;                    // a normal single-value paste
   e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  cellEls().forEach(c => c.classList.toggle('pl-cell-over', c === over));
-});
-cellsRow.addEventListener('drop', e => {
-  const over = e.target.closest('.pl-cell');
-  if (!draggedCell || !over || over === draggedCell) return;
-  e.preventDefault();
-  const list = cellEls();
-  // Insert before the target when moving left, after it when moving right.
-  const movingRight = list.indexOf(draggedCell) < list.indexOf(over);
-  over.parentNode.insertBefore(draggedCell, movingRight ? over.nextSibling : over);
-  cellEls().forEach(c => c.classList.remove('pl-cell-over'));
-  saveCellOrder();
-});
-
-restoreCellOrder();
-
-// Two cells copied from Excel arrive as one tab-separated string. Whichever
-// box receives that paste, split it across both.
-[clientNameInput, containerNoInput].forEach(input => {
-  input.addEventListener('paste', e => {
-    const text = (e.clipboardData || window.clipboardData).getData('text') || '';
-    const parts = text.split('\t').map(t => t.replace(/\r?\n/g, ' ').trim()).filter(Boolean);
-    if (parts.length < 2) return;                  // a normal single-value paste
-    e.preventDefault();
-    // Fill in the order the cells are shown, skipping the file name.
-    const targets = cellEls()
-      .filter(c => c.dataset.cell !== 'fileNo')
-      .map(c => c.querySelector('input'));
-    targets.forEach((el, i) => {
-      if (parts[i] === undefined) return;
-      el.value = parts[i];
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+  const inputs = cellEls().map(c => c.querySelector('input'));
+  inputs.slice(inputs.indexOf(input)).forEach((el, i) => {
+    if (parts[i] === undefined) return;
+    el.value = parts[i];
+    el.dispatchEvent(new Event('input', { bubbles: true }));
   });
 });
 
@@ -202,14 +147,14 @@ function renderDestPanel(longDests) {
   });
 }
 
-function renderPreview(modH, modR, sumH, sumR, longDests) {
-  const { headers: visH, rows: visRows } = getVisibleColumns(modH, modR);
+function renderPreview(modH, modR, sumH, sumR, longDests, ccnSections = null) {
+  const { headers: visH, rows: visRows, cols: visCols } = getVisibleColumns(modH, modR);
 
   // The workbook writes nine summary columns; show those, not the
   // pipeline's internal names, so the preview is the document.
   const sumIdx  = ['Destination', 'Carton', 'pallet_round_count'].map(h => sumH.indexOf(h));
   const sumVisH = PL_SUMMARY_HEADERS;
-  const sumVisR = sumR.map(r => {
+  const toSumVis = rows => rows.map(r => {
     const line = sumIdx.map(i => (i >= 0 ? r[i] : null));
     while (line.length < PL_SUMMARY_HEADERS.length) line.push(null);
     return line;
@@ -217,12 +162,15 @@ function renderPreview(modH, modR, sumH, sumR, longDests) {
 
   // Rows where the Destination changes on the next row end a "part".
   const di = visH.indexOf('Destination');
-  const splitAfter = new Set();
-  if (di >= 0) {
-    visRows.forEach((r, i) => {
-      if (i < visRows.length - 1 && visRows[i + 1][di] !== r[di]) splitAfter.add(i);
-    });
-  }
+  const splitsOf = rows => {
+    const out = new Set();
+    if (di >= 0) {
+      rows.forEach((r, i) => {
+        if (i < rows.length - 1 && rows[i + 1][di] !== r[di]) out.add(i);
+      });
+    }
+    return out;
+  };
 
   const numDests = di >= 0
     ? new Set(visRows.map(r => r[di]).filter(v => v != null)).size
@@ -239,22 +187,64 @@ function renderPreview(modH, modR, sumH, sumR, longDests) {
     if (!tintOf.has(key)) tintOf.set(key, `pl-dest-c${tintOf.size % DEST_TINTS}`);
     return tintOf.get(key);
   };
-  const loadTints = di >= 0 ? visRows.map(r => tintFor(r[di])) : null;
 
   const idIdx  = modH.indexOf('_Row');
-  const rowIds = idIdx >= 0 ? modR.map(r => r[idIdx]) : null;
-  document.getElementById('plPreviewData').innerHTML    =
-    tableHtml(visH, visRows, { splitAfter, editKey: 'loads', rowIds, tints: loadTints });
+  const loadsTable = rows => {
+    const vis = rows.map(r => visCols.map(i => r[i]));
+    return tableHtml(visH, vis, {
+      splitAfter: splitsOf(vis), editKey: 'loads',
+      rowIds: idIdx >= 0 ? rows.map(r => r[idIdx]) : null,
+      tints:  di >= 0 ? vis.map(r => tintFor(r[di])) : null,
+    });
+  };
   // The summary is read-only: every figure in it is derived from the loads
   // table, so it is corrected by editing the load rows, not the totals.
-  document.getElementById('plPreviewSummary').innerHTML =
-    tableHtml(sumVisH, sumVisR, { tints: sumVisR.map(r => tintFor(r[0])) });
+  const summaryTable = rows => {
+    const vis = toSumVis(rows);
+    return tableHtml(sumVisH, vis, { tints: vis.map(r => tintFor(r[0])) });
+  };
+
+  const dataBox = document.getElementById('plPreviewData');
+  const sumBox  = document.getElementById('plPreviewSummary');
+  if (ccnSections) {
+    // Bonded: each CCN# is its own loads table, as in the file.
+    dataBox.innerHTML = ccnSections.map((sec, i) =>
+      `<div class="pl-ccn-band${i ? ' pl-ccn-gap' : ''}">Loads — CCN# ${escapeHtml(sec.ccn || 'not set')}</div>`
+      + loadsTable(sec.rows)).join('');
+    // Each CCN# table carries its own "LOADS — CCN# …" title, as in the
+    // file, so the band keeps only its Undo / Redo / Reset.
+    document.getElementById('plLoadsLabel').textContent = '';
+  } else {
+    dataBox.innerHTML = loadsTable(modR);
+    document.getElementById('plLoadsLabel').textContent = 'Loads';
+  }
+  // One summary for the whole container. Bonded, it is totalled per CCN#
+  // with the CCN# first, as in the file; the CCN# shows once per group,
+  // standing in for the merged cell.
+  if (ccnSections) {
+    const head = ['CCN', ...sumVisH];
+    const rows = [], tints = [], ends = new Set();
+    for (const sec of ccnSections) {
+      const lines = toSumVis(getSummaryDF(modH, sec.rows).rows);
+      lines.forEach((r, i) => {
+        rows.push([i ? null : (sec.ccn || 'not set'), ...r]);
+        tints.push(tintFor(r[0]));
+      });
+      if (lines.length) ends.add(rows.length - 1);
+    }
+    sumBox.innerHTML = tableHtml(head, rows, { splitAfter: ends, tints });
+  } else {
+    sumBox.innerHTML = summaryTable(sumR);
+  }
+  sumBox.classList.toggle('pl-sum-by-ccn', !!ccnSections);
+  renderCcnList(ccnSections, modH);
   renderEditBar();
   syncBandTools();
   renderDestPanel(longDests);
   previewSec.style.display = 'block';
   // The tables were just rebuilt, so a block dragged on the old ones is gone.
   hideQuickSum('Preview');
+  hideCcnAssign();
 
   // Any change to the preview means the last download, if any, is out of date.
   setSteps({ preview: ['active', `${visRows.length} load line${visRows.length === 1 ? '' : 's'}`],
@@ -331,8 +321,8 @@ document.getElementById('btnPreview').addEventListener('click', async () => {
 
   try {
     showStatus('Building preview…', 'info', true);
-    const { modH, modR, sumH, sumR, longDests } = await runPipeline(file);
-    renderPreview(modH, modR, sumH, sumR, longDests);
+    const { modH, modR, sumH, sumR, longDests, ccnSections } = await runPipeline(file);
+    renderPreview(modH, modR, sumH, sumR, longDests, ccnSections);
     showStatus('✓ Preview generated.', 'success');
   } catch (err) {
     console.error(err);
@@ -362,12 +352,12 @@ document.getElementById('plForm').addEventListener('submit', async e => {
   try {
     setSteps({ download: ['active', 'Building the file…'] });
     showStatus('Reading file…', 'info', true);
-    const { wbIn, modH, modR, sumH, sumR } = await runPipeline(file);
+    const { wbIn, modH, modR, sumH, sumR, ccnSections } = await runPipeline(file);
 
     showStatus('Building Excel file…', 'info', true);
     const outName = downloadName(containerName);
     await writePackingList(modH, modR, sumH, sumR, cName, containerName, wbIn,
-                           outName, readFileNo());
+                           outName, readFileNo(), { sections: ccnSections });
 
     setSteps({ preview: 'done', download: ['done', outName] });
     showStatus('✓ Packing list downloaded successfully.', 'success');
@@ -397,3 +387,194 @@ document.getElementById('plForm').addEventListener('submit', async e => {
     btn.disabled = false;
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+// Assign a CCN# to selected lines (bonded PL)
+// Drag down the loads, or click one line and Shift-click another; a bar
+// offers to give every selected line one CCN#. The value goes in as a hand
+// edit of each line's CCN cell, so Undo takes it back, and the lines move
+// to that CCN#'s table on the next render.
+// ─────────────────────────────────────────────────────────────
+const ccnAssignBar   = document.getElementById('plCcnAssign');
+const ccnAssignInput = document.getElementById('plCcnAssignInput');
+const ccnAssignCount = document.getElementById('plCcnAssignCount');
+const ccnAssignList  = document.getElementById('plCcnList');
+const ccnAssignPicks = document.getElementById('plCcnPicks');
+
+// Every CCN# in the order it was added — on lines or not yet (see ccnOrder).
+// One typed in with "+ Add CCN#" stays until removed, so a whole
+// container's CCN#s can be entered first and the lines handed out after.
+function knownCcns() {
+  return [...ccnOrder];
+}
+let ccnAssignTarget  = null;   // { col, ids } of the lines the bar will set
+
+// The selected load lines, by row id, and the name of their CCN column.
+function selectedCcnTarget() {
+  const ids = new Set();
+  let col = null;
+  for (const line of rangeCells()) {
+    const tr = line[0] && line[0].parentElement;
+    if (!tr) continue;
+    const td = [...tr.children].find(t => t.dataset.table === 'loads' && isCcnHeader(t.dataset.col));
+    if (!td) continue;
+    col = td.dataset.col;
+    ids.add(td.dataset.row);
+  }
+  return col && ids.size ? { col, ids: [...ids] } : null;
+}
+
+function showCcnAssign() {
+  ccnAssignTarget = bondedToggle.checked ? selectedCcnTarget() : null;
+  if (!ccnAssignTarget) { hideCcnAssign(); return; }
+  const n = ccnAssignTarget.ids.length;
+  ccnAssignCount.textContent = `${n} line${n === 1 ? '' : 's'}`;
+  // Every CCN# on the PL or added by hand is one click away, so a batch of
+  // lines is given one without retyping it.
+  const known = knownCcns();
+  ccnAssignList.innerHTML = known.map(v => `<option value="${escapeHtml(v)}"></option>`).join('');
+  ccnAssignPicks.innerHTML = known
+    .map(v => `<button type="button" class="pl-ccn-pick" data-ccn="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('');
+  ccnAssignPicks.querySelectorAll('.pl-ccn-pick')
+    .forEach(btn => btn.addEventListener('click', () => applyCcnAssign(btn.dataset.ccn)));
+  ccnAssignBar.hidden = false;
+}
+
+function hideCcnAssign() {
+  if (!ccnAssignBar) return;
+  ccnAssignBar.hidden = true;
+  ccnAssignTarget = null;
+}
+
+function applyCcnAssign(picked) {
+  if (!ccnAssignTarget) return;
+  const value = (typeof picked === 'string' ? picked : ccnAssignInput.value).trim().toUpperCase();
+  const { col, ids } = ccnAssignTarget;
+  pushEditHistory();                       // the whole batch undoes at once
+  for (const id of ids) previewEdits.loads.set(`${id}\u0000${col}`, value || null);
+  ccnAssignInput.value = '';
+  dropRange();
+  showStatus(value
+    ? `CCN# ${escapeHtml(value)} set on ${ids.length} line${ids.length === 1 ? '' : 's'}. Ctrl+Z / ⌘Z undoes it.`
+    : `CCN# cleared on ${ids.length} line${ids.length === 1 ? '' : 's'}.`, 'success');
+  refreshPreview().catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
+}
+
+document.getElementById('plCcnAssignBtn').addEventListener('click', () => applyCcnAssign());
+ccnAssignInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter')  { e.preventDefault(); applyCcnAssign(); }
+  if (e.key === 'Escape') { e.preventDefault(); dropRange(); }
+});
+ccnAssignBar.querySelector('.pl-ccn-assign-close').addEventListener('click', () => dropRange());
+
+// ─────────────────────────────────────────────────────────────
+// Every CCN# on the bonded PL, listed under the Bonded switch
+// with its lines and cartons. A CCN# can be renamed here in one go — the
+// new value is written as a hand edit on each of its lines, so Undo takes
+// it back — and "not set" shows what is still waiting for one.
+// ─────────────────────────────────────────────────────────────
+let lastCcnSections = null;
+let lastCcnHeaders  = null;
+
+function renderCcnList(sections = lastCcnSections, headers = lastCcnHeaders) {
+  lastCcnSections = sections;
+  lastCcnHeaders  = headers;
+  const box = document.getElementById('ccnList');
+  if (!box) return;
+  if (!sections || !sections.length) { box.innerHTML = ''; return; }
+  const ci    = headers.indexOf('Carton');
+  const idIdx = headers.indexOf('_Row');
+  const col   = headers.find(isCcnHeader);
+  // In the order the CCN#s were added; one with no lines yet can be removed.
+  const item = (sec, i) => {
+    const lines = sec.rows.length;
+    const ctns  = ci >= 0 ? sec.rows.reduce((n, r) => n + (parseFloat(r[ci]) || 0), 0) : null;
+    const name  = sec.ccn ? escapeHtml(sec.ccn) : '<em>not set</em>';
+    return `<div class="pl-ccn-item${sec.ccn ? '' : ' pl-ccn-unset'}" data-i="${i}">
+        <span class="pl-ccn-name">${name}</span>
+        <span class="pl-ccn-meta">${lines} line${lines === 1 ? '' : 's'}${ctns != null ? ` · ${tidyNumber(ctns)} ctns` : ''}</span>
+        <button type="button" class="pl-ccn-rename">${sec.ccn ? 'Rename' : 'Set'}</button>
+      </div>`;
+  };
+  const empty = v => `<div class="pl-ccn-item pl-ccn-added">
+        <span class="pl-ccn-name">${escapeHtml(v)}</span>
+        <span class="pl-ccn-meta">0 lines</span>
+        <button type="button" class="pl-ccn-remove" data-ccn="${escapeHtml(v)}" aria-label="Remove ${escapeHtml(v)}">×</button>
+      </div>`;
+  const unset = sections.findIndex(sec => !sec.ccn);
+  box.innerHTML = ccnOrder.map(v => {
+    const i = sections.findIndex(sec => sec.ccn === v);
+    return i >= 0 ? item(sections[i], i) : empty(v);
+  }).join('')
+  + (unset >= 0 ? item(sections[unset], unset) : '')
+  + `<button type="button" class="pl-ccn-add">+ Add CCN#</button>`;
+
+  box.querySelectorAll('.pl-ccn-remove').forEach(btn => btn.addEventListener('click', () => {
+    ccnOrder = ccnOrder.filter(v => v !== btn.dataset.ccn);
+    renderCcnList();
+  }));
+
+  const addBtn = box.querySelector('.pl-ccn-add');
+  addBtn.addEventListener('click', () => {
+    const item = document.createElement('div');
+    item.className = 'pl-ccn-item';
+    item.innerHTML = `<input type="text" class="pl-ccn-rename-input" spellcheck="false" autocomplete="off"
+        placeholder="Type CCN#">
+      <button type="button" class="pl-ccn-assign-btn pl-ccn-ok">Add</button>
+      <button type="button" class="pl-ccn-assign-close" aria-label="Cancel">×</button>`;
+    addBtn.replaceWith(item);
+    const input = item.querySelector('input');
+    input.focus();
+    const add = () => {
+      const value = input.value.trim().toUpperCase();
+      noteCcn(value);
+      renderCcnList();
+      if (value) {
+        showStatus(`CCN# ${escapeHtml(value)} added. Select its lines in the preview (drag, or click then `
+          + 'Shift-click) and pick it in the bar that appears.', 'info');
+        // Straight on to the next one: a container often has several.
+        document.querySelector('#ccnList .pl-ccn-add').click();
+      }
+    };
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); add(); }
+      if (e.key === 'Escape') { e.preventDefault(); renderCcnList(); }
+    });
+    item.querySelector('.pl-ccn-ok').addEventListener('click', add);
+    item.querySelector('.pl-ccn-assign-close').addEventListener('click', () => renderCcnList());
+  });
+
+  box.querySelectorAll('.pl-ccn-item[data-i]').forEach(item => {
+    const sec = sections[Number(item.dataset.i)];
+    item.querySelector('.pl-ccn-rename').addEventListener('click', () => {
+      item.innerHTML = `<input type="text" class="pl-ccn-rename-input" spellcheck="false" autocomplete="off"
+          placeholder="Type CCN#" value="${escapeHtml(sec.ccn)}">
+        <button type="button" class="pl-ccn-assign-btn pl-ccn-ok">OK</button>
+        <button type="button" class="pl-ccn-assign-close" aria-label="Cancel">×</button>`;
+      const input = item.querySelector('input');
+      input.focus();
+      input.select();
+      const done = () => {
+        const value = input.value.trim().toUpperCase();
+        if (value === sec.ccn || !col || idIdx < 0) { renderCcnList(sections, headers); return; }
+        // A renamed CCN# keeps its place; renamed onto one already listed, it
+        // merges into that one's place instead.
+        const at = ccnOrder.indexOf(sec.ccn);
+        if (at >= 0 && value && !ccnOrder.includes(value)) ccnOrder[at] = value;
+        else if (at >= 0 && value) ccnOrder.splice(at, 1);
+        pushEditHistory();                   // the whole CCN# renames at once
+        for (const r of sec.rows) previewEdits.loads.set(`${r[idIdx]}\u0000${col}`, value || null);
+        showStatus(`${sec.ccn ? `CCN# ${escapeHtml(sec.ccn)}` : 'Lines with no CCN#'} → `
+          + `${value ? escapeHtml(value) : 'not set'} on ${sec.rows.length} line${sec.rows.length === 1 ? '' : 's'}. `
+          + 'Ctrl+Z / ⌘Z undoes it.', 'success');
+        refreshPreview().catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
+      };
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); done(); }
+        if (e.key === 'Escape') { e.preventDefault(); renderCcnList(sections, headers); }
+      });
+      item.querySelector('.pl-ccn-ok').addEventListener('click', done);
+      item.querySelector('.pl-ccn-assign-close').addEventListener('click', () => renderCcnList(sections, headers));
+    });
+  });
+}
