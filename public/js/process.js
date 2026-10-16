@@ -148,10 +148,11 @@ function getSummaryDF(headers, rows) {
   // A pallet carries cartons, so a destination can never need more pallets
   // than it has cartons. The estimate divides volume by a nominal pallet
   // load, which for a few very large cartons produced answers like five
-  // skids for two cartons.
+  // skids for two cartons. Going the other way, any cartons at all need at
+  // least one skid, even when their volume rounds down to zero.
   const estimate = (g) => {
     const raw = Math.ceil(g.pallet - 0.05);
-    return g.Carton > 0 ? Math.min(raw, g.Carton) : raw;
+    return g.Carton > 0 ? Math.max(1, Math.min(raw, g.Carton)) : raw;
   };
 
   return {

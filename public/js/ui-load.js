@@ -142,9 +142,11 @@ function setExcelFile(file, dt) {
   manualRange     = null;
   roleOverrides   = {};
   columnOverrides = {};
+  ccnColOverride  = null;
   clearPreviewEdits();
   clearDestRenames();
   clearLearnQueue();
+  handCols = [];
   ccnOrder = [];
   hdrRowInput.value  = '';
   lastRowInput.value = '';
@@ -207,7 +209,7 @@ function countDataRows(data, range) {
 
 // the range or a column mapping changes.
 function ccnInRange(data, range) {
-  return sliceRow(data.raw[range.hdrRow] || [], range.firstCol, range.lastCol).some(isCcnHeader);
+  return ccnLocalIndex(sliceRow(data.raw[range.hdrRow] || [], range.firstCol, range.lastCol), range.firstCol) >= 0;
 }
 
 function updateLoadStatus(data) {
@@ -223,6 +225,11 @@ function updateLoadStatus(data) {
   } else if (missing.length === PL_ROLES.length) {
     setSteps({ table: ['error', 'No columns recognised'] });
     showStatus('Sheet loaded, but no columns were recognised. The header row is probably wrong — highlight the table on the grid and right-click → Use as data range.', 'error');
+  } else if (missing.length === 1 && missing[0] === 'Destination') {
+    setSteps({ table: ['warn', `${rowsText} · type destinations`] });
+    showStatus(`${nData} data row${s} selected, but no column matched Destination. Click that chip to pick its column, `
+             + 'right-click the column letter in the grid, or type each line\'s destination in the Destination column '
+             + 'of the preview below (paste a column from Excel to fill many at once).', 'error');
   } else if (missing.length) {
     setSteps({ table: ['warn', `${rowsText} · pick ${missing.join(', ')}`] });
     showStatus(`${nData} data row${s} selected, but no column matched ${missing.join(', ')}. `
@@ -337,9 +344,11 @@ async function setActiveSheet(name) {
   manualRange     = null;
   roleOverrides   = {};
   columnOverrides = {};
+  ccnColOverride  = null;
   clearPreviewEdits();
   clearDestRenames();
   clearLearnQueue();
+  handCols = [];
   hdrRowInput.value  = '';
   lastRowInput.value = '';
   await refreshSheetView({ rebuild: true });
@@ -368,6 +377,11 @@ function clearDestRenames() { destRenames = {}; }
 // Hand edits made in the preview, keyed "<rowIndex>\u0000<columnName>".
 // Loads edits feed the summary; summary edits then override it.
 let previewEdits = { loads: new Map(), summary: new Map() };
+
+// Columns added by hand in the preview, in the order they were added. They
+// start empty, are filled like any other cell, and go into the file after
+// the sheet's own columns. A new file starts without them.
+let handCols = [];
 
 function hasPreviewEdits() {
   return previewEdits.loads.size > 0 || previewEdits.summary.size > 0;
@@ -421,7 +435,12 @@ function droppedColumns(headers, firstCol) {
     if (ov === 'drop') { out.add(abs); return; }
     if (ov === 'keep') return;
     // The CCN is what a bonded warehouse releases cargo by, and noise on any
-    // other packing list, so the Bonded toggle alone decides it.
+    // other packing list, so the Bonded toggle alone decides it. A column
+    // picked as the CCN# stands in for any the headers suggested.
+    if (bondedToggle.checked && ccnColOverride != null) {
+      if (abs === ccnColOverride) return;
+      if (isCcnHeader(name)) { out.add(abs); return; }
+    }
     if (isCcnHeader(name)) { if (!bondedToggle.checked) out.add(abs); return; }
     if (name != null && NO_NEED_COL.includes(name)) out.add(abs);
   });
@@ -433,12 +452,25 @@ function droppedColumns(headers, firstCol) {
 // ─────────────────────────────────────────────────────────────
 const bondedToggle = document.getElementById('bondedToggle');
 
+// The column picked as the CCN# by right-clicking it in the grid (absolute
+// index), or null to go by the headers ("CCN", "localCCN#", ...). Picked by
+// hand, its header is read as "CCN#" whatever the sheet calls it.
+let ccnColOverride = null;
+
+// Where the CCN# is among the range's headers, or -1.
+function ccnLocalIndex(headers, firstCol) {
+  if (ccnColOverride != null) {
+    const i = ccnColOverride - firstCol;
+    return i >= 0 && i < headers.length ? i : -1;
+  }
+  return headers.findIndex(isCcnHeader);
+}
+
 // A client writes the CCN once at the top of its block (or merges the cells).
 // The loads are re-sorted by destination, which would strand every row but
 // the first without one, so it is carried down in sheet order first. Rows
 // with nothing else on them stay empty, or a gap would become a load line.
-function fillDownCcn(headers, rows) {
-  const ci = headers.findIndex(isCcnHeader);
+function fillDownCcn(ci, rows) {
   if (ci < 0) return rows;
   let last = null;
   return rows.map(r => {
@@ -453,6 +485,26 @@ const ccnAllRow    = document.getElementById('ccnAllRow');
 // With Bonded on there is always a CCN column, even when the client's sheet
 // has none or it is unreadable: the column is added empty, and the CCN# is
 // then typed in from the CCN# list or the preview like any other cell.
+// No column of the sheet is the Destination: the loads still build, but each
+// line's destination has to be typed (or pasted) into the preview. An empty
+// Destination column is put first, where the codes normally are, so there is
+// a cell to type into; typed values are ordinary preview edits and regroup
+// the loads and the summary like any other changed destination.
+let destByHand = false;
+
+function withDestinationColumn(headers, rows) {
+  if (headers.includes('Destination')) return { headers, rows, added: false };
+  return { headers: ['Destination', ...headers], rows: rows.map(r => [null, ...r]), added: true };
+}
+
+// Typed destinations stand in for a missing column. Once a real one is
+// picked they would silently override it, so they are dropped then.
+function dropTypedDestinations() {
+  for (const key of [...previewEdits.loads.keys()]) {
+    if (key.endsWith('\u0000Destination')) previewEdits.loads.delete(key);
+  }
+}
+
 function withCcnColumn(headers, rows) {
   let ci = headers.findIndex(isCcnHeader);
   if (ci < 0) {
@@ -572,7 +624,11 @@ async function runPipeline(file) {
     .map(h => (h != null ? String(h) : null));
   const dataIdx = rangeDataRowIndices(range);
   let rows = dataIdx.map(i => sliceRow(data.raw[i], firstCol, lastCol));
-  if (bondedToggle.checked) rows = fillDownCcn(headers, rows);
+  if (bondedToggle.checked) {
+    const ci = ccnLocalIndex(headers, firstCol);
+    if (ci >= 0 && ccnColOverride != null) headers[ci] = 'CCN#';
+    rows = fillDownCcn(ci, rows);
+  }
 
   // Where a merged block wrote a copy of its value, in this slice's own
   // coordinates. A quantity is one figure for its whole block, so the copies
@@ -593,8 +649,17 @@ async function runPipeline(file) {
   const { headers: reH, rows: reR, matchDict } =
     readExcel(headers, rows, roleOverrides, dropLocal, mergedMask);
   let { headers: modH, rows: modR0 } = modifyDF(reH, reR, matchDict);
+  const byHand = withDestinationColumn(modH, modR0);
+  ({ headers: modH, rows: modR0 } = byHand);
+  if (destByHand && !byHand.added) dropTypedDestinations();
+  destByHand = byHand.added;
   if (bondedToggle.checked) {
     ({ headers: modH, rows: modR0 } = withCcnColumn(modH, modR0));
+  }
+  const addCols = handCols.filter(h => !modH.includes(h));
+  if (addCols.length) {
+    modH  = [...modH, ...addCols];
+    modR0 = modR0.map(r => [...r, ...addCols.map(() => null)]);
   }
 
   const modR = applyEdits(modH, modR0, previewEdits.loads);
@@ -650,6 +715,7 @@ async function runPipeline(file) {
     // against the paperwork instead of being lost among the codes it now
     // sorts next to.
     const destChanged = (row) => {
+      if (destByHand) return isEmpty(row[destIdx]);   // not typed yet: last
       if (rowIdIdx < 0) return false;
       const id = String(row[rowIdIdx]);
       return renamed.has(id) || previewEdits.loads.has(`${id}\u0000Destination`);

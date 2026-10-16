@@ -1028,6 +1028,38 @@ input[type="number"]:focus {
   opacity: 0.38;
   cursor: default;
 }
+/* Name box for a column added by hand. It types in normal case, unlike
+   the band's capitals. */
+.pl-band-input {
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  width: 170px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: #fff;
+  color: #1a2b4a;
+}
+/* A column added by hand: its header carries a small remove button. The
+   × is drawn by CSS so it is not read as part of the column's name. */
+.pl-out-table th.pl-hand-col {
+  white-space: nowrap;
+}
+.pl-col-remove {
+  margin-left: 6px;
+  padding: 0 5px;
+  font: inherit;
+  line-height: 1.2;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pl-col-remove::before { content: "×"; }
+.pl-col-remove:hover { background: rgba(255, 255, 255, 0.32); }
 /* The preview grows to its full height and the page does the scrolling.
    Only a table wider than the card scrolls sideways, inside itself. */
 .pl-out-table {
@@ -1883,6 +1915,17 @@ input[type="number"]:focus {
   min-width: 150px;
   cursor: text;
 }
+/* Destination typed by hand, when no sheet column is the Destination */
+.pl-out-table td.pl-dest-cell {
+  min-width: 140px;
+  cursor: text;
+}
+.pl-out-table td.pl-dest-cell:empty::before {
+  content: "type destination";
+  color: #94a3b8;
+  font-style: italic;
+  font-weight: 400;
+}
 .pl-out-table td.pl-ccn-cell:empty::before {
   content: "type CCN#";
   color: #94a3b8;
@@ -2006,4 +2049,11 @@ input[type="number"]:focus {
   font-family: ui-monospace, Menlo, monospace;
   font-weight: 700;
   vertical-align: top;
+}
+/* Bonded: the column read as the CCN# */
+.pl-grid-colhdr.pl-k-ccn {
+  border-bottom-color: #4f46e5;
+}
+.pl-grid-colhdr.pl-k-ccn .pl-th-role {
+  color: #4f46e5;
 }

@@ -54,7 +54,9 @@ function classifyColumns(data, range) {
     const local   = c - firstCol;
     const name    = headers[local];
     const hasData = rows.some(r => !isEmpty(r[local]));
-    if (roleByLocal[local] !== undefined) {
+    if (bondedToggle.checked && local === ccnLocalIndex(headers, firstCol)) {
+      cols.push({ kind: 'ccn', cls: 'ccn', label: 'CCN#', name, hasData });
+    } else if (roleByLocal[local] !== undefined) {
       const meta = PL_ROLES.find(r => r.role === roleByLocal[local]);
       cols.push({ kind: 'role', role: meta.role, cls: meta.cls, label: meta.label, color: meta.color, name, hasData });
     } else if (dropped.has(c)) {
@@ -238,12 +240,30 @@ function columnMenuItems(abs, info) {
       },
     });
   }
+  // Bonded: the CCN# can be any column, whatever its header says.
+  if (bondedToggle.checked) {
+    const isCcn = cols[abs] && cols[abs].kind === 'ccn';
+    items.push({
+      label: 'Use as CCN#',
+      checked: isCcn,
+      onPick: () => {
+        if (isCcn && ccnColOverride === abs) { ccnColOverride = null; reapply(); return; }
+        ccnColOverride = abs;
+        columnOverrides[abs] = 'keep';
+        // A column cannot be both the CCN# and, say, the Destination.
+        for (const r of PL_ROLES) if (roleCol[r.role] === abs) roleOverrides[r.role] = null;
+        clearPreviewEdits();     // edits were keyed by the old CCN column name
+        reapply();
+      },
+    });
+  }
   items.push({ sep: true });
   items.push({
     label: 'Not a mapped column',
-    checked: !PL_ROLES.some(r => roleCol[r.role] === abs),
+    checked: !PL_ROLES.some(r => roleCol[r.role] === abs) && !(cols[abs] && cols[abs].kind === 'ccn'),
     onPick: () => {
       for (const r of PL_ROLES) if (roleCol[r.role] === abs) roleOverrides[r.role] = null;
+      if (ccnColOverride === abs) ccnColOverride = null;
       reapply();
     },
   });

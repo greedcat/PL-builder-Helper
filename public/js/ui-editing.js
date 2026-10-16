@@ -7,7 +7,12 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
   const edits = editKey ? previewEdits[editKey] : null;
   let html = '<table><thead><tr>';
   headers.forEach(h => {
-    html += `<th>${escapeHtml(h ?? '').replace(/\n/g, '<br>')}</th>`;
+    const label = escapeHtml(h ?? '').replace(/\n/g, '<br>');
+    // A column added by hand can be taken out again from its header.
+    html += editKey === 'loads' && handCols.includes(h)
+      ? `<th class="pl-hand-col">${label}<button type="button" class="pl-col-remove"`
+        + ` data-col="${escapeHtml(h)}" title="Remove this column" aria-label="Remove column ${escapeHtml(h)}"></button></th>`
+      : `<th>${label}</th>`;
   });
   // Empty trailing column. It takes whatever width is left over, so the
   // real columns size to their content instead of one of them stretching
@@ -29,8 +34,10 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
       // A CCN cell is often empty and waiting to be filled in, so it is drawn
       // wide enough to take one and says so (see .pl-ccn-cell).
       const ccnCls = editKey && isCcnHeader(name) ? ' pl-ccn-cell' : '';
+      // Likewise a Destination typed by hand, when no sheet column is one.
+      const destCls = editKey === 'loads' && destByHand && name === 'Destination' ? ' pl-dest-cell' : '';
       const attrs = editKey
-        ? ` tabindex="0" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}${ccnCls}"`
+        ? ` tabindex="0" spellcheck="false" class="pl-edit${edited ? ' pl-edited' : ''}${numCls}${ccnCls}${destCls}"`
         + ` data-table="${editKey}" data-row="${rowId}" data-col="${escapeHtml(String(name ?? ''))}"`
         : '';
       const shown = tidyNumber(v);
@@ -65,6 +72,7 @@ function editSnapshot() {
     loads:   new Map(previewEdits.loads),
     summary: new Map(previewEdits.summary),
     renames: { ...destRenames },
+    cols:    [...handCols],
   };
 }
 
@@ -79,6 +87,7 @@ function pushEditHistory() {
 function applySnapshot(s) {
   previewEdits = { loads: new Map(s.loads), summary: new Map(s.summary) };
   destRenames  = { ...s.renames };
+  handCols     = [...s.cols];
 }
 
 function undoLastEdit() {
@@ -100,6 +109,7 @@ function resetAllEdits() {
   pushEditHistory();
   previewEdits = { loads: new Map(), summary: new Map() };
   clearDestRenames();
+  handCols = [];
 }
 
 // Drops only the hand-typed cells, keeping accepted destination names.
@@ -116,7 +126,7 @@ function clearEditHistory() {
 
 function hasAnyChange() {
   return previewEdits.loads.size > 0 || previewEdits.summary.size > 0
-    || Object.keys(destRenames).length > 0;
+    || Object.keys(destRenames).length > 0 || handCols.length > 0;
 }
 
 // The buttons live in the Loads band and are wired once, since the band is

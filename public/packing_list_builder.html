@@ -86,6 +86,9 @@
         <div class="pl-out-band">
           <span id="plLoadsLabel">Loads</span>
           <span class="pl-band-tools">
+            <input type="text" id="plNewColName" class="pl-band-input" placeholder="New column name"
+                   aria-label="New column name" maxlength="60" hidden>
+            <button type="button" id="btnAddCol" class="pl-band-btn" title="Add an empty column to type into">+ Column</button>
             <button type="button" id="btnUndoEdit" class="pl-band-btn" title="Undo (Ctrl+Z / ⌘Z)" disabled>Undo</button>
             <button type="button" id="btnRedoEdit" class="pl-band-btn" title="Redo (Ctrl+Y / ⇧⌘Z)" disabled>Redo</button>
             <button type="button" id="btnResetEdits" class="pl-band-btn" title="Back to the file as it was read" disabled>Reset</button>

@@ -149,6 +149,7 @@ function renderDestPanel(longDests) {
 
 function renderPreview(modH, modR, sumH, sumR, longDests, ccnSections = null) {
   const { headers: visH, rows: visRows, cols: visCols } = getVisibleColumns(modH, modR);
+  lastLoadsHeaders = modH;
 
   // The workbook writes nine summary columns; show those, not the
   // pipeline's internal names, so the preview is the document.
@@ -242,6 +243,8 @@ function renderPreview(modH, modR, sumH, sumR, longDests, ccnSections = null) {
   syncBandTools();
   renderDestPanel(longDests);
   previewSec.style.display = 'block';
+  // Laid out now, so the CCN# tables can be measured and lined up.
+  if (ccnSections) alignColumns(dataBox.querySelectorAll(':scope > table'));
   // The tables were just rebuilt, so a block dragged on the old ones is gone.
   hideQuickSum('Preview');
   hideCcnAssign();
@@ -578,3 +581,87 @@ function renderCcnList(sections = lastCcnSections, headers = lastCcnHeaders) {
     });
   });
 }
+
+// The CCN# loads tables are one table in the file — one set of columns down
+// the sheet — so in the preview each column is given the width of its
+// widest cell in any of them, and the tables line up under one another.
+function alignColumns(tables) {
+  tables = [...tables];
+  if (tables.length < 2) return;
+  const widths = [];
+  for (const t of tables) {
+    [...t.rows[0].cells].forEach((th, i) => {
+      if (th.classList.contains('pl-fill')) return;
+      widths[i] = Math.max(widths[i] || 0, th.getBoundingClientRect().width);
+    });
+  }
+  for (const t of tables) {
+    [...t.rows[0].cells].forEach((th, i) => {
+      if (th.classList.contains('pl-fill') || !widths[i]) return;
+      // border-box, so the measured outer width is the width it keeps
+      th.style.boxSizing = 'border-box';
+      th.style.width = th.style.minWidth = `${Math.ceil(widths[i])}px`;
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Columns added by hand
+// "+ Column" opens a name box in the Loads band; Enter adds an empty column
+// to the loads, to be typed or pasted into like any other, and it is written
+// into the file. The × on its header takes it out again, with what was typed
+// in it. Both are ordinary changes, so Undo takes them back.
+// ─────────────────────────────────────────────────────────────
+const addColBtn  = document.getElementById('btnAddCol');
+const addColName = document.getElementById('plNewColName');
+let lastLoadsHeaders = [];
+
+function closeAddCol() {
+  addColName.value  = '';
+  addColName.hidden = true;
+}
+
+function addHandColumn() {
+  const name = addColName.value.replace(/\s+/g, ' ').trim();
+  if (!name) { closeAddCol(); return; }
+  const taken = [...lastLoadsHeaders, ...handCols, '_Pallet', '_Row']
+    .some(h => h != null && String(h).toLowerCase() === name.toLowerCase());
+  if (taken) {
+    showStatus(`There is already a column called "${name}". Pick another name.`, 'error');
+    addColName.focus();
+    return;
+  }
+  pushEditHistory();
+  handCols = [...handCols, name];
+  closeAddCol();
+  showStatus(`Added the column "${name}". Click a cell in it to type, or paste from Excel.`, 'info');
+  refreshPreview().catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
+}
+
+addColBtn.addEventListener('click', () => {
+  if (addColName.hidden) { addColName.hidden = false; addColName.focus(); return; }
+  addHandColumn();
+});
+addColName.addEventListener('keydown', e => {
+  if (e.key === 'Enter')  { e.preventDefault(); addHandColumn(); }
+  if (e.key === 'Escape') { e.preventDefault(); closeAddCol(); }
+});
+addColName.addEventListener('blur', () => {
+  // Clicking "+ Column" itself adds; leaving the box empty just closes it.
+  setTimeout(() => {
+    if (document.activeElement !== addColBtn && !addColName.value.trim()) closeAddCol();
+  }, 0);
+});
+
+document.getElementById('plPreviewData').addEventListener('click', e => {
+  const btn = e.target.closest('.pl-col-remove');
+  if (!btn) return;
+  const name = btn.dataset.col;
+  pushEditHistory();
+  handCols = handCols.filter(h => h !== name);
+  for (const key of [...previewEdits.loads.keys()]) {
+    if (key.endsWith(`\u0000${name}`)) previewEdits.loads.delete(key);
+  }
+  showStatus(`Removed the column "${name}". Ctrl+Z brings it back.`, 'info');
+  refreshPreview().catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
+});
