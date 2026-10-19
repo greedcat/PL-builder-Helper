@@ -8,6 +8,15 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   const TNR = 'Times New Roman';
   const bdr = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
 
+  // Every value goes into the file through here. Excel's General format
+  // turns a whole number of more than 11 digits into 9.99261E+14; on a PL
+  // those are marks (唛头) and reference numbers, so every digit is shown.
+  function setValue(cl, v) {
+    cl.value = v;
+    if (Number.isInteger(v) && Math.abs(v) >= 1e11) cl.numFmt = '0';
+    return cl;
+  }
+
   function styledCell(ws, r, c, opts = {}) {
     const cl = ws.getCell(r, c);
     cl.alignment = { horizontal: 'center', vertical: 'middle', wrapText: opts.wrap || false };
@@ -130,14 +139,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
 
     const DATA_START = DATA_HDR_ROW + 1;
     secRows.forEach((row, ri) => {
-      row.forEach((v, ci) => {
-        const cl = styledCell(wsPL, DATA_START + ri, ci + 1);
-        cl.value = tidyNumber(v) ?? '';
-        // Excel's General format turns a whole number of more than 11 digits
-        // into 9.99261E+14. Long ones here are marks and reference numbers,
-        // so show every digit.
-        if (Number.isInteger(cl.value) && Math.abs(cl.value) >= 1e11) cl.numFmt = '0';
-      });
+      row.forEach((v, ci) => { setValue(styledCell(wsPL, DATA_START + ri, ci + 1), tidyNumber(v) ?? ''); });
       wsPL.getRow(DATA_START + ri).height = 30;
     });
     const lastDataRow = DATA_START + secRows.length - 1;
@@ -198,7 +200,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   sumVisR.forEach((row, ri) => {
     const rn = SUM_DATA_START + ri;
     for (let ci = 0; ci < sumCols; ci++) {
-      styledCell(wsPL, rn, ci + 1, { size: 16 }).value = ci < row.length ? (tidyNumber(row[ci]) ?? '') : '';
+      setValue(styledCell(wsPL, rn, ci + 1, { size: 16 }), ci < row.length ? (tidyNumber(row[ci]) ?? '') : '');
     }
     wsPL.getRow(rn).height = 85; // roomy: actual skid counts are written in by hand
   });
@@ -330,7 +332,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   sumVisH.forEach((h, ci) => { styledCell(wsSUM, 1, ci + 1).value = h; });
   wsSUM.getRow(1).height = 25;
   sumVisR.forEach((row, ri) => {
-    row.forEach((v, ci) => { styledCell(wsSUM, 2 + ri, ci + 1).value = v ?? ''; });
+    row.forEach((v, ci) => { setValue(styledCell(wsSUM, 2 + ri, ci + 1), v ?? ''); });
     wsSUM.getRow(2 + ri).height = 25;
   });
   for (const { from, to } of ccnSpans) {
@@ -361,7 +363,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
           for (let c = range.s.c; c <= range.e.c; c++) {
             const cell = sjs[XLSX.utils.encode_cell({ r, c })];
             if (!cell) continue;
-            ws.getCell(r + 1, c + 1).value = cell.v ?? null;
+            setValue(ws.getCell(r + 1, c + 1), cell.v ?? null);
             const len = cell.v != null ? String(cell.v).length : 0;
             colMaxLen[c] = Math.max(colMaxLen[c] || 0, len);
           }
