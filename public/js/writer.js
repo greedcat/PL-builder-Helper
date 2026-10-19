@@ -130,7 +130,14 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
 
     const DATA_START = DATA_HDR_ROW + 1;
     secRows.forEach((row, ri) => {
-      row.forEach((v, ci) => { styledCell(wsPL, DATA_START + ri, ci + 1).value = tidyNumber(v) ?? ''; });
+      row.forEach((v, ci) => {
+        const cl = styledCell(wsPL, DATA_START + ri, ci + 1);
+        cl.value = tidyNumber(v) ?? '';
+        // Excel's General format turns a whole number of more than 11 digits
+        // into 9.99261E+14. Long ones here are marks and reference numbers,
+        // so show every digit.
+        if (Number.isInteger(cl.value) && Math.abs(cl.value) >= 1e11) cl.numFmt = '0';
+      });
       wsPL.getRow(DATA_START + ri).height = 30;
     });
     const lastDataRow = DATA_START + secRows.length - 1;
