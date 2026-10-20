@@ -349,7 +349,11 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
 
   // ── Original sheets ───────────────────────────────────────
   if (wbIn) {
+    // A PL made here and loaded back in to be changed carries its old PL
+    // and summary sheets, which this file replaces; only its sources are kept.
+    const ownPL = wbIn.SheetNames.includes('PL') && wbIn.SheetNames.includes('summary');
     for (const sheetName of wbIn.SheetNames) {
+      if (ownPL && (sheetName === 'PL' || sheetName === 'summary')) continue;
       const sjs = wbIn.Sheets[sheetName];
       let name  = sheetName.replace(/[\\/?*[\]:]/g, '_').slice(0, 31);
       if (name === 'PL' || name === 'summary') name += '_orig';

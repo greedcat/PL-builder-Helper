@@ -106,29 +106,70 @@ app.put('/api/match-helper/dest-order', async (req, res) => {
 // The generated PL, passed on to fba-app, which finds or makes the
 // container's folder (Containers Info / client / file-container) and puts
 // the file there in place of any earlier one. The key stays on this server.
-app.get('/api/sharepoint-pl', (req, res) => res.json({ enabled: !!(FBA_APP_URL && PL_BUILDER_KEY) }));
+//   GET  /api/sharepoint-pl            is it set up here?
+//   POST /api/sharepoint-pl?…          body = the PL, into the folder
+//   GET  /api/sharepoint-pl/find?…     the PLs already in the folder
+//   GET  /api/sharepoint-pl/content?…&item_id=   one of them, to load back
+//   POST /api/sharepoint-pl/folder?…   the folder, made when it has none
+const PL_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const spEnabled = () => !!(FBA_APP_URL && PL_BUILDER_KEY);
+
+function shipmentQuery(query, extra = []) {
+  const q = new URLSearchParams();
+  for (const k of ['container', 'file_no', 'customer', ...extra]) q.set(k, String(query[k] || ''));
+  return q;
+}
+
+// Calls fba-app, or answers for it when it cannot be reached or set up.
+async function fbaApp(res, path, init = {}) {
+  if (!spEnabled()) {
+    res.status(503).json({ error: 'SharePoint upload is not set up on this server' });
+    return null;
+  }
+  try {
+    const up = await fetch(`${FBA_APP_URL}${path}`,
+      { ...init, headers: { ...(init.headers || {}), 'x-pl-builder-key': PL_BUILDER_KEY } });
+    if (up.status === 401) {
+      res.status(502).json({ error: 'fba-app refused the key (check PL_BUILDER_KEY on both services)' });
+      return null;
+    }
+    return up;
+  } catch (err) {
+    console.error('fba-app unreachable:', err.message);
+    res.status(502).json({ error: 'Could not reach fba-app: ' + err.message });
+    return null;
+  }
+}
+
+async function passJson(res, up) {
+  const out = await up.json().catch(() => ({ error: `fba-app answered ${up.status}` }));
+  res.status(up.status).json(out);
+}
+
+app.get('/api/sharepoint-pl', (req, res) => res.json({ enabled: spEnabled() }));
 
 app.post('/api/sharepoint-pl', express.raw({ type: () => true, limit: '20mb' }), async (req, res) => {
-  if (!FBA_APP_URL || !PL_BUILDER_KEY) {
-    return res.status(503).json({ error: 'SharePoint upload is not set up on this server' });
-  }
   if (!req.body || !req.body.length) return res.status(400).json({ error: 'no file' });
-  const q = new URLSearchParams();
-  for (const k of ['container', 'file_no', 'customer', 'name']) q.set(k, String(req.query[k] || ''));
-  try {
-    const up = await fetch(`${FBA_APP_URL}/api/pl-builder/upload?${q}`, {
-      method: 'POST',
-      headers: { 'x-pl-builder-key': PL_BUILDER_KEY,
-                 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-      body: req.body,
-    });
-    const out = await up.json().catch(() => ({ error: `fba-app answered ${up.status}` }));
-    res.status(up.ok ? 200 : (up.status === 401 ? 502 : up.status)).json(
-      up.status === 401 ? { error: 'fba-app refused the key (check PL_BUILDER_KEY on both services)' } : out);
-  } catch (err) {
-    console.error('SharePoint upload failed:', err.message);
-    res.status(502).json({ error: 'Could not reach fba-app: ' + err.message });
-  }
+  const up = await fbaApp(res, `/api/pl-builder/upload?${shipmentQuery(req.query, ['name'])}`,
+    { method: 'POST', headers: { 'content-type': PL_TYPE }, body: req.body });
+  if (up) await passJson(res, up);
+});
+
+app.get('/api/sharepoint-pl/find', async (req, res) => {
+  const up = await fbaApp(res, `/api/pl-builder/pl?${shipmentQuery(req.query)}`);
+  if (up) await passJson(res, up);
+});
+
+app.post('/api/sharepoint-pl/folder', async (req, res) => {
+  const up = await fbaApp(res, `/api/pl-builder/folder?${shipmentQuery(req.query)}`, { method: 'POST' });
+  if (up) await passJson(res, up);
+});
+
+app.get('/api/sharepoint-pl/content', async (req, res) => {
+  const up = await fbaApp(res, `/api/pl-builder/pl/content?${shipmentQuery(req.query, ['item_id'])}`);
+  if (!up) return;
+  if (!up.ok) return passJson(res, up);
+  res.set('content-type', PL_TYPE).send(Buffer.from(await up.arrayBuffer()));
 });
 
 async function connectDb() {

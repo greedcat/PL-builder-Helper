@@ -1103,6 +1103,51 @@ input[type="number"]:focus {
   overflow: hidden;
   max-width: 780px;
 }
+/* The container's SharePoint folder, under the shipment cells. */
+.pl-sp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.pl-sp-row:has(.pl-sp-folder[hidden]) { margin-top: 0; }
+.pl-sp-hint { font-size: 0.82rem; color: #64748b; }
+.pl-sp-hint.bad { color: #b91c1c; }
+/* A PL for this container and file number is already in SharePoint. */
+.pl-existing {
+  max-width: 780px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.pl-existing-text { flex: 1 1 320px; }
+.pl-existing-actions { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.pl-existing button,
+.pl-existing a {
+  font: inherit;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #d97706;
+  background: #fff;
+  color: #92400e;
+  cursor: pointer;
+  text-decoration: none;
+}
+.pl-existing button.pl-existing-load {
+  background: #d97706;
+  color: #fff;
+}
+.pl-existing button:disabled { opacity: 0.6; cursor: default; }
 .pl-cell {
   display: flex;
   flex-direction: column;

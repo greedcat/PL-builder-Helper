@@ -25,6 +25,123 @@ cellsRow.addEventListener('paste', e => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────
+// A PL already in SharePoint
+// Once a container number and a file number are typed, the container's
+// SharePoint folder is checked for a PL. One there is pointed out before
+// a new one replaces it, and can be loaded back in to be changed: it reads
+// like any other file, its loads table taken from the PL sheet.
+// ─────────────────────────────────────────────────────────────
+const existingBox = document.getElementById('plExisting');
+let existingTimer = null;
+let existingAsk   = 0;        // the latest lookup; older answers are dropped
+let spSetUp       = null;     // null until the server has said
+
+function shipmentNow() {
+  return { container: containerNoInput.value.trim(), file_no: readFileNo(), customer: clientNameInput.value.trim() };
+}
+
+function hideExisting() { existingBox.hidden = true; existingBox.innerHTML = ''; }
+
+/* The container's folder, opened from here. Until a lookup has found
+   one, the button offers to make it (fba-app makes it where it would
+   for the box: Containers Info / client / file-container). */
+const spFolderBtn  = document.getElementById('btnSpFolder');
+const spFolderHint = document.getElementById('plSpHint');
+let knownFolder    = null;    // { url, name } of this shipment's folder
+
+function paintFolderBtn(show) {
+  spFolderBtn.hidden = !show;
+  spFolderBtn.textContent = knownFolder ? '📁 Open SharePoint folder' : '📁 Create SharePoint folder';
+  spFolderBtn.title = knownFolder
+    ? `Open ${knownFolder.name} in SharePoint`
+    : 'Make this container\u2019s folder in SharePoint (Containers Info / client / file-container) and open it';
+  if (!show) { spFolderHint.textContent = ''; spFolderHint.classList.remove('bad'); }
+}
+
+spFolderBtn.addEventListener('click', async () => {
+  // Opened now, while the click still counts, or the browser blocks it.
+  const tab = window.open('', '_blank');
+  if (knownFolder) { if (tab) tab.location = knownFolder.url; return; }
+  spFolderBtn.disabled = true;
+  spFolderHint.classList.remove('bad');
+  spFolderHint.textContent = 'Making the folder…';
+  try {
+    const res = await fetch(`/api/sharepoint-pl/folder?${new URLSearchParams(shipmentNow())}`, { method: 'POST' });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || `server answered ${res.status}`);
+    knownFolder = { url: out.url, name: out.name };
+    if (tab) tab.location = out.url;
+    spFolderHint.textContent = `${out.created ? 'Made' : 'Found'} ${out.name}`;
+    paintFolderBtn(true);
+  } catch (err) {
+    if (tab) tab.close();
+    spFolderHint.textContent = `Could not open the folder: ${err.message}`;
+    spFolderHint.classList.add('bad');
+  } finally {
+    spFolderBtn.disabled = false;
+  }
+});
+
+async function checkExistingPL() {
+  const ask = ++existingAsk;
+  const sh  = shipmentNow();
+  knownFolder = null;
+  if (!/[A-Z]{4}\d{7}/i.test(sh.container) || !sh.file_no) { hideExisting(); paintFolderBtn(false); return; }
+  try {
+    if (spSetUp === null) spSetUp = !!(await (await fetch('/api/sharepoint-pl')).json()).enabled;
+    if (!spSetUp) return;
+    const res = await fetch(`/api/sharepoint-pl/find?${new URLSearchParams(sh)}`);
+    const out = await res.json();
+    if (ask !== existingAsk) return;
+    knownFolder = res.ok && out.folder ? { url: out.folder, name: out.folder_name } : null;
+    paintFolderBtn(true);
+    if (!res.ok || !out.files || !out.files.length) { hideExisting(); return; }
+    showExisting(sh, out, out.files[0]);
+  } catch (err) {
+    console.error(err);       // the check is a courtesy; generating still works
+  }
+}
+
+function showExisting(sh, out, f) {
+  const when = f.at ? new Date(f.at).toLocaleString() : '';
+  existingBox.innerHTML = `
+    <span class="pl-existing-text">⚠ A PL for this container is already in SharePoint:
+      <strong>${escapeHtml(f.name)}</strong> in ${escapeHtml(out.folder_name || 'its folder')}${
+      when ? `, saved ${escapeHtml(when)}` : ''}${f.by ? ` by ${escapeHtml(f.by)}` : ''}.
+      Generating a new one will replace it.</span>
+    <span class="pl-existing-actions">
+      <button type="button" class="pl-existing-load">Load it to edit</button>
+      ${f.url ? `<a href="${escapeHtml(f.url)}" target="_blank" rel="noopener">Open in SharePoint</a>` : ''}
+    </span>`;
+  existingBox.hidden = false;
+  const btn = existingBox.querySelector('.pl-existing-load');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Loading…';
+    try {
+      const res = await fetch(`/api/sharepoint-pl/content?${new URLSearchParams({ ...sh, item_id: f.item_id })}`);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `server answered ${res.status}`);
+      const file = new File([await res.arrayBuffer()], f.name, { type: res.headers.get('content-type') || '' });
+      setExcelFile(file, true);
+      showStatus(`Loaded ${f.name} from SharePoint. Change what you need, then generate to replace it.`, 'success');
+      btn.textContent = 'Loaded';
+    } catch (err) {
+      console.error(err);
+      showStatus(`Could not load ${f.name} from SharePoint: ${err.message}`, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Load it to edit';
+    }
+  });
+}
+
+[containerNoInput, fileNoInput, clientNameInput].forEach(input => {
+  input.addEventListener('input', () => {
+    clearTimeout(existingTimer);
+    existingTimer = setTimeout(checkExistingPL, 600);
+  });
+});
+
 // The container-detail block that sits at the top of the generated PL sheet.
 // Mirrors writePackingList so the preview shows the real output, not a
 // fragment of it.
@@ -418,6 +535,7 @@ async function saveToSharePoint(out, shipment, note = '', noteFailed = false) {
     showStatus(`✓ Packing list downloaded and saved to SharePoint: ${body.folder_name || 'container folder'}`
       + `${body.created ? ' (folder made)' : ''}.` + note, ok);
     setSteps({ download: ['done', `${out.name} · in SharePoint`] });
+    checkExistingPL();
   } catch (err) {
     console.error(err);
     showStatus(`✓ Packing list downloaded, but it could not be saved to SharePoint: ${err.message}.` + note, 'error');
