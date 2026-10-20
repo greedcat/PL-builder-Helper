@@ -147,6 +147,8 @@ function setExcelFile(file, dt) {
   clearDestRenames();
   clearLearnQueue();
   handCols = [];
+  extraSheets = [];
+  previewTab  = 'PL';
   ccnOrder = [];
   hdrRowInput.value  = '';
   lastRowInput.value = '';
@@ -349,6 +351,8 @@ async function setActiveSheet(name) {
   clearDestRenames();
   clearLearnQueue();
   handCols = [];
+  extraSheets = [];
+  previewTab  = 'PL';
   hdrRowInput.value  = '';
   lastRowInput.value = '';
   await refreshSheetView({ rebuild: true });
@@ -382,6 +386,20 @@ let previewEdits = { loads: new Map(), summary: new Map() };
 // start empty, are filled like any other cell, and go into the file after
 // the sheet's own columns. A new file starts without them.
 let handCols = [];
+
+// Blank sheets added under the preview for anything else the PL should
+// carry, each { id, name, cells: Map "<row>\u0000<col>" → value }, written
+// into the file after the summary. `previewTab` is the sheet on show:
+// 'PL' or an extra sheet's id. A new file starts without them.
+let extraSheets = [];
+let previewTab  = 'PL';
+let extraSeq    = 0;
+
+function extraStore(table) {
+  const id = String(table || '').startsWith('x:') ? Number(table.slice(2)) : NaN;
+  const sh = extraSheets.find(x => x.id === id);
+  return sh ? sh.cells : null;
+}
 
 function hasPreviewEdits() {
   return previewEdits.loads.size > 0 || previewEdits.summary.size > 0;

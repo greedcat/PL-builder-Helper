@@ -1129,6 +1129,7 @@ input[type="number"]:focus {
   align-items: center;
   gap: 8px 12px;
 }
+.pl-existing[hidden] { display: none; }
 .pl-existing-text { flex: 1 1 320px; }
 .pl-existing-actions { display: inline-flex; gap: 8px; flex-wrap: wrap; }
 .pl-existing button,
@@ -2102,3 +2103,189 @@ input[type="number"]:focus {
 .pl-grid-colhdr.pl-k-ccn .pl-th-role {
   color: #4f46e5;
 }
+
+/* ── Excel look for the preview ───────────────────────────────
+   Declared last so it lays Excel's gridlines, grey headers, green
+   selection and sheet tabs over the preview without changing how any
+   of it works. The destination tints and the amber edit mark stay. */
+.pl-xl {
+  --xl-green: #217346;
+  --xl-grid: #d4d4d4;
+  --xl-head: #f3f3f3;
+  --xl-ink: #1f1f1f;
+  border: 1px solid #c6c6c6;
+  border-radius: 4px;
+  font-family: Calibri, "Segoe UI", Arial, sans-serif;
+}
+.pl-xl-sheet[hidden] { display: none !important; }
+.pl-xl .pl-out-head {
+  background: #fff;
+  border-bottom: 1px solid var(--xl-grid);
+}
+.pl-xl .pl-out-title { color: var(--xl-ink); }
+.pl-xl .pl-out-grid {
+  background: var(--xl-grid);
+  border-color: var(--xl-grid);
+}
+.pl-xl .pl-out-k { background: var(--xl-head); color: var(--xl-ink); }
+.pl-xl .pl-out-v { color: var(--xl-ink); }
+
+/* Section titles read as a bold sheet row, the tools as ribbon buttons. */
+.pl-xl .pl-out-band {
+  background: #fff;
+  color: var(--xl-green);
+  border-top: 1px solid var(--xl-grid);
+  border-bottom: 2px solid var(--xl-green);
+  padding: 6px 12px;
+}
+.pl-xl .pl-band-btn {
+  color: var(--xl-ink);
+  background: #fff;
+  border: 1px solid #c6c6c6;
+  border-radius: 3px;
+}
+.pl-xl .pl-band-btn:hover:not(:disabled) {
+  background: #e9f3ee;
+  border-color: var(--xl-green);
+  color: var(--xl-green);
+}
+.pl-xl .pl-band-input { border-color: #c6c6c6; }
+
+/* Gridlines on every cell, grey column headers, no striping. */
+.pl-xl .pl-out-table th,
+.pl-xl .pl-out-table td {
+  border-right: 1px solid var(--xl-grid);
+  border-bottom: 1px solid var(--xl-grid);
+}
+.pl-xl .pl-out-table th {
+  background: var(--xl-head);
+  color: var(--xl-ink);
+  font-weight: 700;
+}
+.pl-xl .pl-out-table thead th:first-child { background: var(--xl-head); }
+.pl-xl .pl-out-table tr:nth-child(even) td,
+.pl-xl .pl-out-table tr:nth-child(even) td:first-child { background: #fff; }
+.pl-xl .pl-out-table td { color: var(--xl-ink); }
+.pl-xl .pl-out-table th.pl-fill,
+.pl-xl .pl-out-table td.pl-fill { border-right: none; background: #fff; }
+
+/* The selected cell gets Excel's green frame; a dragged block its tint. */
+.pl-xl .pl-out-table td.pl-edit:hover { background: #f4f9f6; }
+.pl-xl .pl-out-table td.pl-edit:focus {
+  outline: 2px solid var(--xl-green);
+  outline-offset: -2px;
+}
+.pl-xl .pl-out-table td.pl-range {
+  box-shadow: inset 0 0 0 9999px rgba(33, 115, 70, 0.14);
+}
+.pl-xl .pl-out-table td.pl-edited.pl-range {
+  box-shadow: inset 0 0 0 9999px rgba(33, 115, 70, 0.14), inset 3px 0 0 #f59e0b;
+}
+.pl-xl .pl-out-table table td.pl-editing .pl-cell-editor { border-color: var(--xl-green); border-radius: 0; }
+
+/* A hand-added column's × on a light header. */
+.pl-xl .pl-col-remove {
+  color: #555;
+  background: #fff;
+  border-color: #c6c6c6;
+}
+.pl-xl .pl-col-remove:hover { color: #b91c1c; border-color: #b91c1c; }
+
+/* A blank sheet: column letters, row numbers, even cells. */
+.pl-xl .pl-xl-grid td {
+  min-width: 88px;
+  height: 22px;
+  padding: 2px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+.pl-xl .pl-xl-grid td.pl-num { text-align: right; }
+.pl-xl .pl-xl-grid td:first-of-type { font-weight: 400; }
+.pl-xl-grid thead th {
+  text-align: center;
+  font-weight: 400;
+  color: #444;
+  padding: 3px 6px;
+}
+.pl-xl .pl-out-table th.pl-xl-rownum,
+.pl-xl .pl-out-table th.pl-xl-corner {
+  width: 40px;
+  min-width: 40px;
+  text-align: center;
+  font-weight: 400;
+  color: #444;
+  background: var(--xl-head);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.pl-xl-grid { max-height: min(60vh, 640px); overflow-y: auto; }
+
+/* Sheet tabs along the foot, as in an Excel window. */
+.pl-xl-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 8px;
+  background: var(--xl-head);
+  border-top: 1px solid #c6c6c6;
+  min-height: 32px;
+  overflow-x: auto;
+}
+.pl-xl-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  font-size: 0.85rem;
+  color: #444;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+  user-select: none;
+}
+.pl-xl-tab:hover { background: #e8e8e8; }
+.pl-xl-tab.active {
+  background: #fff;
+  color: var(--xl-green);
+  font-weight: 700;
+  border-bottom-color: var(--xl-green);
+}
+.pl-xl-tab:focus-visible { outline: 2px solid var(--xl-green); outline-offset: -2px; }
+.pl-xl-tab-x {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #777;
+  cursor: pointer;
+  opacity: 0;
+}
+.pl-xl-tab-x::before { content: "×"; font-size: 14px; line-height: 16px; }
+.pl-xl-tab:hover .pl-xl-tab-x,
+.pl-xl-tab.active .pl-xl-tab-x,
+.pl-xl-tab-x:focus-visible { opacity: 1; }
+.pl-xl-tab-x:hover { background: #fde2e2; color: #b91c1c; }
+.pl-xl-tab-input {
+  font: inherit;
+  width: 130px;
+  padding: 1px 4px;
+  border: 1px solid var(--xl-green);
+  border-radius: 2px;
+}
+.pl-xl-add {
+  align-self: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 6px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: #555;
+  font-size: 18px;
+  line-height: 20px;
+  cursor: pointer;
+}
+.pl-xl-add:hover { background: #e2e2e2; border-color: #c6c6c6; color: var(--xl-green); }

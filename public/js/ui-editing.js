@@ -73,6 +73,7 @@ function editSnapshot() {
     summary: new Map(previewEdits.summary),
     renames: { ...destRenames },
     cols:    [...handCols],
+    extras:  extraSheets.map(x => ({ id: x.id, name: x.name, cells: new Map(x.cells) })),
   };
 }
 
@@ -88,6 +89,8 @@ function applySnapshot(s) {
   previewEdits = { loads: new Map(s.loads), summary: new Map(s.summary) };
   destRenames  = { ...s.renames };
   handCols     = [...s.cols];
+  extraSheets  = s.extras.map(x => ({ id: x.id, name: x.name, cells: new Map(x.cells) }));
+  if (previewTab !== 'PL' && !extraSheets.some(x => x.id === previewTab)) previewTab = 'PL';
 }
 
 function undoLastEdit() {
@@ -110,6 +113,8 @@ function resetAllEdits() {
   previewEdits = { loads: new Map(), summary: new Map() };
   clearDestRenames();
   handCols = [];
+  extraSheets = [];
+  previewTab  = 'PL';
 }
 
 // Drops only the hand-typed cells, keeping accepted destination names.
@@ -126,7 +131,7 @@ function clearEditHistory() {
 
 function hasAnyChange() {
   return previewEdits.loads.size > 0 || previewEdits.summary.size > 0
-    || Object.keys(destRenames).length > 0 || handCols.length > 0;
+    || Object.keys(destRenames).length > 0 || handCols.length > 0 || extraSheets.length > 0;
 }
 
 // The buttons live in the Loads band and are wired once, since the band is
@@ -192,7 +197,7 @@ document.addEventListener('keydown', e => {
 // the destination split lines follow the change.
 function commitCellEdit(td) {
   const key   = `${td.dataset.row}\u0000${td.dataset.col}`;
-  const store = previewEdits[td.dataset.table];
+  const store = previewEdits[td.dataset.table] || extraStore(td.dataset.table);
   if (!store) return;
   const value = coerceCell(td.textContent);
   const shown = td.dataset.original === undefined ? null : td.dataset.original;
@@ -351,7 +356,8 @@ function updatePreviewQuickSum() {
   const lines = rangeCells();
   if (!lines.length || !rangeAnchor.table.isConnected) { hideQuickSum('Preview'); return; }
   const table = rangeAnchor.table;
-  const name  = table.closest('#plPreviewSummary') ? 'Summary' : 'Loads';
+  const extra = table.closest('#plExtraSheet') && extraSheets.find(x => x.id === previewTab);
+  const name  = extra ? extra.name : table.closest('#plPreviewSummary') ? 'Summary' : 'Loads';
   const ths   = [...table.querySelectorAll('thead th')];
   const c1    = lines[0][0].cellIndex;
   const c2    = lines[0][lines[0].length - 1].cellIndex;
@@ -371,7 +377,8 @@ function paintRange() {
 
 // Only a cell of one of the two preview tables, and never the spacer.
 function previewCell(target) {
-  const td = target && target.closest ? target.closest('#plPreviewData td, #plPreviewSummary td') : null;
+  const td = target && target.closest
+    ? target.closest('#plPreviewData td, #plPreviewSummary td, #plExtraSheet td') : null;
   if (!td || td.classList.contains('pl-fill')) return null;
   return td;
 }
@@ -440,7 +447,8 @@ function pasteBlock(startTd, text) {
     line.forEach((val, ci) => {
       const td = tr.children[start.c + ci];
       if (!td || td.classList.contains('pl-fill')) { unplaced++; return; }
-      const store = td.classList.contains('pl-edit') && previewEdits[td.dataset.table];
+      const store = td.classList.contains('pl-edit')
+        && (previewEdits[td.dataset.table] || extraStore(td.dataset.table));
       if (!store) { locked++; return; }                  // the summary is derived
       store.set(`${td.dataset.row}\u0000${td.dataset.col}`, coerceCell(val));
       filled++;

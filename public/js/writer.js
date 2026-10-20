@@ -347,6 +347,32 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     wsSUM.getColumn(c).width = Math.min(maxLen * 1.2 + 4, 50);
   }
 
+  // A name no sheet of this file has yet, at most 31 characters.
+  const taken = new Set(wb.worksheets.map(w => w.name.toLowerCase()));
+  const uniqueName = (raw, fallback) => {
+    const base = (String(raw || '').replace(/[\\/?*[\]:]/g, '_').trim() || fallback).slice(0, 31);
+    let name = base;
+    for (let n = 2; taken.has(name.toLowerCase()); n++) name = `${base.slice(0, 31 - ` (${n})`.length)} (${n})`;
+    taken.add(name.toLowerCase());
+    return name;
+  };
+
+  // ── Extra sheets added in the preview ─────────────────────
+  // Plain cells where they were typed: whatever else the file should carry.
+  (opts.extras || []).forEach((sh, i) => {
+    const ws = wb.addWorksheet(uniqueName(sh.name, `Sheet${i + 1}`));
+    const widths = {};
+    for (const [key, v] of sh.cells) {
+      if (v == null || v === '') continue;
+      const [r, c] = key.split('\u0000').map(Number);
+      setValue(ws.getCell(r + 1, c + 1), tidyNumber(v));
+      widths[c] = Math.max(widths[c] || 0, String(v).length);
+    }
+    for (const [c, len] of Object.entries(widths)) {
+      ws.getColumn(Number(c) + 1).width = Math.min(Math.max(len * 1.15 + 2, 9), 60);
+    }
+  });
+
   // ── Original sheets ───────────────────────────────────────
   if (wbIn) {
     // A PL made here and loaded back in to be changed carries its old PL
@@ -357,7 +383,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
       const sjs = wbIn.Sheets[sheetName];
       let name  = sheetName.replace(/[\\/?*[\]:]/g, '_').slice(0, 31);
       if (name === 'PL' || name === 'summary') name += '_orig';
-      const ws = wb.addWorksheet(name);
+      const ws = wb.addWorksheet(uniqueName(name, 'Source'));
 
       if (sjs['!ref']) {
         const range     = XLSX.utils.decode_range(sjs['!ref']);

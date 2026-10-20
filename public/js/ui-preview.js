@@ -356,6 +356,7 @@ function renderPreview(modH, modR, sumH, sumR, longDests, ccnSections = null) {
   }
   sumBox.classList.toggle('pl-sum-by-ccn', !!ccnSections);
   renderCcnList(ccnSections, modH);
+  renderSheets();
   renderEditBar();
   syncBandTools();
   renderDestPanel(longDests);
@@ -477,7 +478,7 @@ document.getElementById('plForm').addEventListener('submit', async e => {
     showStatus('Building Excel file…', 'info', true);
     const outName = downloadName(containerName);
     const out = await writePackingList(modH, modR, sumH, sumR, cName, containerName, wbIn,
-                                       outName, readFileNo(), { sections: ccnSections });
+                                       outName, readFileNo(), { sections: ccnSections, extras: extraSheets });
 
     setSteps({ preview: 'done', download: ['done', outName] });
     showStatus('✓ Packing list downloaded successfully.', 'success');
@@ -815,4 +816,152 @@ document.getElementById('plPreviewData').addEventListener('click', e => {
   }
   showStatus(`Removed the column "${name}". Ctrl+Z brings it back.`, 'info');
   refreshPreview().catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
+});
+
+// ─────────────────────────────────────────────────────────────
+// Sheets
+// Tabs along the foot of the preview, as in Excel: "PL" is the packing
+// list above, and "+" adds a blank sheet for anything else the file should
+// carry. A blank sheet is typed, pasted and copied like the loads; it goes
+// into the file after the summary, under its tab's name. Double-click a
+// tab to rename it; its × removes it. Undo covers all of it.
+// ─────────────────────────────────────────────────────────────
+const sheetTabs   = document.getElementById('plSheetTabs');
+const sheetPLBox  = document.getElementById('plSheetPL');
+const extraBox    = document.getElementById('plExtraSheet');
+const EXTRA_ROWS  = 30;
+const EXTRA_COLS  = 12;
+
+
+// What Excel allows a sheet to be called, and not one the file has already.
+function sheetNameProblem(name, exceptId = null) {
+  if (!name) return 'A sheet needs a name.';
+  if (name.length > 31) return 'A sheet name can be 31 characters at most.';
+  if (/[\\/?*[\]:]/.test(name)) return 'A sheet name cannot have \\ / ? * [ ] or :';
+  const low = name.toLowerCase();
+  if (low === 'pl' || low === 'summary') return `"${name}" is the packing list's own sheet.`;
+  if (extraSheets.some(x => x.id !== exceptId && x.name.toLowerCase() === low)) return `There is already a sheet called "${name}".`;
+  return null;
+}
+
+function addExtraSheet() {
+  let name = 'Extra info';
+  for (let n = 2; sheetNameProblem(name); n++) name = `Extra info ${n}`;
+  pushEditHistory();
+  extraSheets = [...extraSheets, { id: ++extraSeq, name, cells: new Map() }];
+  previewTab = extraSeq;
+  renderSheets();
+  syncBandTools();
+  showStatus(`Added the sheet "${name}". Type or paste into it; it goes into the file after the summary.`, 'info');
+}
+
+function removeExtraSheet(id) {
+  const sh = extraSheets.find(x => x.id === id);
+  if (!sh) return;
+  pushEditHistory();
+  extraSheets = extraSheets.filter(x => x.id !== id);
+  if (previewTab === id) previewTab = 'PL';
+  renderSheets();
+  syncBandTools();
+  showStatus(`Removed the sheet "${sh.name}". Ctrl+Z brings it back.`, 'info');
+}
+
+function renameExtraSheet(id, tab) {
+  const sh = extraSheets.find(x => x.id === id);
+  if (!sh) return;
+  const input = document.createElement('input');
+  input.className = 'pl-xl-tab-input';
+  input.value = sh.name;
+  input.maxLength = 31;
+  input.setAttribute('aria-label', 'Sheet name');
+  tab.replaceChildren(input);
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = (save) => {
+    if (done) return;
+    done = true;
+    const name = input.value.trim();
+    if (save && name !== sh.name) {
+      const problem = sheetNameProblem(name, id);
+      if (problem) showStatus(problem, 'error');
+      else { pushEditHistory(); sh.name = name; syncBandTools(); }
+    }
+    renderSheets();
+  };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    e.stopPropagation();
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
+function renderSheetTabs() {
+  const tab = (id, name, removable) => `
+    <div class="pl-xl-tab${previewTab === id ? ' active' : ''}" role="tab" tabindex="0"
+         aria-selected="${previewTab === id}" data-tab="${id}"
+         title="${removable ? 'Double-click to rename' : 'The packing list'}">
+      <span class="pl-xl-tab-name">${escapeHtml(name)}</span>${removable
+        ? `<button type="button" class="pl-xl-tab-x" data-remove="${id}" aria-label="Remove sheet ${escapeHtml(name)}" title="Remove this sheet"></button>`
+        : ''}
+    </div>`;
+  sheetTabs.innerHTML = tab('PL', 'PL', false)
+    + extraSheets.map(x => tab(x.id, x.name, true)).join('')
+    + '<button type="button" class="pl-xl-add" title="Add a blank sheet for extra information" aria-label="Add a sheet">+</button>';
+}
+
+function renderExtraSheet(sh) {
+  let rows = EXTRA_ROWS, cols = EXTRA_COLS;
+  for (const key of sh.cells.keys()) {
+    const [r, c] = key.split('\u0000').map(Number);
+    rows = Math.max(rows, r + 6);
+    cols = Math.max(cols, c + 3);
+  }
+  let html = '<table><thead><tr><th class="pl-xl-corner" aria-hidden="true"></th>';
+  for (let c = 0; c < cols; c++) html += `<th>${colLetter(c)}</th>`;
+  html += '<th class="pl-fill" aria-hidden="true"></th></tr></thead><tbody>';
+  for (let r = 0; r < rows; r++) {
+    html += `<tr><th class="pl-xl-rownum" scope="row">${r + 1}</th>`;
+    for (let c = 0; c < cols; c++) {
+      const v = sh.cells.get(`${r}\u0000${c}`);
+      const text = v != null ? String(tidyNumber(v)) : '';
+      const num = typeof tidyNumber(v) === 'number' ? ' pl-num' : '';
+      html += `<td tabindex="0" spellcheck="false" class="pl-edit${num}" data-table="x:${sh.id}"`
+        + ` data-row="${r}" data-col="${c}">${escapeHtml(text)}</td>`;
+    }
+    html += '<td class="pl-fill"></td></tr>';
+  }
+  extraBox.innerHTML = html + '</tbody></table>';
+}
+
+function renderSheets() {
+  if (previewTab !== 'PL' && !extraSheets.some(x => x.id === previewTab)) previewTab = 'PL';
+  renderSheetTabs();
+  const sh = extraSheets.find(x => x.id === previewTab);
+  sheetPLBox.hidden = !!sh;
+  extraBox.hidden   = !sh;
+  if (sh) renderExtraSheet(sh); else extraBox.innerHTML = '';
+}
+
+sheetTabs.addEventListener('click', e => {
+  const x = e.target.closest('[data-remove]');
+  if (x) { e.stopPropagation(); removeExtraSheet(Number(x.dataset.remove)); return; }
+  if (e.target.closest('.pl-xl-add')) { addExtraSheet(); return; }
+  const tab = e.target.closest('.pl-xl-tab');
+  if (!tab || e.target.closest('input')) return;
+  const id = tab.dataset.tab === 'PL' ? 'PL' : Number(tab.dataset.tab);
+  if (id === previewTab) return;
+  dropRange();
+  previewTab = id;
+  renderSheets();
+});
+sheetTabs.addEventListener('dblclick', e => {
+  const tab = e.target.closest('.pl-xl-tab');
+  if (!tab || tab.dataset.tab === 'PL' || e.target.closest('input, button')) return;
+  renameExtraSheet(Number(tab.dataset.tab), tab.querySelector('.pl-xl-tab-name'));
+});
+sheetTabs.addEventListener('keydown', e => {
+  const tab = e.target.closest('.pl-xl-tab');
+  if (tab && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); tab.click(); }
 });

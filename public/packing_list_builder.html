@@ -86,7 +86,8 @@
       <h2>Preview — the packing list that will be generated</h2>
       <div id="plDestPanel" class="pl-dest-panel" hidden></div>
       <div id="plEditBar" class="pl-edit-bar" hidden></div>
-      <div class="pl-out">
+      <div class="pl-out pl-xl">
+        <div id="plSheetPL" class="pl-xl-sheet">
         <div id="plPreviewHead" class="pl-out-head"></div>
         <div class="pl-out-band">
           <span id="plLoadsLabel">Loads</span>
@@ -102,6 +103,11 @@
         <div class="pl-table-wrap pl-out-table" id="plPreviewData"></div>
         <div class="pl-out-band" id="plSummaryBand">Summary</div>
         <div class="pl-table-wrap pl-out-table" id="plPreviewSummary"></div>
+        </div>
+        <!-- A blank sheet added for extra information, drawn when its tab is picked -->
+        <div class="pl-table-wrap pl-out-table pl-xl-sheet pl-xl-grid" id="plExtraSheet" hidden></div>
+        <!-- Sheet tabs, as at the foot of an Excel window -->
+        <div class="pl-xl-tabs" id="plSheetTabs" role="tablist" aria-label="Sheets"></div>
       </div>
     </div>
 
