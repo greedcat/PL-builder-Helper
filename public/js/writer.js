@@ -401,4 +401,5 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return { name, buffer: outBuf };
 }

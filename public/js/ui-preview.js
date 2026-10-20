@@ -359,25 +359,27 @@ document.getElementById('plForm').addEventListener('submit', async e => {
 
     showStatus('Building Excel file…', 'info', true);
     const outName = downloadName(containerName);
-    await writePackingList(modH, modR, sumH, sumR, cName, containerName, wbIn,
-                           outName, readFileNo(), { sections: ccnSections });
+    const out = await writePackingList(modH, modR, sumH, sumR, cName, containerName, wbIn,
+                                       outName, readFileNo(), { sections: ccnSections });
 
     setSteps({ preview: 'done', download: ['done', outName] });
     showStatus('✓ Packing list downloaded successfully.', 'success');
 
     // The file exists, so anything the user asked the app to learn is now
     // worth keeping. Nothing was written to the shared lists before this.
+    let learnNote = '', learnFailed = false;
     try {
       const saved = await flushLearnQueue();
       if (saved && saved.length) {
-        showStatus(`✓ Packing list downloaded. Saved ${saved.join(', ')} to the `
-          + 'shared lists — remove under Settings if that was wrong.', 'success');
+        learnNote = ` Saved ${saved.join(', ')} to the shared lists — remove under Settings if that was wrong.`;
       }
     } catch (err) {
       console.error(err);
-      showStatus('Packing list downloaded, but the shared lists could not be '
-        + 'updated: ' + err.message, 'error');
+      learnNote = ' The shared lists could not be updated: ' + err.message;
+      learnFailed = true;
     }
+    await saveToSharePoint(out, { container: containerName, file_no: readFileNo(), customer: cName },
+                           learnNote, learnFailed);
 
     // The mapping produced a real file, so now it is worth keeping.
     const data  = await loadSheetData(file);
@@ -390,6 +392,37 @@ document.getElementById('plForm').addEventListener('submit', async e => {
     btn.disabled = false;
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+// SharePoint
+// Each downloaded PL also goes to the container's SharePoint folder, by
+// way of fba-app, so its Edit view can import it without the file being
+// dragged across. A PL made again replaces the one there. The download
+// has already happened, so a failure here only says so.
+// ─────────────────────────────────────────────────────────────
+// `note` is what the shared lists said, kept on the end of the message.
+async function saveToSharePoint(out, shipment, note = '', noteFailed = false) {
+  if (!out || !out.buffer) return;
+  const ok = noteFailed ? 'error' : 'success';
+  const q = new URLSearchParams({ ...shipment, name: out.name });
+  try {
+    showStatus('✓ Packing list downloaded. Saving it to SharePoint…', 'info', true);
+    const res  = await fetch(`/api/sharepoint-pl?${q}`, { method: 'POST', body: out.buffer,
+      headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 503 && /not set up/.test(body.error || '')) {
+      showStatus('✓ Packing list downloaded. (SharePoint saving is not set up on this server.)' + note, ok);
+      return;
+    }
+    if (!res.ok) throw new Error(body.error || `server answered ${res.status}`);
+    showStatus(`✓ Packing list downloaded and saved to SharePoint: ${body.folder_name || 'container folder'}`
+      + `${body.created ? ' (folder made)' : ''}.` + note, ok);
+    setSteps({ download: ['done', `${out.name} · in SharePoint`] });
+  } catch (err) {
+    console.error(err);
+    showStatus(`✓ Packing list downloaded, but it could not be saved to SharePoint: ${err.message}.` + note, 'error');
+  }
+}
 
 // ─────────────────────────────────────────────────────────────
 // Assign a CCN# to selected lines (bonded PL)

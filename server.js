@@ -18,6 +18,11 @@ const COLLECTION = 'PL_cols';
 const DOC_ID     = 'pl-builder-config';
 const FIELDS     = ['DEST_LIST', 'CARTON_KEYWORDS', 'CBM_KEYWORDS', 'WEIGHT_KEYWORDS', 'NO_NEED_COL'];
 
+// fba-app puts each PL made here into its container's SharePoint folder.
+// Both are needed; without them the PL is only downloaded.
+const FBA_APP_URL    = (process.env.FBA_APP_URL || '').replace(/\/+$/, '');
+const PL_BUILDER_KEY = process.env.PL_BUILDER_KEY || '';
+
 const MATCH_HELPER_DB     = 'match_helper';
 const MATCH_HELPER_DOC_ID = 'container-match-config';
 
@@ -95,6 +100,34 @@ app.put('/api/match-helper/dest-order', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save destination order' });
+  }
+});
+
+// The generated PL, passed on to fba-app, which finds or makes the
+// container's folder (Containers Info / client / file-container) and puts
+// the file there in place of any earlier one. The key stays on this server.
+app.get('/api/sharepoint-pl', (req, res) => res.json({ enabled: !!(FBA_APP_URL && PL_BUILDER_KEY) }));
+
+app.post('/api/sharepoint-pl', express.raw({ type: () => true, limit: '20mb' }), async (req, res) => {
+  if (!FBA_APP_URL || !PL_BUILDER_KEY) {
+    return res.status(503).json({ error: 'SharePoint upload is not set up on this server' });
+  }
+  if (!req.body || !req.body.length) return res.status(400).json({ error: 'no file' });
+  const q = new URLSearchParams();
+  for (const k of ['container', 'file_no', 'customer', 'name']) q.set(k, String(req.query[k] || ''));
+  try {
+    const up = await fetch(`${FBA_APP_URL}/api/pl-builder/upload?${q}`, {
+      method: 'POST',
+      headers: { 'x-pl-builder-key': PL_BUILDER_KEY,
+                 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+      body: req.body,
+    });
+    const out = await up.json().catch(() => ({ error: `fba-app answered ${up.status}` }));
+    res.status(up.ok ? 200 : (up.status === 401 ? 502 : up.status)).json(
+      up.status === 401 ? { error: 'fba-app refused the key (check PL_BUILDER_KEY on both services)' } : out);
+  } catch (err) {
+    console.error('SharePoint upload failed:', err.message);
+    res.status(502).json({ error: 'Could not reach fba-app: ' + err.message });
   }
 });
 
