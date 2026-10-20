@@ -36,6 +36,7 @@ const existingBox = document.getElementById('plExisting');
 let existingTimer = null;
 let existingAsk   = 0;        // the latest lookup; older answers are dropped
 let spSetUp       = null;     // null until the server has said
+let existingPL    = null;     // the PL already in this shipment's folder
 
 function shipmentNow() {
   return { container: containerNoInput.value.trim(), file_no: readFileNo(), customer: clientNameInput.value.trim() };
@@ -87,6 +88,7 @@ async function checkExistingPL() {
   const ask = ++existingAsk;
   const sh  = shipmentNow();
   knownFolder = null;
+  existingPL  = null;
   if (!/[A-Z]{4}\d{7}/i.test(sh.container) || !sh.file_no) { hideExisting(); paintFolderBtn(false); return; }
   try {
     if (spSetUp === null) spSetUp = !!(await (await fetch('/api/sharepoint-pl')).json()).enabled;
@@ -97,6 +99,7 @@ async function checkExistingPL() {
     knownFolder = res.ok && out.folder ? { url: out.folder, name: out.folder_name } : null;
     paintFolderBtn(true);
     if (!res.ok || !out.files || !out.files.length) { hideExisting(); return; }
+    existingPL = out.files[0];
     showExisting(sh, out, out.files[0]);
   } catch (err) {
     console.error(err);       // the check is a courtesy; generating still works
@@ -454,8 +457,9 @@ document.getElementById('btnPreview').addEventListener('click', async () => {
 // ─────────────────────────────────────────────────────────────
 // Generate
 // ─────────────────────────────────────────────────────────────
-document.getElementById('plForm').addEventListener('submit', async e => {
-  e.preventDefault();
+// Builds the packing list from what is on screen. Generate downloads it and
+// also saves it to SharePoint; Upload to SharePoint only saves it there.
+async function buildPackingList({ download }) {
   const file = fileInput.files[0];
   if (!file) { showStatus('Please select an Excel file.', 'error'); return; }
 
@@ -466,9 +470,12 @@ document.getElementById('plForm').addEventListener('submit', async e => {
     (cName ? containerNoInput : clientNameInput).focus();
     return;
   }
+  const outName = downloadName(containerName);
+  if (!download && existingPL
+      && !confirm(`${existingPL.name} is already in this container's SharePoint folder. Replace it?`)) return;
 
-  const btn    = document.getElementById('submitBtn');
-  btn.disabled = true;
+  const btns = [document.getElementById('submitBtn'), uploadSpBtn];
+  btns.forEach(b => { b.disabled = true; });
 
   try {
     setSteps({ download: ['active', 'Building the file…'] });
@@ -476,12 +483,12 @@ document.getElementById('plForm').addEventListener('submit', async e => {
     const { wbIn, modH, modR, sumH, sumR, ccnSections } = await runPipeline(file);
 
     showStatus('Building Excel file…', 'info', true);
-    const outName = downloadName(containerName);
     const out = await writePackingList(modH, modR, sumH, sumR, cName, containerName, wbIn,
-                                       outName, readFileNo(), { sections: ccnSections, extras: extraSheets });
+                                       outName, readFileNo(),
+                                       { sections: ccnSections, extras: extraSheets, download });
 
     setSteps({ preview: 'done', download: ['done', outName] });
-    showStatus('✓ Packing list downloaded successfully.', 'success');
+    if (download) showStatus('✓ Packing list downloaded successfully.', 'success');
 
     // The file exists, so anything the user asked the app to learn is now
     // worth keeping. Nothing was written to the shared lists before this.
@@ -497,7 +504,7 @@ document.getElementById('plForm').addEventListener('submit', async e => {
       learnFailed = true;
     }
     await saveToSharePoint(out, { container: containerName, file_no: readFileNo(), customer: cName },
-                           learnNote, learnFailed);
+                           learnNote, learnFailed, download);
 
     // The mapping produced a real file, so now it is worth keeping.
     const data  = await loadSheetData(file);
@@ -507,9 +514,16 @@ document.getElementById('plForm').addEventListener('submit', async e => {
     setSteps({ download: ['error', 'Could not build the file'] });
     showStatus('Error: ' + err.message, 'error');
   } finally {
-    btn.disabled = false;
+    btns.forEach(b => { b.disabled = false; });
   }
+}
+
+const uploadSpBtn = document.getElementById('btnUploadSp');
+document.getElementById('plForm').addEventListener('submit', e => {
+  e.preventDefault();
+  buildPackingList({ download: true });
 });
+uploadSpBtn.addEventListener('click', () => buildPackingList({ download: false }));
 
 // ─────────────────────────────────────────────────────────────
 // SharePoint
@@ -519,27 +533,30 @@ document.getElementById('plForm').addEventListener('submit', async e => {
 // has already happened, so a failure here only says so.
 // ─────────────────────────────────────────────────────────────
 // `note` is what the shared lists said, kept on the end of the message.
-async function saveToSharePoint(out, shipment, note = '', noteFailed = false) {
+// `downloaded` says whether the file was also saved on this computer.
+async function saveToSharePoint(out, shipment, note = '', noteFailed = false, downloaded = true) {
   if (!out || !out.buffer) return;
   const ok = noteFailed ? 'error' : 'success';
+  const lead = downloaded ? '✓ Packing list downloaded' : '✓ Packing list';
   const q = new URLSearchParams({ ...shipment, name: out.name });
   try {
-    showStatus('✓ Packing list downloaded. Saving it to SharePoint…', 'info', true);
+    showStatus(`${downloaded ? '✓ Packing list downloaded. ' : ''}Saving it to SharePoint…`, 'info', true);
     const res  = await fetch(`/api/sharepoint-pl?${q}`, { method: 'POST', body: out.buffer,
       headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } });
     const body = await res.json().catch(() => ({}));
     if (res.status === 503 && /not set up/.test(body.error || '')) {
-      showStatus('✓ Packing list downloaded. (SharePoint saving is not set up on this server.)' + note, ok);
+      showStatus(downloaded ? '✓ Packing list downloaded. (SharePoint saving is not set up on this server.)' + note
+        : 'SharePoint saving is not set up on this server.', downloaded ? ok : 'error');
       return;
     }
     if (!res.ok) throw new Error(body.error || `server answered ${res.status}`);
-    showStatus(`✓ Packing list downloaded and saved to SharePoint: ${body.folder_name || 'container folder'}`
+    showStatus(`${lead}${downloaded ? ' and' : ''} saved to SharePoint: ${body.folder_name || 'container folder'}`
       + `${body.created ? ' (folder made)' : ''}.` + note, ok);
     setSteps({ download: ['done', `${out.name} · in SharePoint`] });
     checkExistingPL();
   } catch (err) {
     console.error(err);
-    showStatus(`✓ Packing list downloaded, but it could not be saved to SharePoint: ${err.message}.` + note, 'error');
+    showStatus(`${downloaded ? '✓ Packing list downloaded, but it' : 'The packing list'} could not be saved to SharePoint: ${err.message}.` + note, 'error');
   }
 }
 
@@ -965,3 +982,9 @@ sheetTabs.addEventListener('keydown', e => {
   const tab = e.target.closest('.pl-xl-tab');
   if (tab && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); tab.click(); }
 });
+
+// The upload button shows only where SharePoint saving is set up.
+fetch('/api/sharepoint-pl').then(r => r.json()).then(out => {
+  spSetUp = !!out.enabled;
+  uploadSpBtn.hidden = !spSetUp;
+}).catch(() => {});

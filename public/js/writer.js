@@ -423,9 +423,12 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   }
 
   // ── Download ──────────────────────────────────────────────
+  // `opts.download: false` builds the file without saving it here — it is
+  // only sent to SharePoint.
   const outBuf = await wb.xlsx.writeBuffer();
-  const url    = URL.createObjectURL(new Blob([outBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
   const name   = fileName || `PL(${containerName}).xlsx`;
+  if (opts.download === false) return { name, buffer: outBuf };
+  const url    = URL.createObjectURL(new Blob([outBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
   const a      = Object.assign(document.createElement('a'), { href: url, download: name });
   document.body.appendChild(a);
   a.click();
