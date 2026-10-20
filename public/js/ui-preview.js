@@ -1,6 +1,6 @@
 // ── Packing List Builder UI · part 4: shipment cells, sheet grid toggle, preview, generate ──
 // Shipment cells
-// The order is fixed — File number, Client name, Container # — the order
+// The order is fixed — Container #, Client name, File number — the order
 // the office copies them from its own sheet, so a copied line pastes
 // straight in.
 // ─────────────────────────────────────────────────────────────
