@@ -117,6 +117,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   const measureRows  = [];   // table rows that size the columns
   const loadDataRows = [];   // load lines, which may grow to fit
   const sumDataRows  = [];   // summary lines, likewise
+  const layoutSecs   = [];   // each loads table's rows, for opts.layoutOnly
   let nextRow = BLANK_ROW + 1;
 
   for (const sec of sections) {
@@ -181,6 +182,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
 
     for (let r = DATA_HDR_ROW; r <= lastDataRow; r++) measureRows.push(r);
     for (let r = DATA_START;   r <= lastDataRow; r++) loadDataRows.push(r);
+    layoutSecs.push({ hdr: DATA_HDR_ROW, first: DATA_START, last: lastDataRow });
     nextRow = lastDataRow + 2;
   }
 
@@ -319,6 +321,20 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   };
   for (const r of loadDataRows) growRow(r, visH.length, 16, 30);
   for (const r of sumDataRows)  growRow(r, sumCols, 16, 85);
+
+  // `opts.layoutOnly`: the PL sheet's sizes and nothing else — the preview
+  // draws its tables with them, so it is laid out as the file will be.
+  // Column widths in Excel's units, row heights in points.
+  if (opts.layoutOnly) {
+    const h = r => wsPL.getRow(r).height || 15;
+    const span = (a, b) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => h(a + i));
+    return {
+      widths: Array.from({ length: Math.max(sectionCols, sumCols) }, (_, i) => wsPL.getColumn(i + 1).width || 12),
+      loads:  layoutSecs.map(s => ({ hdr: h(s.hdr), rows: span(s.first, s.last) })),
+      sumHdr: h(SUM_HDR_ROW),
+      sumRows: sumDataRows.map(h),
+    };
+  }
 
   // Print setup: landscape, one page wide, repeat nothing.
   wsPL.pageSetup = {

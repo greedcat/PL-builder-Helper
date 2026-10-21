@@ -2461,3 +2461,25 @@ input[type="number"]:focus {
   cursor: pointer;
 }
 .pl-xl-add:hover { background: #e2e2e2; border-color: #c6c6c6; color: var(--xl-green); }
+
+/* The preview tables sized as the PL sheet (applyOutputLayout): the file's
+   Times New Roman 16pt at the preview's scale, centred, a long value wrapping
+   inside its column and the row growing with it, line breaks kept. */
+.pl-xl .pl-out-table table.pl-as-output td,
+.pl-xl .pl-out-table table.pl-as-output th {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 13.2px;
+  text-align: center;
+  vertical-align: middle;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  text-overflow: clip;
+  overflow: hidden;
+  padding: 2px 4px;
+  box-sizing: border-box;
+}
+.pl-xl .pl-out-table table.pl-as-output thead th { font-weight: 700; vertical-align: middle; }
+.pl-xl #plPreviewSummary table.pl-as-output thead th { font-size: 11.6px; }
+.pl-xl .pl-out-table table.pl-as-output td.pl-num { text-align: center; }
+.pl-xl .pl-out-table table.pl-as-output td.pl-fill,
+.pl-xl .pl-out-table table.pl-as-output th.pl-fill { width: auto; }

@@ -366,6 +366,8 @@ function renderPreview(modH, modR, sumH, sumR, longDests, ccnSections = null) {
   previewSec.style.display = 'block';
   // Laid out now, so the CCN# tables can be measured and lined up.
   if (ccnSections) alignColumns(dataBox.querySelectorAll(':scope > table'));
+  // Then sized as the file: its column widths and row heights.
+  applyOutputLayout(modH, modR, sumH, sumR, ccnSections);
   // The tables were just rebuilt, so a block dragged on the old ones is gone.
   hideQuickSum('Preview');
   hideCcnAssign();
@@ -1043,3 +1045,48 @@ fetch('/api/sharepoint-pl').then(r => r.json()).then(out => {
   }
   if (filled) showStatus(`Shipment filled in from the link: ${given.map(g => g[1]).filter(Boolean).map(escapeHtml).join(' · ')}.`, 'info');
 })();
+
+// ─────────────────────────────────────────────────────────────
+// The preview sized as the file
+// The writer works out the PL sheet's column widths and row heights (a
+// column fitted to its longest value, up to 50; a load line 30pt, a
+// summary line 85pt; a value too long for its column wrapping, its row
+// grown to show it). The preview asks it for those numbers — no file is
+// made — and draws its tables with them, scaled down by the same factor
+// as its Times New Roman 16pt, so it wraps and grows where the file does.
+// ─────────────────────────────────────────────────────────────
+const XL_SCALE = 0.62;
+const colPx = w => Math.round((w * 7 + 5) * XL_SCALE);     // Excel width units → px
+const rowPx = pt => Math.round(pt * 96 / 72 * XL_SCALE);   // points → px
+let layoutSeq = 0;
+
+async function applyOutputLayout(modH, modR, sumH, sumR, ccnSections) {
+  const ask = ++layoutSeq;
+  let L;
+  try {
+    const { cName, containerName } = readClientContainer();
+    L = await writePackingList(modH, modR, sumH, sumR, cName, containerName, null, '', readFileNo(),
+                               { sections: ccnSections, layoutOnly: true });
+  } catch (err) {
+    console.error('preview layout:', err);      // the preview still shows, at its own sizes
+    return;
+  }
+  if (ask !== layoutSeq || !L || !L.widths) return;
+  const size = (table, hdrPt, rowPts) => {
+    if (!table) return;
+    table.classList.add('pl-as-output');
+    table.querySelectorAll('thead th:not(.pl-fill)').forEach((th, i) => {
+      const px = `${colPx(L.widths[i] ?? 12)}px`;
+      th.style.width = th.style.minWidth = th.style.maxWidth = px;
+    });
+    const head = table.querySelector('thead tr');
+    if (head) head.style.height = `${rowPx(hdrPt)}px`;
+    [...table.querySelectorAll('tbody tr')].forEach((tr, i) => {
+      if (rowPts[i]) tr.style.height = `${rowPx(rowPts[i])}px`;
+    });
+  };
+  [...document.querySelectorAll('#plPreviewData > table, #plPreviewData table')]
+    .filter((t, i, all) => all.indexOf(t) === i)
+    .forEach((t, i) => { const s = L.loads[i]; if (s) size(t, s.hdr, s.rows); });
+  size(document.querySelector('#plPreviewSummary table'), L.sumHdr, L.sumRows);
+}
