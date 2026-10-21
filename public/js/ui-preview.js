@@ -1090,3 +1090,71 @@ async function applyOutputLayout(modH, modR, sumH, sumR, ccnSections) {
     .forEach((t, i) => { const s = L.loads[i]; if (s) size(t, s.hdr, s.rows); });
   size(document.querySelector('#plPreviewSummary table'), L.sumHdr, L.sumRows);
 }
+
+// ─────────────────────────────────────────────────────────────
+// Hold
+// Right-click a load line (or a block of them dragged down the table) to
+// put it on hold: it becomes "<dest>-HOLD". When that destination already
+// has a hold, the line can join it or be held on its own; with more than
+// one hold a destination's groups are numbered -01, -02…, so each is
+// split out by itself, in the loads and the summary.
+// ─────────────────────────────────────────────────────────────
+document.getElementById('plPreviewData').addEventListener('contextmenu', e => {
+  const td = e.target.closest('td.pl-edit[data-table="loads"]');
+  if (!td || isEditing(td)) return;
+  e.preventDefault();
+  // The dragged block, when the click is inside it; else this one line.
+  const inBlock = rangeCells().some(line => line.includes(td));
+  const lines = (inBlock ? rangeCells().map(line => line[0]) : [td])
+    .map(c => ({ id: String(c.dataset.row),
+                 dest: (c.closest('tr').querySelector('td[data-col="Destination"]') || {}).textContent || '' }))
+    .filter((x, i, all) => all.findIndex(y => y.id === x.id) === i);
+  const held = lines.filter(x => holdRows.has(x.id));
+  const free = lines.filter(x => !holdRows.has(x.id));
+  const what = n => (n === 1 ? 'this line' : `these ${n} lines`);
+  const done = msg => {
+    dropRange();
+    refreshPreview().then(() => showStatus(msg + ' Ctrl+Z undoes it.', 'info'))
+      .catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
+  };
+  const items = [];
+  if (free.length) {
+    const bases = [...new Set(free.map(x => x.dest.trim()))];
+    // A new group per destination among the lines.
+    const holdNew = () => {
+      pushEditHistory();
+      const keyOf = new Map(bases.map(b => [b, ++holdSeq]));
+      for (const x of free) holdRows.set(x.id, keyOf.get(x.dest.trim()));
+      done(`Held ${what(free.length)} as ${bases.length === 1 ? 'a hold of its own' : 'a hold per destination'}.`);
+    };
+    const existing = bases.length === 1 ? holdGroups.filter(g => g.base === bases[0]) : [];
+    if (existing.length) {
+      for (const g of existing) {
+        items.push({
+          label: `Add to ${escapeHtml(g.name)}`,
+          note: `${g.count} line${g.count === 1 ? '' : 's'} held`,
+          onPick: () => {
+            pushEditHistory();
+            for (const x of free) holdRows.set(x.id, g.key);
+            done(`Added ${what(free.length)} to ${escapeHtml(g.name)}.`);
+          },
+        });
+      }
+      items.push({ label: `Hold separately`, note: 'a new numbered hold', onPick: holdNew });
+    } else {
+      items.push({ label: `Hold ${what(free.length)}`, note: 'DEST-HOLD', onPick: holdNew });
+    }
+  }
+  if (held.length) {
+    if (items.length) items.push({ sep: true });
+    items.push({
+      label: `Release hold on ${what(held.length)}`,
+      onPick: () => {
+        pushEditHistory();
+        for (const x of held) holdRows.delete(x.id);
+        done(`Released ${what(held.length)}: back with ${held.length === 1 ? 'its' : 'their'} destination.`);
+      },
+    });
+  }
+  openPlMenu(e.pageX, e.pageY, lines.length === 1 ? 'Load line' : `${lines.length} load lines`, items);
+});

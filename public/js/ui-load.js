@@ -408,10 +408,48 @@ function hasPreviewEdits() {
 // Structural changes move rows around, so edits keyed by row would land on
 // the wrong data. Drop them rather than silently misapply them — and drop
 // the undo history with them, which holds the same row keys.
+// Load lines put on hold in the preview: row id → the hold group it is in.
+// A group keeps its lines' cartons but is its own destination: "YYZ4-HOLD",
+// or "YYZ4-HOLD-01", "-02"… when a destination has more than one group,
+// so the holds are split from the rest and from each other. A second line
+// can join a group already there, or start one of its own.
+let holdRows   = new Map();
+let holdSeq    = 0;
+let holdGroups = [];     // after the last run: [{ key, base, name, count }]
+
+function holdNames(modH, modR, destIdx) {
+  const idIdx = modH.indexOf('_Row');
+  holdGroups = [];
+  if (idIdx < 0 || !holdRows.size) return new Set();
+  const byKey = new Map();
+  for (const r of modR) {
+    const key = holdRows.get(String(r[idIdx]));
+    if (key == null) continue;
+    if (!byKey.has(key)) byKey.set(key, { key, base: String(r[destIdx] ?? '').trim() || 'NO DEST', rows: [] });
+    byKey.get(key).rows.push(r);
+  }
+  // Numbered in the order the groups were made: -01 is the first hold.
+  const byBase = new Map();
+  for (const g of [...byKey.values()].sort((a, b) => a.key - b.key)) {
+    (byBase.get(g.base) || byBase.set(g.base, []).get(g.base)).push(g);
+  }
+  const ids = new Set();
+  for (const [base, groups] of byBase) {
+    groups.forEach((g, i) => {
+      const name = groups.length === 1 ? `${base}-HOLD` : `${base}-HOLD-${String(i + 1).padStart(2, '0')}`;
+      for (const r of g.rows) { r[destIdx] = name; ids.add(String(r[idIdx])); }
+      holdGroups.push({ key: g.key, base, name, count: g.rows.length });
+    });
+  }
+  return ids;
+}
+
 function clearPreviewEdits() {
   previewEdits = { loads: new Map(), summary: new Map() };
+  holdRows = new Map();
   clearEditHistory();
 }
+
 
 // Numbers typed into the preview must reach the workbook as numbers.
 function coerceCell(text) {
@@ -731,15 +769,18 @@ async function runPipeline(file) {
         if (rowIdIdx >= 0) renamed.add(String(row[rowIdIdx]));
       }
     }
-    // A destination that was changed by hand — renamed here or typed over in
-    // the preview — goes to the end of the loads, where it can be checked
-    // against the paperwork instead of being lost among the codes it now
-    // sorts next to.
+    // Held lines get their -HOLD names now, after any short name, so a held
+    // PA line reads "PA - 1399 Kennedy Rd-HOLD".
+    const held = holdNames(modH, modR, destIdx);
+    // A destination that was changed by hand — renamed here, typed over in
+    // the preview or held — goes to the end of the loads, where it can be
+    // checked against the paperwork instead of being lost among the codes
+    // it now sorts next to.
     const destChanged = (row) => {
       if (destByHand) return isEmpty(row[destIdx]);   // not typed yet: last
       if (rowIdIdx < 0) return false;
       const id = String(row[rowIdIdx]);
-      return renamed.has(id) || previewEdits.loads.has(`${id}\u0000Destination`);
+      return renamed.has(id) || held.has(id) || previewEdits.loads.has(`${id}\u0000Destination`);
     };
     // Renaming can reorder groups, so sort again by destination.
     modR.sort((a, b) => {

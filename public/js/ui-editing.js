@@ -74,6 +74,7 @@ function editSnapshot() {
     renames: { ...destRenames },
     cols:    [...handCols],
     extras:  extraSheets.map(x => ({ id: x.id, name: x.name, cells: new Map(x.cells) })),
+    holds:   new Map(holdRows),
   };
 }
 
@@ -89,6 +90,7 @@ function applySnapshot(s) {
   previewEdits = { loads: new Map(s.loads), summary: new Map(s.summary) };
   destRenames  = { ...s.renames };
   handCols     = [...s.cols];
+  holdRows     = new Map(s.holds || []);
   extraSheets  = s.extras.map(x => ({ id: x.id, name: x.name, cells: new Map(x.cells) }));
   if (previewTab !== 'PL' && !extraSheets.some(x => x.id === previewTab)) previewTab = 'PL';
 }
@@ -113,6 +115,7 @@ function resetAllEdits() {
   previewEdits = { loads: new Map(), summary: new Map() };
   clearDestRenames();
   handCols = [];
+  holdRows = new Map();
   extraSheets = [];
   previewTab  = 'PL';
 }
@@ -131,7 +134,8 @@ function clearEditHistory() {
 
 function hasAnyChange() {
   return previewEdits.loads.size > 0 || previewEdits.summary.size > 0
-    || Object.keys(destRenames).length > 0 || handCols.length > 0 || extraSheets.length > 0;
+    || Object.keys(destRenames).length > 0 || handCols.length > 0 || extraSheets.length > 0
+    || holdRows.size > 0;
 }
 
 // The buttons live in the Loads band and are wired once, since the band is
