@@ -59,14 +59,27 @@ function modifyDF(headers, rows, matchDict) {
   // gave it a destination, which then carried it past the empty-row check
   // below, and a gap between two blocks of the client's sheet turned into
   // load lines with nothing on them.
+  //
+  // A private address is often written in another column (the consignee
+  // block) with the Destination left empty. Filling that line from above
+  // would quietly put it with the warehouse before it, so a line with no
+  // destination of its own but a street address elsewhere takes that cell
+  // as its destination; the preview then offers it a short name
+  // ("PA - 1399 Kennedy Rd"), as for any address in the Destination.
   const destIdx = headers.indexOf(matchDict['Destination']);
+  const addressOf = row => row.find((v, i) => i !== destIdx && typeof v === 'string'
+    && simplifyPrivateAddress(v)) || null;
   let lastDest  = null;
   const filled  = [];
   for (const r of rows) {
     if (!r.some(v => !isEmpty(v))) continue;
     const row = [...r];
     if (!isEmpty(row[destIdx])) lastDest = row[destIdx];
-    else row[destIdx] = lastDest;
+    else {
+      const addr = destIdx >= 0 ? addressOf(row) : null;
+      if (addr) lastDest = String(addr).replace(/\s+/g, ' ').trim();
+      row[destIdx] = lastDest;
+    }
     filled.push(row);
   }
 
