@@ -492,6 +492,14 @@ document.addEventListener('paste', e => {
 // reads back as cells.
 document.addEventListener('copy', e => {
   if (inTextField(e)) return;
+  // Text selected by hand outside the tables (the original wording in the
+  // destination panel, a message) is the browser's to copy. The block
+  // of cells chosen earlier still being held must not take its place.
+  const sel = window.getSelection && window.getSelection();
+  if (sel && !sel.isCollapsed && String(sel).trim()) {
+    const at = sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement);
+    if (!at || !at.closest('.pl-out-table table, .pl-grid')) return;
+  }
   const lines = rangeCells();
   if (!lines.length) return;
   // One cell counts too. The table does not allow a text selection, so

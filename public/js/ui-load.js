@@ -721,6 +721,16 @@ async function runPipeline(file) {
     modR0 = modR0.map(r => [...r, ...addCols.map(() => null)]);
   }
 
+  // Each line's destination as the sheet has it, before any change made
+  // here (a short name, a typed one, a cell used as it, a hold) — kept in
+  // an Original Destination column on the lines that changed.
+  const ORIG_DEST = 'Original Destination';
+  const sheetDest = new Map();
+  {
+    const d = modH.indexOf('Destination'), id = modH.indexOf('_Row');
+    if (d >= 0 && id >= 0) for (const r of modR0) sheetDest.set(String(r[id]), r[d]);
+  }
+
   const modR = applyEdits(modH, modR0, previewEdits.loads);
 
   // An edited CBM must move the pallet estimate with it.
@@ -782,6 +792,23 @@ async function runPipeline(file) {
       const id = String(row[rowIdIdx]);
       return renamed.has(id) || held.has(id) || previewEdits.loads.has(`${id}\u0000Destination`);
     };
+    const changedLines = rowIdIdx < 0 ? [] : modR.filter(r => {
+      const was = sheetDest.get(String(r[rowIdIdx]));
+      return !isEmpty(was) && String(was).trim() !== String(r[destIdx] ?? '').trim();
+    });
+    if (changedLines.length) {
+      let oi = modH.indexOf(ORIG_DEST);
+      if (oi < 0) {
+        modH = [...modH, ORIG_DEST];
+        oi = modH.length - 1;
+        for (const r of modR) r.push(null);
+      }
+      for (const r of changedLines) {
+        // A value typed into the column by hand stays as typed.
+        if (previewEdits.loads.has(`${r[rowIdIdx]}\u0000${ORIG_DEST}`)) continue;
+        r[oi] = sheetDest.get(String(r[rowIdIdx]));
+      }
+    }
     // Renaming can reorder groups, so sort again by destination.
     modR.sort((a, b) => {
       const ca = destChanged(a) ? 1 : 0, cb = destChanged(b) ? 1 : 0;
