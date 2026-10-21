@@ -1135,10 +1135,20 @@ document.getElementById('plPreviewData').addEventListener('contextmenu', e => {
       note: others ? `with ${others} other “${escapeHtml(dest.slice(0, 18))}” line${others === 1 ? '' : 's'}` : 'this line',
       onPick: () => {
         pushEditHistory();
-        for (const id of new Set([...mates, String(td.dataset.row)])) previewEdits.loads.set(`${id}\u0000Destination`, text);
+        // What the Destination said is kept beside it, in its own column,
+        // on the lines that changed.
+        const ORIG = 'Original Destination';
+        if (!handCols.includes(ORIG) && !lastLoadsHeaders.includes(ORIG)) handCols = [...handCols, ORIG];
+        for (const id of new Set([...mates, String(td.dataset.row)])) {
+          if (!previewEdits.loads.has(`${id}\u0000${ORIG}`)) {
+            const was = (tr.closest('tbody').querySelector(`td[data-col="Destination"][data-row="${id}"]`) || {}).textContent;
+            previewEdits.loads.set(`${id}\u0000${ORIG}`, coerceCell(was ?? dest));
+          }
+          previewEdits.loads.set(`${id}\u0000Destination`, text);
+        }
         previewEdits.loads.set(`${td.dataset.row}\u0000${td.dataset.col}`, null);
         done(`The ${escapeHtml(td.dataset.col)} cell is now the destination${others ? ` of ${others + 1} lines` : ''} — `
-          + 'give it a short name in the panel above.');
+          + 'give it a short name in the panel above. What it said before is in the Original Destination column.');
       },
     });
     items.push({ sep: true });
