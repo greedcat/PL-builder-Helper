@@ -64,11 +64,23 @@ function detectAmazonPOColumn(headers, rows) {
   return bestScore >= 3 ? bestCol : null;
 }
 
+// The client's job number. A header on JOB_KEYWORDS wins; otherwise the
+// first one that starts with "job" or says 分货号.
+const normJob = s => String(s ?? '').normalize('NFKC').toLowerCase().replace(/[\s._\-:：()（）#＃]/g, '');
+
+function detectJobColumn(headers) {
+  const kw = new Set(JOB_KEYWORDS.map(normJob).filter(Boolean));
+  const named = headers.find(h => h && kw.has(normJob(h)));
+  if (named) return named;
+  return headers.find(h => h && (/^job/.test(normJob(h)) || normJob(h).includes('分货号'))) || null;
+}
+
 function detectCartonColumn(headers) {
   for (const col of headers) {
     if (!col) continue;
-    const low = String(col).toLowerCase().trim();
-    if (CARTON_KEYWORDS.some(k => k.toLowerCase() === low)) return col;
+    // Spaces and full-width brackets do not count: "CTNS （件数）" on the
+    // list is the "CTNS（件数）" a sheet writes, as with the Weight.
+    if (CARTON_KEYWORDS.some(k => normWeight(k) === normWeight(col))) return col;
   }
   return null;
 }

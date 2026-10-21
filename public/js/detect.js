@@ -5,7 +5,7 @@ function detectHeader(rawRows, lookAhead = 3) {
   let bestScore = -1, bestRow = 0;
 
   // Pre-build normalised keyword sets for fast lookup
-  const ctnSet    = new Set(CARTON_KEYWORDS.map(k => k.toLowerCase().trim()));
+  const ctnSet    = new Set(CARTON_KEYWORDS.map(normWeight).filter(Boolean));
   const cbmSet    = new Set(CBM_KEYWORDS.map(normCBM).filter(Boolean));
   const wgtSet    = new Set(WEIGHT_KEYWORDS.map(normWeight).filter(Boolean));
   const noNeedSet = new Set(NO_NEED_COL.map(normalizeText).filter(Boolean));
@@ -30,7 +30,7 @@ function detectHeader(rawRows, lookAhead = 3) {
     // Bonus: cell matches a known column keyword
     for (const v of row) {
       if (isEmpty(v)) continue;
-      if (ctnSet.has(String(v).toLowerCase().trim()) ||
+      if (ctnSet.has(normWeight(v)) ||
           cbmSet.has(normCBM(v)) ||
           wgtSet.has(normWeight(v)) ||
           noNeedSet.has(normalizeText(v))) score += 3;

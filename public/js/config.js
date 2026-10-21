@@ -18,6 +18,11 @@ let CBM_KEYWORDS = [
 let WEIGHT_KEYWORDS = [
   'weight','kgs','kg','重量','重量kg','g.w.(毛重)','实重','实际重量','毛重（kgs)'
 ];
+// The client's job number. Required on every packing list; headers are
+// compared without case, spaces or punctuation, so "JOB NO." is "job no".
+let JOB_KEYWORDS = [
+  'job no','job number','job#','job','分货号','job no(分货号)','job=外箱唛头'
+];
 let NO_NEED_COL = ['序号','战略客户标记','派送邮编','柜号','是否FBA','派送方式','渠道名'];
 
 const CFG_SECTIONS = [
@@ -25,6 +30,7 @@ const CFG_SECTIONS = [
   { key: 'CARTON_KEYWORDS', label: 'CARTON_KEYWORDS', color: '#dcfce7', text: '#166534' },
   { key: 'CBM_KEYWORDS',    label: 'CBM_KEYWORDS',    color: '#fef9c3', text: '#854d0e' },
   { key: 'WEIGHT_KEYWORDS', label: 'WEIGHT_KEYWORDS', color: '#fce7f3', text: '#9d174d' },
+  { key: 'JOB_KEYWORDS',    label: 'JOB_KEYWORDS',    color: '#ccfbf1', text: '#115e59' },
   { key: 'NO_NEED_COL',     label: 'NO_NEED_COL',     color: '#f1f5f9', text: '#475569' },
 ];
 
@@ -34,6 +40,7 @@ function getCfgList(key) {
     case 'CARTON_KEYWORDS': return CARTON_KEYWORDS;
     case 'CBM_KEYWORDS':    return CBM_KEYWORDS;
     case 'WEIGHT_KEYWORDS': return WEIGHT_KEYWORDS;
+    case 'JOB_KEYWORDS':    return JOB_KEYWORDS;
     case 'NO_NEED_COL':     return NO_NEED_COL;
     default: return null;
   }
@@ -45,6 +52,7 @@ function setCfgList(key, values) {
     case 'CARTON_KEYWORDS': CARTON_KEYWORDS = values; break;
     case 'CBM_KEYWORDS':    CBM_KEYWORDS    = values; break;
     case 'WEIGHT_KEYWORDS': WEIGHT_KEYWORDS = values; break;
+    case 'JOB_KEYWORDS':    JOB_KEYWORDS    = values; break;
     case 'NO_NEED_COL':     NO_NEED_COL     = values; break;
   }
 }
@@ -52,6 +60,10 @@ function setCfgList(key, values) {
 // The keyword lists and the backend URL live in a drawer that starts closed;
 // this survives the re-render that follows every edit.
 let cfgSettingsOpen = false;
+
+// Where the last list kept by this app's own server went: 'server', or
+// 'browser' while that server has no database (db.js, OWN_FIELDS).
+let lastSaveWhere = null;
 
 // Holds the most recently removed item so it can be restored via "Undo".
 let cfgLastRemoved = null;
@@ -211,6 +223,7 @@ function attachConfigPanelHandlers() {
 }
 
 async function persistConfigList(key, values) {
+  if (OWN_FIELDS.includes(key)) { lastSaveWhere = await saveOwnConfig(key, values); return lastSaveWhere; }
   if (!isDbConfigured()) return;
   const status = document.getElementById('cfgDbStatus');
   try {
@@ -236,8 +249,12 @@ async function initConfigFromDB() {
     const doc = await loadConfigFromDB();
     if (doc) {
       for (const { key } of CFG_SECTIONS) {
-        if (Array.isArray(doc[key])) setCfgList(key, doc[key]);
+        if (!OWN_FIELDS.includes(key) && Array.isArray(doc[key])) setCfgList(key, doc[key]);
       }
+    }
+    for (const key of OWN_FIELDS) {
+      const values = await loadOwnConfig(key);
+      if (values) setCfgList(key, values);
     }
     renderConfigPanel();
     const refreshed = document.getElementById('cfgDbStatus');

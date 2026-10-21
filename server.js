@@ -16,7 +16,7 @@ const MONGO_URI  = process.env.MONGO_URI;
 const MONGO_DB   = process.env.MONGO_DB;
 const COLLECTION = 'PL_cols';
 const DOC_ID     = 'pl-builder-config';
-const FIELDS     = ['DEST_LIST', 'CARTON_KEYWORDS', 'CBM_KEYWORDS', 'WEIGHT_KEYWORDS', 'NO_NEED_COL'];
+const FIELDS     = ['DEST_LIST', 'CARTON_KEYWORDS', 'CBM_KEYWORDS', 'WEIGHT_KEYWORDS', 'NO_NEED_COL', 'JOB_KEYWORDS'];
 
 // fba-app puts each PL made here into its container's SharePoint folder.
 // Both are needed; without them the PL is only downloaded.

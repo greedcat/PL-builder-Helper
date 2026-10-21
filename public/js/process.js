@@ -10,6 +10,8 @@ function readExcel(headers, rows, overrides = {}, dropIdx = new Set(), mergedMas
     'Carton':      detectCartonColumn(headers),
     'FBA_ID':      detectFBAColumn(headers, rows),
     'REF ID':      detectAmazonPOColumn(headers, rows),
+    // Its place here is its place in the loads table: beside the REF ID.
+    'JOB NO':      detectJobColumn(headers),
     'Weight':      detectWeightColumn(headers),
     'CMB':         detectCBMColumn(headers),
   };
@@ -37,7 +39,7 @@ function readExcel(headers, rows, overrides = {}, dropIdx = new Set(), mergedMas
   }
 
   // Use indices to preserve null/empty-header columns
-  const ROLE_ORDER = ['Destination', 'Carton', 'FBA_ID', 'REF ID', 'Weight', 'CMB'];
+  const ROLE_ORDER = ['Destination', 'Carton', 'FBA_ID', 'REF ID', 'JOB NO', 'Weight', 'CMB'];
   const mainNames  = ROLE_ORDER.map(r => matchDict[r]).filter(Boolean);
   const mainIdx   = mainNames.map(h => headers.indexOf(h));
   const otherIdx  = headers

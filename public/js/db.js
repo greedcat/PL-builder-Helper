@@ -33,6 +33,46 @@ async function loadConfigFromDB() {
   return doc && Object.keys(doc).length ? doc : null;
 }
 
+// Lists the shared config server above does not know (it keeps only the
+// five in DB_FIELDS), kept by this app's own server instead. Where that
+// server has no database yet, a list is kept in this browser, so what was
+// saved still works here, and is merged in once the server has one.
+const OWN_FIELDS = ['JOB_KEYWORDS'];
+const ownLocalKey = key => `pl-builder.${key}`;
+
+function readLocalList(key) {
+  try { const v = JSON.parse(localStorage.getItem(ownLocalKey(key)) || 'null'); return Array.isArray(v) ? v : null; }
+  catch (_) { return null; }
+}
+function writeLocalList(key, values) {
+  try { localStorage.setItem(ownLocalKey(key), JSON.stringify(values)); } catch (_) { /* private window */ }
+}
+
+// The list as saved: the server's, plus anything kept only in this browser.
+async function loadOwnConfig(key) {
+  let server = null;
+  try {
+    const res = await fetch('/api/config');
+    if (res.ok) { const doc = await res.json(); if (Array.isArray(doc[key])) server = doc[key]; }
+  } catch (_) { /* no server list */ }
+  const local = readLocalList(key) || [];
+  if (!server && !local.length) return null;
+  const base = server || getCfgList(key) || [];
+  const seen = new Set(base.map(v => String(v).toLowerCase()));
+  return [...base, ...local.filter(v => !seen.has(String(v).toLowerCase()))];
+}
+
+// Returns 'server' or 'browser': where the list ended up.
+async function saveOwnConfig(key, values) {
+  try {
+    const res = await fetch('/api/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [key]: values }) });
+    if (res.ok) { writeLocalList(key, []); return 'server'; }
+  } catch (_) { /* fall through to this browser */ }
+  writeLocalList(key, values);
+  return 'browser';
+}
+
 // Persists one or more config lists to the shared document.
 async function saveConfigToDB(fields) {
   const body = {};

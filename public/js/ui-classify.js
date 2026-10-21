@@ -11,6 +11,8 @@ const PL_ROLES = [
   { role: 'REF ID',      cls: 'po',     label: 'REF ID',      color: '#db2777' },
   { role: 'Weight',      cls: 'weight', label: 'Weight',      color: '#7c3aed' },
   { role: 'CMB',         cls: 'cbm',    label: 'CBM',         color: '#0891b2' },
+  // The client's job number: required, see buildPackingList.
+  { role: 'JOB NO',      cls: 'job',    label: 'Job No',      color: '#0f766e' },
 ];
 
 // Works out what the pipeline will make of each column in the selected range.
@@ -30,6 +32,7 @@ function classifyColumns(data, range) {
     'REF ID':      detectAmazonPOColumn(headers, rows),
     'Weight':      detectWeightColumn(headers),
     'CMB':         detectCBMColumn(headers),
+    'JOB NO':      detectJobColumn(headers),
   };
   const matchDict = { ...autoDict };
   for (const role of Object.keys(matchDict)) {
@@ -240,6 +243,38 @@ function columnMenuItems(abs, info) {
       },
     });
   }
+  // The role this column fills, kept for future files: its wording goes on
+  // that role's list, so the next sheet headed the same way is mapped
+  // without asking. Only the roles found by wording have a list — the
+  // Destination, FBA ID and REF ID are recognised by their values.
+  const myRole = PL_ROLES.find(r => roleCol[r.role] === abs && ROLE_KEYWORD_LIST[r.role]);
+  if (myRole && name != null && String(name).trim() !== '') {
+    const listKey = ROLE_KEYWORD_LIST[myRole.role];
+    const known   = alreadyKnown(listKey, name);
+    const queued  = isQueuedToLearn(listKey, name);
+    items.push({ sep: true });
+    items.push({
+      label: `Always map this wording as ${escapeHtml(myRole.label)}`,
+      note: known ? 'saved' : queued ? 'queued' : 'saved when the list is generated',
+      checked: known || queued,
+      onPick: () => {
+        if (known) {
+          showStatus(`“${String(name)}” is already on the ${escapeHtml(myRole.label)} list — remove it under Settings.`, 'info');
+          return;
+        }
+        let msg;
+        if (queued) {
+          unqueueLearn(listKey, name);
+          msg = `“${escapeHtml(String(name))}” will not be remembered as ${escapeHtml(myRole.label)}.`;
+        } else {
+          queueLearn(listKey, name);
+          msg = `“${escapeHtml(String(name))}” will be remembered as ${escapeHtml(myRole.label)} once this packing list `
+            + 'is generated, and found on its own in future files.';
+        }
+        reapply().then(() => showStatus(msg, 'info'));
+      },
+    });
+  }
   // Bonded: the CCN# can be any column, whatever its header says.
   if (bondedToggle.checked) {
     const isCcn = cols[abs] && cols[abs].kind === 'ccn';
@@ -343,7 +378,7 @@ function roleMenuItems(role, info) {
 // Re-runs classification and the preview after a menu choice.
 function reapply() {
   hideLearnBar();
-  refreshSheetView({ keepSelection: true })
+  return refreshSheetView({ keepSelection: true })
     .then(refreshPreview)
     .then(() => loadSheetData(fileInput.files[0]))
     .then(updateLoadStatus)
@@ -357,7 +392,8 @@ function reapply() {
 // keeping — but the lists are shared with everyone, so it is offered
 // rather than saved silently.
 // ─────────────────────────────────────────────────────────────
-const ROLE_KEYWORD_LIST = { Carton: 'CARTON_KEYWORDS', Weight: 'WEIGHT_KEYWORDS', CMB: 'CBM_KEYWORDS' };
+const ROLE_KEYWORD_LIST = { Carton: 'CARTON_KEYWORDS', Weight: 'WEIGHT_KEYWORDS', CMB: 'CBM_KEYWORDS',
+  'JOB NO': 'JOB_KEYWORDS' };
 
 /* Wordings the user has asked the app to learn, held until the packing
    list is actually written. Nothing reaches the shared lists on the
@@ -454,12 +490,16 @@ function renderLearnBar(info) {
         await flushLearnQueue();
         // The wording is known now, so detection finds it without the override.
         if (it.role) delete roleOverrides[it.role];
-        showStatus(`“${String(it.name)}” saved. Remove it under Settings if that was wrong.`, 'success');
+        await reapply();
+        const onlyHere = OWN_FIELDS.includes(it.listKey) && lastSaveWhere === 'browser';
+        showStatus(onlyHere
+          ? `“${String(it.name)}” saved in this browser. The shared list needs the PL builder server's database `
+            + '(MONGO_URI); until then other computers will not know it.'
+          : `“${String(it.name)}” saved. Remove it under Settings if that was wrong.`, onlyHere ? 'info' : 'success');
       } catch (err) {
         console.error(err);
         showStatus('Could not save to the shared lists: ' + err.message, 'error');
       }
-      reapply();
     });
   });
 }
