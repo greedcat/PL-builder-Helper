@@ -776,10 +776,14 @@ input[type="number"]:focus {
 }
 .pl-grid td {
   min-width: 62px;
-  /* Every cell shown in full on one line, as wide as its text needs:
-     a column of addresses or descriptions is read here, not guessed at. */
-  max-width: none;
-  overflow: visible;
+  /* Every cell shown in full: a column grows to 240px at most, and longer
+     text wraps onto more lines in the cell, as Excel's Wrap Text does. */
+  max-width: 240px;
+  white-space: normal;
+  /* Break inside a word only when it is longer than the column itself:
+     an FBA ID or job number stays on one line. */
+  overflow-wrap: break-word;
+  line-height: 1.35;
   color: #334155;
 }
 .pl-grid-corner {
