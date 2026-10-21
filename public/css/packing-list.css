@@ -1896,8 +1896,8 @@ input[type="number"]:focus {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 14px !important;
-  min-height: 46px;
+  padding: 0 12px !important;
+  min-height: 32px;
   border-width: 1.5px;
   border-radius: 8px;
 }
@@ -1906,14 +1906,17 @@ input[type="number"]:focus {
   margin: 0;
 }
 .pl-source-row .drop-zone:not(.pl-drop-compact) .drop-icon { display: block !important; }
-.pl-source-row .drop-text { font-size: 0.85rem; }
+.pl-source-row .drop-text { font-size: 0.82rem; line-height: 1.2; }
+.pl-source-row .drop-icon { font-size: 0.95rem; }
 .pl-source-row .pl-paste-box {
   margin-top: 0;
-  min-height: 46px;
-  height: 46px;
+  min-height: 32px;
+  height: 32px;
   resize: none;
-  line-height: 1.4;
-  padding: 12px;
+  line-height: 1.2;
+  padding: 7px 10px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 @media (max-width: 640px) {
   .pl-source-row { grid-template-columns: 1fr; }
