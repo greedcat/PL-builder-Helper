@@ -643,6 +643,90 @@ input[type="number"]:focus {
   border-radius: 50%;
   flex: none;
 }
+/* Column mapping: one row per field of the packing list. */
+.pl-map {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eef2f6;
+}
+.pl-map-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 6px;
+}
+.pl-map-title span {
+  font-weight: 400;
+  color: #94a3b8;
+  margin-left: 6px;
+}
+.pl-map-table {
+  width: 100%;
+  max-width: 900px;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.pl-map-table th,
+.pl-map-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #eef2f6;
+  text-align: left;
+  vertical-align: middle;
+}
+.pl-map-table thead th {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+.pl-map-table tbody th {
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+}
+.pl-map-table tbody th .pl-dot { display: inline-block; margin-right: 7px; vertical-align: middle; }
+.pl-map-select {
+  font: inherit;
+  max-width: 280px;
+  padding: 3px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+}
+.pl-map-missing .pl-map-select { border-color: #f59e0b; background: #fffbeb; }
+.pl-map-auto {
+  margin-left: 6px;
+  font: inherit;
+  font-size: 0.74rem;
+  color: #475569;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.pl-map-how { color: #64748b; }
+.pl-map-bad { color: #b45309; font-weight: 600; }
+.pl-map-ok { color: #15803d; font-weight: 600; }
+.pl-map-muted { color: #94a3b8; }
+.pl-map-remember {
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 5px;
+  border: 1px solid #0f3460;
+  background: #fff;
+  color: #0f3460;
+  cursor: pointer;
+}
+.pl-map-remember:hover:not(:disabled) { background: #0f3460; color: #fff; }
+.pl-map-remember:disabled { opacity: 0.6; cursor: default; }
+@media (max-width: 640px) {
+  .pl-map-table thead { display: none; }
+  .pl-map-table tr { display: grid; grid-template-columns: 1fr; padding: 6px 0; border-bottom: 1px solid #eef2f6; }
+  .pl-map-table th, .pl-map-table td { border: none; padding: 2px 0; }
+}
 .pl-legend-warn {
   font-size: 0.78rem;
   line-height: 1.55;
@@ -2191,6 +2275,13 @@ input[type="number"]:focus {
   color: var(--xl-green);
 }
 .pl-xl .pl-band-input { border-color: #c6c6c6; }
+
+/* Plain gridlines: no gap between cells (the browser's default 2px
+   spacing drew a white channel round every cell), a single line each. */
+.pl-xl .pl-out-table table { border-spacing: 0; border-collapse: separate; }
+.pl-xl .pl-out-table th:first-child,
+.pl-xl .pl-out-table td:first-child { border-left: 1px solid var(--xl-grid); }
+.pl-xl .pl-out-table thead th { border-top: 1px solid var(--xl-grid); }
 
 /* Gridlines on every cell, grey column headers, no striping. */
 .pl-xl .pl-out-table th,

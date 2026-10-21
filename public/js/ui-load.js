@@ -229,13 +229,13 @@ function updateLoadStatus(data) {
     showStatus('Sheet loaded, but no columns were recognised. The header row is probably wrong — highlight the table on the grid and right-click → Use as data range.', 'error');
   } else if (missing.length === 1 && missing[0] === 'Destination') {
     setSteps({ table: ['warn', `${rowsText} · type destinations`] });
-    showStatus(`${nData} data row${s} selected, but no column matched Destination. Click that chip to pick its column, `
+    showStatus(`${nData} data row${s} selected, but no column matched Destination. Pick its column in <strong>Column mapping</strong>, `
              + 'right-click the column letter in the grid, or type each line\'s destination in the Destination column '
              + 'of the preview below (paste a column from Excel to fill many at once).', 'error');
   } else if (missing.length) {
     setSteps({ table: ['warn', `${rowsText} · pick ${missing.join(', ')}`] });
     showStatus(`${nData} data row${s} selected, but no column matched ${missing.join(', ')}. `
-             + 'Click that chip to pick its column, or right-click the column letter in the grid.', 'error');
+             + 'Pick its column in <strong>Column mapping</strong> above the grid, or right-click the column letter.', 'error');
   } else if (bondedToggle.checked && !ccnInRange(data, range)) {
     // Bonded with no CCN# in the sheet: the loads still build, under one
     // "CCN# not set" table, but the CCN# has to come from the user.

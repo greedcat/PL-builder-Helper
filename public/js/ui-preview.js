@@ -486,8 +486,8 @@ async function buildPackingList({ download }) {
     // sheet picked as Job No, or one added in the preview named JOB NO.
     if (!modH.includes('JOB NO')) {
       setSteps({ download: ['warn', 'Pick the Job No column'] });
-      showStatus('The Job No column (the client\'s job number) is required. Click the <strong>Job No</strong> chip '
-        + 'above the grid and pick its column — "Remember for next time" then finds it on its own. '
+      showStatus('The Job No column (the client\'s job number) is required. Pick its column for <strong>Job No</strong> in '
+        + '<strong>Column mapping</strong> above the grid — "Remember this header" then finds it on its own. '
         + 'If the sheet has none, add a column named <strong>JOB NO</strong> in the preview with + Column and type it in.', 'error');
       return;
     }

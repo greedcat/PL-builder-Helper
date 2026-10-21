@@ -110,20 +110,41 @@ function renderSheetLegend(info, range, data) {
        of the packing list. Only columns <strong>${colSpan}</strong> are read.`
     : `Row <strong>${hdrNo}</strong> is read as the column header, but no data rows are selected below it.`;
 
-  const chips = PL_ROLES.map(r => {
+  // One row per field of the packing list: the sheet column filling it
+  // (pick another from the list), how it was found, and whether the
+  // header is kept for next time. Destination, FBA ID and REF ID are
+  // recognised from their values, so only the others have a saved list.
+  const picked = role => Object.prototype.hasOwnProperty.call(roleOverrides, role);
+  const mapRows = PL_ROLES.map(r => {
     const abs  = roleCol[r.role];
     const col  = abs != null ? cols[abs] : null;
-    const name = col && col.name != null && col.name !== '' ? escapeHtml(col.name) : null;
-    const set  = abs != null;
+    const name = col && col.name != null && col.name !== '' ? String(col.name) : null;
+    const listKey = ROLE_KEYWORD_LIST[r.role];
+    const options = ['<option value="">— none —</option>'].concat(info.choices
+      .filter(c => c.name != null && c.name !== '')
+      .map(c => `<option value="${c.col}"${c.col === abs ? ' selected' : ''}>${c.letter} — ${escapeHtml(String(c.name))}</option>`))
+      .join('');
+    let how, howCls = '';
+    if (abs == null) { how = picked(r.role) ? 'Set to none' : 'Not found — pick its column'; howCls = ' pl-map-bad'; }
+    else if (picked(r.role)) how = 'Picked by you';
+    else how = listKey ? 'Found by its header' : 'Found by its values';
+    let next = '<span class="pl-map-muted">—</span>';
+    if (listKey && name) {
+      next = alreadyKnown(listKey, name)
+        ? '<span class="pl-map-ok">✓ Header saved</span>'
+        : `<button type="button" class="pl-map-remember" data-remember="${escapeHtml(r.role)}"
+             title="Save “${escapeHtml(name)}” as a ${escapeHtml(r.label)} header, so the next sheet headed this way is mapped on its own">Remember this header</button>`;
+    } else if (!listKey) {
+      next = '<span class="pl-map-muted">Found from the values each time</span>';
+    }
     return `
-    <button type="button" class="pl-chip pl-chip-btn${set ? '' : ' pl-chip-unset'}"
-            data-role="${escapeHtml(r.role)}" aria-haspopup="menu" aria-expanded="false"
-            title="Click to choose which column is the ${escapeHtml(r.label)}">
-      <i class="pl-dot" style="background:${set ? r.color : '#cbd5e1'}"></i>${escapeHtml(r.label)}
-      <em>${set ? (name || 'no header') : 'not set'}</em>
-      ${set ? `<span class="pl-chip-col">${colLetter(abs)}</span>` : ''}
-      <span class="pl-chip-caret">▾</span>
-    </button>`;
+      <tr${abs == null ? ' class="pl-map-missing"' : ''}>
+        <th scope="row"><i class="pl-dot" style="background:${abs != null ? r.color : '#cbd5e1'}"></i>${escapeHtml(r.label)}</th>
+        <td><select class="pl-map-select" data-role="${escapeHtml(r.role)}" aria-label="Sheet column for ${escapeHtml(r.label)}">${options}</select>
+          ${picked(r.role) ? `<button type="button" class="pl-map-auto" data-auto="${escapeHtml(r.role)}" title="Let the app find this column again">↺ automatic</button>` : ''}</td>
+        <td class="pl-map-how${howCls}">${how}</td>
+        <td>${next}</td>
+      </tr>`;
   }).join('');
 
   const asides = [
@@ -156,9 +177,13 @@ function renderSheetLegend(info, range, data) {
       Dragging across the grid only highlights cells (Ctrl+C copies them) — right-click a highlight
       to <strong>use it as the data range</strong>, or, when the table is split by a gap,
       to <strong>add it as an extra block</strong>.</p>
-    <div class="pl-role-row">
-      <span class="pl-role-label">Columns found</span>${chips}
-      ${asides ? `<span class="pl-role-aside">${asides}</span>` : ''}
+    <div class="pl-map">
+      <div class="pl-map-title">Column mapping
+        <span>Which column of the sheet fills each field of the packing list${asides ? ` · ${asides}` : ''}</span></div>
+      <table class="pl-map-table">
+        <thead><tr><th>Field</th><th>Sheet column</th><th>How it was found</th><th>Next time</th></tr></thead>
+        <tbody>${mapRows}</tbody>
+      </table>
     </div>${warn}`;
 }
 
@@ -217,7 +242,7 @@ function openPlMenu(x, y, title, items) {
 }
 
 document.addEventListener('mousedown', e => {
-  if (plMenuEl && !e.target.closest('.pl-menu') && !e.target.closest('.pl-chip-btn')) closePlMenu();
+  if (plMenuEl && !e.target.closest('.pl-menu')) closePlMenu();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePlMenu(); });
 
@@ -243,38 +268,6 @@ function columnMenuItems(abs, info) {
       },
     });
   }
-  // The role this column fills, kept for future files: its wording goes on
-  // that role's list, so the next sheet headed the same way is mapped
-  // without asking. Only the roles found by wording have a list — the
-  // Destination, FBA ID and REF ID are recognised by their values.
-  const myRole = PL_ROLES.find(r => roleCol[r.role] === abs && ROLE_KEYWORD_LIST[r.role]);
-  if (myRole && name != null && String(name).trim() !== '') {
-    const listKey = ROLE_KEYWORD_LIST[myRole.role];
-    const known   = alreadyKnown(listKey, name);
-    const queued  = isQueuedToLearn(listKey, name);
-    items.push({ sep: true });
-    items.push({
-      label: `Always map this wording as ${escapeHtml(myRole.label)}`,
-      note: known ? 'saved' : queued ? 'queued' : 'saved when the list is generated',
-      checked: known || queued,
-      onPick: () => {
-        if (known) {
-          showStatus(`“${String(name)}” is already on the ${escapeHtml(myRole.label)} list — remove it under Settings.`, 'info');
-          return;
-        }
-        let msg;
-        if (queued) {
-          unqueueLearn(listKey, name);
-          msg = `“${escapeHtml(String(name))}” will not be remembered as ${escapeHtml(myRole.label)}.`;
-        } else {
-          queueLearn(listKey, name);
-          msg = `“${escapeHtml(String(name))}” will be remembered as ${escapeHtml(myRole.label)} once this packing list `
-            + 'is generated, and found on its own in future files.';
-        }
-        reapply().then(() => showStatus(msg, 'info'));
-      },
-    });
-  }
   // Bonded: the CCN# can be any column, whatever its header says.
   if (bondedToggle.checked) {
     const isCcn = cols[abs] && cols[abs].kind === 'ccn';
@@ -294,7 +287,7 @@ function columnMenuItems(abs, info) {
   }
   items.push({ sep: true });
   items.push({
-    label: 'Not a mapped column',
+    label: 'Not used as a field',
     checked: !PL_ROLES.some(r => roleCol[r.role] === abs) && !(cols[abs] && cols[abs].kind === 'ccn'),
     onPick: () => {
       for (const r of PL_ROLES) if (roleCol[r.role] === abs) roleOverrides[r.role] = null;
@@ -304,14 +297,12 @@ function columnMenuItems(abs, info) {
   });
   items.push({ sep: true });
   items.push({
-    label: 'Keep in packing list',
-    note: isDrop ? '' : 'current',
+    label: 'Include in the packing list',
     checked: !isDrop,
     onPick: () => { columnOverrides[abs] = 'keep'; reapply(); },
   });
   items.push({
-    label: 'Drop from packing list',
-    note: isDrop ? 'current' : 'this file only',
+    label: 'Leave out of this packing list',
     checked: isDrop,
     onPick: () => { columnOverrides[abs] = 'drop'; reapply(); },
   });
@@ -320,22 +311,22 @@ function columnMenuItems(abs, info) {
   // repeat. This writes it to the shared ignore list so the next sheet
   // that uses the words drops the column without being asked.
   if (name != null && String(name).trim() !== '' && !alreadyKnown('NO_NEED_COL', name)) {
-    const queued = isQueuedToLearn('NO_NEED_COL', name);
     items.push({
-      label: 'Always ignore this wording',
-      note: queued ? 'queued' : 'saved when the list is generated',
-      checked: queued,
-      onPick: () => {
+      label: `Always leave out columns named “${escapeHtml(String(name))}”`,
+      onPick: async () => {
         columnOverrides[abs] = 'drop';
-        if (queued) {
-          unqueueLearn('NO_NEED_COL', name);
-          showStatus(`“${String(name)}” will not be added to the ignore list.`, 'info');
-        } else {
+        try {
           queueLearn('NO_NEED_COL', String(name));
-          showStatus(`“${String(name)}” will be added to the shared ignore list `
-            + 'once the packing list is generated.', 'info');
+          await flushLearnQueue();
+          delete columnOverrides[abs];       // the list drops it now
+          await reapply();
+          showStatus(`Columns named “${escapeHtml(String(name))}” are now left out of every packing list. `
+            + 'Remove it from NO_NEED_COL under Settings to undo.', 'success');
+        } catch (err) {
+          console.error(err);
+          await reapply();
+          showStatus('Could not save to the shared ignore list: ' + err.message, 'error');
         }
-        reapply();
       },
     });
   }
@@ -344,32 +335,6 @@ function columnMenuItems(abs, info) {
     items.push({
       label: 'Back to the ignore list',
       onPick: () => { delete columnOverrides[abs]; reapply(); },
-    });
-  }
-  return items;
-}
-
-// Menu for a role chip: which column should fill this role.
-function roleMenuItems(role, info) {
-  const { roleCol, choices, autoDict } = info;
-  const current = roleCol[role];
-  const items = [{
-    label: 'Detect automatically',
-    note: autoDict[role] ? escapeHtml(String(autoDict[role])) : 'nothing found',
-    checked: !Object.prototype.hasOwnProperty.call(roleOverrides, role),
-    onPick: () => { delete roleOverrides[role]; reapply(); },
-  }, {
-    label: 'Not used',
-    checked: Object.prototype.hasOwnProperty.call(roleOverrides, role) && roleOverrides[role] === null,
-    onPick: () => { roleOverrides[role] = null; reapply(); },
-  }, { sep: true }];
-
-  for (const c of choices) {
-    items.push({
-      label: `${c.letter} — ${c.name != null && c.name !== '' ? escapeHtml(String(c.name)) : '(no header)'}`,
-      checked: current === c.col,
-      disabled: c.name == null || c.name === '',
-      onPick: () => { roleOverrides[role] = c.name; reapply(); },
     });
   }
   return items;
@@ -462,6 +427,27 @@ function unlearnedMappings(info) {
   return out;
 }
 
+// Saves one header wording to its list now, and maps by it from here on.
+async function rememberWording(it) {
+  queueLearn(it.listKey, String(it.name));
+  try {
+    await flushLearnQueue();
+    // The wording is known now, so detection finds it without the override.
+    if (it.role) delete roleOverrides[it.role];
+    await reapply();
+    const onlyHere = OWN_FIELDS.includes(it.listKey) && lastSaveWhere === 'browser';
+    showStatus(onlyHere
+      ? `“${escapeHtml(String(it.name))}” saved in this browser. The shared list needs the PL builder server's database `
+        + '(MONGO_URI); until then other computers will not know it.'
+      : `“${escapeHtml(String(it.name))}” saved — sheets headed this way are mapped as ${escapeHtml(it.label)} from now on. `
+        + 'Remove it under Settings if that was wrong.', onlyHere ? 'info' : 'success');
+  } catch (err) {
+    console.error(err);
+    showStatus('Could not save to the shared lists: ' + err.message, 'error');
+    reapply();
+  }
+}
+
 function hideLearnBar() {
   const bar = document.getElementById('plLearnBar');
   if (bar) { bar.hidden = true; bar.innerHTML = ''; }
@@ -485,21 +471,7 @@ function renderLearnBar(info) {
       const it = items[Number(btn.dataset.i)];
       btn.disabled = true;
       btn.textContent = 'Saving…';
-      queueLearn(it.listKey, String(it.name));
-      try {
-        await flushLearnQueue();
-        // The wording is known now, so detection finds it without the override.
-        if (it.role) delete roleOverrides[it.role];
-        await reapply();
-        const onlyHere = OWN_FIELDS.includes(it.listKey) && lastSaveWhere === 'browser';
-        showStatus(onlyHere
-          ? `“${String(it.name)}” saved in this browser. The shared list needs the PL builder server's database `
-            + '(MONGO_URI); until then other computers will not know it.'
-          : `“${String(it.name)}” saved. Remove it under Settings if that was wrong.`, onlyHere ? 'info' : 'success');
-      } catch (err) {
-        console.error(err);
-        showStatus('Could not save to the shared lists: ' + err.message, 'error');
-      }
+      await rememberWording(it);
     });
   });
 }
@@ -563,17 +535,29 @@ async function refreshSheetView({ rebuild = false, keepSelection = false } = {})
   grid.setColumnInfo(info.cols);
   sheetLegend.innerHTML = renderSheetLegend(info, range, data);
 
-  // A chip opens the list of columns that could fill its role.
-  sheetLegend.querySelectorAll('.pl-chip-btn').forEach(chip => {
-    chip.addEventListener('click', e => {
-      e.stopPropagation();
-      const role = chip.dataset.role;
+  // The mapping table: pick a column, go back to automatic, or keep a header.
+  sheetLegend.querySelectorAll('.pl-map-select').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const role = sel.dataset.role;
+      const c = info.choices.find(x => String(x.col) === sel.value);
+      roleOverrides[role] = c ? c.name : null;
+      if (c) grid.focusColumn(c.col, { toggle: false });
+      reapply();
+    });
+  });
+  sheetLegend.querySelectorAll('[data-auto]').forEach(btn => {
+    btn.addEventListener('click', () => { delete roleOverrides[btn.dataset.auto]; reapply(); });
+  });
+  sheetLegend.querySelectorAll('[data-remember]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const role = btn.dataset.remember;
       const abs  = info.roleCol[role];
-      if (abs != null) grid.focusColumn(abs);
-      chip.classList.add('pl-chip-on');
-      const r = chip.getBoundingClientRect();
-      openPlMenu(r.left + window.scrollX, r.bottom + window.scrollY + 4,
-                 `Which column is the ${escapeHtml(role)}?`, roleMenuItems(role, info));
+      const name = abs != null && info.cols[abs] ? info.cols[abs].name : null;
+      const meta = PL_ROLES.find(r => r.role === role);
+      if (!name || !ROLE_KEYWORD_LIST[role]) return;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      await rememberWording({ role, label: meta ? meta.label : role, listKey: ROLE_KEYWORD_LIST[role], name });
     });
   });
 
