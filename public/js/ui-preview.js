@@ -998,3 +998,20 @@ fetch('/api/sharepoint-pl').then(r => r.json()).then(out => {
   spSetUp = !!out.enabled;
   uploadSpBtn.hidden = !spSetUp;
 }).catch(() => {});
+
+/* Opened from the FBA app's "Build PL" (?container=&customer=&file_no=):
+   the shipment is filled in, and the folder lookup runs as if typed. A
+   field already filled is left as it is. */
+(function prefillFromLink() {
+  const q = new URLSearchParams(location.search);
+  const put = (el, v) => {
+    v = String(v || '').trim();
+    if (!el || !v || el.value.trim()) return;
+    el.value = v;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  put(containerNoInput, q.get('container'));
+  put(clientNameInput, q.get('customer'));
+  put(fileNoInput, q.get('file_no'));
+})();
