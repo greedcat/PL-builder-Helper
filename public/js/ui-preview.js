@@ -1118,6 +1118,31 @@ document.getElementById('plPreviewData').addEventListener('contextmenu', e => {
       .catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
   };
   const items = [];
+  // A cell that holds where the line goes (a consignee's address left in
+  // the FBA ID column, say) can become its destination: the text moves
+  // into the Destination, on this line and on the lines sharing its
+  // destination so they stay one group, and its own cell is cleared.
+  const text = (td.textContent || '').replace(/\s+/g, ' ').trim();
+  if (td.dataset.col !== 'Destination' && text && !inBlock) {
+    const tr   = td.closest('tr');
+    const dest = ((tr.querySelector('td[data-col="Destination"]') || {}).textContent || '').trim();
+    const mates = [...tr.closest('tbody').querySelectorAll('td[data-col="Destination"]')]
+      .filter(c => c.textContent.trim() === dest && !holdRows.has(String(c.dataset.row)))
+      .map(c => String(c.dataset.row));
+    const others = mates.filter(id => id !== String(td.dataset.row)).length;
+    items.push({
+      label: 'Use this cell as the destination',
+      note: others ? `with ${others} other “${escapeHtml(dest.slice(0, 18))}” line${others === 1 ? '' : 's'}` : 'this line',
+      onPick: () => {
+        pushEditHistory();
+        for (const id of new Set([...mates, String(td.dataset.row)])) previewEdits.loads.set(`${id}\u0000Destination`, text);
+        previewEdits.loads.set(`${td.dataset.row}\u0000${td.dataset.col}`, null);
+        done(`The ${escapeHtml(td.dataset.col)} cell is now the destination${others ? ` of ${others + 1} lines` : ''} — `
+          + 'give it a short name in the panel above.');
+      },
+    });
+    items.push({ sep: true });
+  }
   if (free.length) {
     const bases = [...new Set(free.map(x => x.dest.trim()))];
     // A new group per destination among the lines.
