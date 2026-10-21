@@ -1883,13 +1883,12 @@ input[type="number"]:focus {
   resize: vertical;
   box-sizing: border-box;
 }
-/* Upload and paste side by side, one short row: the source is picked in
-   a moment and the page below is what gets the room. */
+/* Browse on top as one slim bar, the paste box under it with room to
+   paste into: pasting is how most loads arrive. */
 .pl-source-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .pl-source-row .drop-zone {
   display: flex;
@@ -1897,29 +1896,23 @@ input[type="number"]:focus {
   justify-content: center;
   gap: 8px;
   padding: 0 12px !important;
-  min-height: 32px;
+  min-height: 34px;
   border-width: 1.5px;
   border-radius: 8px;
 }
 .pl-source-row .drop-icon {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   margin: 0;
 }
 .pl-source-row .drop-zone:not(.pl-drop-compact) .drop-icon { display: block !important; }
 .pl-source-row .drop-text { font-size: 0.82rem; line-height: 1.2; }
-.pl-source-row .drop-icon { font-size: 0.95rem; }
 .pl-source-row .pl-paste-box {
   margin-top: 0;
-  min-height: 32px;
-  height: 32px;
-  resize: none;
-  line-height: 1.2;
-  padding: 7px 10px;
-  overflow: hidden;
-  white-space: nowrap;
-}
-@media (max-width: 640px) {
-  .pl-source-row { grid-template-columns: 1fr; }
+  min-height: 120px;
+  height: 140px;
+  resize: vertical;
+  line-height: 1.45;
+  padding: 10px 12px;
 }
 .pl-paste-box:focus {
   outline: none;
