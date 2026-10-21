@@ -216,9 +216,9 @@ function openPlMenu(x, y, title, items) {
     (title ? `<div class="pl-menu-title">${title}</div>` : '') +
     items.map((it, i) => it.sep
       ? '<div class="pl-menu-sep"></div>'
-      : `<button type="button" class="pl-menu-item${it.checked ? ' pl-menu-on' : ''}"
+      : `<button type="button" class="pl-menu-item${it.checked && !it.box ? ' pl-menu-on' : ''}${it.box ? ' pl-menu-box' : ''}"
            data-i="${i}"${it.disabled ? ' disabled' : ''} role="menuitem">
-           <span class="pl-menu-tick">${it.checked ? '✓' : ''}</span>
+           <span class="pl-menu-tick">${it.box ? (it.checked ? '☑' : '☐') : (it.checked ? '✓' : '')}</span>
            <span class="pl-menu-label">${it.label}</span>
            ${it.note ? `<span class="pl-menu-note">${it.note}</span>` : ''}
          </button>`).join('');
@@ -310,22 +310,39 @@ function columnMenuItems(abs, info) {
   // Dropping the same wording on every file is a rule, not a decision to
   // repeat. This writes it to the shared ignore list so the next sheet
   // that uses the words drops the column without being asked.
-  if (name != null && String(name).trim() !== '' && !alreadyKnown('NO_NEED_COL', name)) {
+  // A tickbox under the two: leave columns headed this way out of every
+  // packing list from now on. Ticked, the header goes on the shared ignore
+  // list (and this one is left out); unticked, it comes off it again.
+  if (name != null && String(name).trim() !== '') {
+    const always = alreadyKnown('NO_NEED_COL', name);
+    const label  = escapeHtml(String(name));
     items.push({
-      label: `Always leave out columns named “${escapeHtml(String(name))}”`,
+      box: true,
+      label: `Always leave out “${label}” in future files`,
+      checked: always,
       onPick: async () => {
-        columnOverrides[abs] = 'drop';
         try {
-          queueLearn('NO_NEED_COL', String(name));
-          await flushLearnQueue();
-          delete columnOverrides[abs];       // the list drops it now
-          await reapply();
-          showStatus(`Columns named “${escapeHtml(String(name))}” are now left out of every packing list. `
-            + 'Remove it from NO_NEED_COL under Settings to undo.', 'success');
+          if (always) {
+            const norm = v => String(v).normalize('NFKC').toLowerCase().replace(/\s+/g, '').trim();
+            const values = NO_NEED_COL.filter(v => norm(v) !== norm(name));
+            setCfgList('NO_NEED_COL', values);
+            await persistConfigList('NO_NEED_COL', values);
+            renderConfigPanel();
+            delete columnOverrides[abs];
+            await reapply();
+            showStatus(`“${label}” is off the ignore list: columns headed this way are read again.`, 'info');
+          } else {
+            queueLearn('NO_NEED_COL', String(name));
+            await flushLearnQueue();
+            delete columnOverrides[abs];       // the list leaves it out now
+            await reapply();
+            showStatus(`Columns headed “${label}” are left out of every packing list from now on. `
+              + 'Untick it here, or remove it from NO_NEED_COL under Settings, to read them again.', 'success');
+          }
         } catch (err) {
           console.error(err);
           await reapply();
-          showStatus('Could not save to the shared ignore list: ' + err.message, 'error');
+          showStatus('Could not update the shared ignore list: ' + err.message, 'error');
         }
       },
     });
@@ -333,7 +350,8 @@ function columnMenuItems(abs, info) {
 
   if (columnOverrides[abs] !== undefined) {
     items.push({
-      label: 'Back to the ignore list',
+      label: 'Reset to automatic',
+      note: 'as the lists decide',
       onPick: () => { delete columnOverrides[abs]; reapply(); },
     });
   }

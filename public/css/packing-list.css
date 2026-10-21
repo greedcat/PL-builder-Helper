@@ -727,6 +727,9 @@ input[type="number"]:focus {
   .pl-map-table tr { display: grid; grid-template-columns: 1fr; padding: 6px 0; border-bottom: 1px solid #eef2f6; }
   .pl-map-table th, .pl-map-table td { border: none; padding: 2px 0; }
 }
+/* A tickbox item, sitting under the choice it goes with. */
+.pl-menu-item.pl-menu-box { padding-left: 26px; }
+.pl-menu-item.pl-menu-box .pl-menu-tick { font-size: 1rem; color: #0f3460; }
 .pl-legend-warn {
   font-size: 0.78rem;
   line-height: 1.55;

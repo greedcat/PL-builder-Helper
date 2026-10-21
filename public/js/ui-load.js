@@ -460,7 +460,10 @@ function droppedColumns(headers, firstCol) {
       if (isCcnHeader(name)) { out.add(abs); return; }
     }
     if (isCcnHeader(name)) { if (!bondedToggle.checked) out.add(abs); return; }
-    if (name != null && NO_NEED_COL.includes(name)) out.add(abs);
+    // Compared as the menu compares it (alreadyKnown): spaces and full-width
+    // brackets aside, so "CARGO DESCRIPTION （英文品名）" on the list drops
+    // the "CARGO DESCRIPTION（英文品名）" a sheet writes.
+    if (name != null && alreadyKnown('NO_NEED_COL', name)) out.add(abs);
   });
   return out;
 }
