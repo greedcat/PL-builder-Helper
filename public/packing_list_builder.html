@@ -20,14 +20,16 @@
 
     <div class="form-group">
       <label>Source Excel File</label>
-      <div class="drop-zone" id="dropZone">
-        <div class="drop-icon">📂</div>
-        <div class="drop-text"><strong>Click to browse</strong> or drag &amp; drop</div>
-        <div id="fileBadge" style="display:none"></div>
-        <input type="file" id="excelFile" accept=".xlsx,.xls">
+      <div class="pl-source-row">
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-icon">📂</div>
+          <div class="drop-text"><strong>Click to browse</strong> or drag &amp; drop an Excel file</div>
+          <div id="fileBadge" style="display:none"></div>
+          <input type="file" id="excelFile" accept=".xlsx,.xls">
+        </div>
+        <textarea id="pasteBox" class="pl-paste-box" rows="1" spellcheck="false"
+          placeholder="…or paste the loads from Excel (header row included) — Ctrl+V / ⌘V"></textarea>
       </div>
-      <textarea id="pasteBox" class="pl-paste-box" rows="2" spellcheck="false"
-        placeholder="…or copy the loads in Excel (header row included) and paste them here — Ctrl+V / ⌘V"></textarea>
     </div>
 
     <div class="form-group">
