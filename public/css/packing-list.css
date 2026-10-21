@@ -2163,8 +2163,10 @@ input[type="number"]:focus {
   font-weight: 700;
 }
 .pl-xl .pl-out-table thead th:first-child { background: var(--xl-head); }
-.pl-xl .pl-out-table tr:nth-child(even) td,
-.pl-xl .pl-out-table tr:nth-child(even) td:first-child { background: #fff; }
+/* Only rows without a destination colour: a destination's rows share
+   one tint all the way down, even rows included. */
+.pl-xl .pl-out-table tr:not([class*="pl-dest-c"]):nth-child(even) td,
+.pl-xl .pl-out-table tr:not([class*="pl-dest-c"]):nth-child(even) td:first-child { background: #fff; }
 .pl-xl .pl-out-table td { color: var(--xl-ink); }
 .pl-xl .pl-out-table th.pl-fill,
 .pl-xl .pl-out-table td.pl-fill { border-right: none; background: #fff; }
