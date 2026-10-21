@@ -727,9 +727,43 @@ input[type="number"]:focus {
   .pl-map-table tr { display: grid; grid-template-columns: 1fr; padding: 6px 0; border-bottom: 1px solid #eef2f6; }
   .pl-map-table th, .pl-map-table td { border: none; padding: 2px 0; }
 }
-/* A tickbox item, sitting under the choice it goes with. */
-.pl-menu-item.pl-menu-box { padding-left: 26px; }
-.pl-menu-item.pl-menu-box .pl-menu-tick { font-size: 1rem; color: #0f3460; }
+/* A tickbox item, sitting under the choice it goes with: its own light
+   panel, a real box to tick, what it does in bold and what it means under. */
+.pl-menu-item.pl-menu-box {
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 2px;
+  padding: 9px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+}
+.pl-menu-item.pl-menu-box:hover { background: #eef4ff; border-color: #bfd3f5; }
+.pl-menu-check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border: 2px solid #64748b;
+  border-radius: 4px;
+  background: #fff;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+}
+.pl-menu-item.pl-menu-box[aria-checked="true"] .pl-menu-check { background: #0f3460; border-color: #0f3460; }
+.pl-menu-item.pl-menu-box .pl-menu-label { font-weight: 700; color: #0f172a; white-space: normal; }
+.pl-menu-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.35;
+  max-width: 280px;
+}
 .pl-legend-warn {
   font-size: 0.78rem;
   line-height: 1.55;

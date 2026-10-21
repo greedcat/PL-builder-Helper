@@ -217,9 +217,11 @@ function openPlMenu(x, y, title, items) {
     items.map((it, i) => it.sep
       ? '<div class="pl-menu-sep"></div>'
       : `<button type="button" class="pl-menu-item${it.checked && !it.box ? ' pl-menu-on' : ''}${it.box ? ' pl-menu-box' : ''}"
-           data-i="${i}"${it.disabled ? ' disabled' : ''} role="menuitem">
-           <span class="pl-menu-tick">${it.box ? (it.checked ? '☑' : '☐') : (it.checked ? '✓' : '')}</span>
-           <span class="pl-menu-label">${it.label}</span>
+           data-i="${i}"${it.disabled ? ' disabled' : ''} role="${it.box ? 'menuitemcheckbox' : 'menuitem'}"${it.box ? ` aria-checked="${!!it.checked}"` : ''}>
+           ${it.box
+             ? `<span class="pl-menu-check" aria-hidden="true">${it.checked ? '✓' : ''}</span>`
+             : `<span class="pl-menu-tick">${it.checked ? '✓' : ''}</span>`}
+           <span class="pl-menu-label">${it.label}${it.sub ? `<small class="pl-menu-sub">${it.sub}</small>` : ''}</span>
            ${it.note ? `<span class="pl-menu-note">${it.note}</span>` : ''}
          </button>`).join('');
   document.body.appendChild(menu);
@@ -318,7 +320,9 @@ function columnMenuItems(abs, info) {
     const label  = escapeHtml(String(name));
     items.push({
       box: true,
-      label: `Always leave out “${label}” in future files`,
+      label: 'Skip this column in future files too',
+      sub: `Next time a file has a “${label}” column, it is left out of the packing list on its own. `
+        + 'Untick to read it again.',
       checked: always,
       onPick: async () => {
         try {
@@ -330,14 +334,14 @@ function columnMenuItems(abs, info) {
             renderConfigPanel();
             delete columnOverrides[abs];
             await reapply();
-            showStatus(`“${label}” is off the ignore list: columns headed this way are read again.`, 'info');
+            showStatus(`“${label}” columns will be read again in future files.`, 'info');
           } else {
             queueLearn('NO_NEED_COL', String(name));
             await flushLearnQueue();
             delete columnOverrides[abs];       // the list leaves it out now
             await reapply();
-            showStatus(`Columns headed “${label}” are left out of every packing list from now on. `
-              + 'Untick it here, or remove it from NO_NEED_COL under Settings, to read them again.', 'success');
+            showStatus(`Saved: next time a file has a “${label}” column, it is skipped on its own. `
+              + 'Right-click the column and untick the box to read it again.', 'success');
           }
         } catch (err) {
           console.error(err);
