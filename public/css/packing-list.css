@@ -776,9 +776,10 @@ input[type="number"]:focus {
 }
 .pl-grid td {
   min-width: 62px;
-  max-width: 250px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Every cell shown in full on one line, as wide as its text needs:
+     a column of addresses or descriptions is read here, not guessed at. */
+  max-width: none;
+  overflow: visible;
   color: #334155;
 }
 .pl-grid-corner {
