@@ -1015,3 +1015,31 @@ fetch('/api/sharepoint-pl').then(r => r.json()).then(out => {
   put(clientNameInput, q.get('customer'));
   put(fileNoInput, q.get('file_no'));
 })();
+
+// ─────────────────────────────────────────────────────────────
+// Shipment from the address
+// Another app can open the builder ready filled in:
+//   packing_list_builder.html?container=TRHU4693221&customer=米娅+Mia&file_no=2067-26253
+// Each value goes into its box as if typed, so the SharePoint check for an
+// existing PL runs on it as well. A box already filled in is left alone.
+// ─────────────────────────────────────────────────────────────
+(function shipmentFromUrl() {
+  const q = new URLSearchParams(location.search);
+  const pick = (...keys) => {
+    for (const k of keys) { const v = (q.get(k) || '').trim(); if (v) return v; }
+    return '';
+  };
+  const given = [
+    [containerNoInput, pick('container', 'container_no', 'containerNo')],
+    [clientNameInput,  pick('customer', 'client', 'client_name')],
+    [fileNoInput,      pick('file_no', 'fileNo', 'file')],
+  ];
+  let filled = 0;
+  for (const [input, value] of given) {
+    if (!value || input.value.trim()) continue;
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    filled++;
+  }
+  if (filled) showStatus(`Shipment filled in from the link: ${given.map(g => g[1]).filter(Boolean).map(escapeHtml).join(' · ')}.`, 'info');
+})();
