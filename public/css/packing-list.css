@@ -754,12 +754,12 @@ input[type="number"]:focus {
   text-align: center;
 }
 .pl-menu-item.pl-menu-box[aria-checked="true"] .pl-menu-check { background: #0f3460; border-color: #0f3460; }
-.pl-menu-item.pl-menu-box .pl-menu-label { font-weight: 700; color: #0f172a; white-space: normal; }
+.pl-menu-item.pl-menu-box .pl-menu-label { font-weight: inherit; color: inherit; white-space: normal; }
 .pl-menu-sub {
   display: block;
   margin-top: 2px;
-  font-size: 0.74rem;
-  font-weight: 400;
+  font-size: inherit;
+  font-weight: inherit;
   color: #64748b;
   line-height: 1.35;
   max-width: 280px;
