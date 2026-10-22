@@ -3,7 +3,9 @@
 // Talks to the small Node/Express server in server/ which stores
 // the shared config document in MongoDB.
 // ─────────────────────────────────────────────────────────────
-const DB_DEFAULT_BASE  = 'https://pl-builder-helper-server-production.up.railway.app';
+// The builder's own server keeps the shared config now (it has MongoDB);
+// the separate config server on Railway is retired.
+const DB_DEFAULT_BASE  = location.origin;
 const DB_FIELDS        = ['DEST_LIST', 'CARTON_KEYWORDS', 'CBM_KEYWORDS', 'WEIGHT_KEYWORDS', 'NO_NEED_COL'];
 
 // One backend, named here. It used to be editable in the settings panel,
