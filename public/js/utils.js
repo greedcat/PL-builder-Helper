@@ -108,6 +108,8 @@ function getVisibleColumns(headers, rows) {
   const cols = headers
     .map((h, ci) => ({ h, ci }))
     .filter(({ h, ci }) => h !== '_Pallet' && h !== '_Row'
+                        // taken out of the packing list in the preview
+                        && !(typeof hiddenCols !== 'undefined' && hiddenCols.has(h))
                         && (isCcnHeader(h) || rows.some(r => r[ci] != null)
                             // a Destination to type by hand is wanted while still empty
                             || (h === 'Destination' && typeof destByHand !== 'undefined' && destByHand)

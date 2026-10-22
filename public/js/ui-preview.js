@@ -360,6 +360,7 @@ function renderPreview(modH, modR, sumH, sumR, longDests, ccnSections = null) {
   sumBox.classList.toggle('pl-sum-by-ccn', !!ccnSections);
   renderCcnList(ccnSections, modH);
   renderSheets();
+  syncShowCols();
   renderEditBar();
   syncBandTools();
   renderDestPanel(longDests);
@@ -564,12 +565,40 @@ async function saveToSharePoint(out, shipment, note = '', noteFailed = false, do
     if (!res.ok) throw new Error(body.error || `server answered ${res.status}`);
     showStatus(`${lead}${downloaded ? ' and' : ''} saved to SharePoint: ${body.folder_name || 'container folder'}`
       + `${body.created ? ' (folder made)' : ''}.` + note, ok);
+    spNotice('ok', `<strong>Saved to SharePoint</strong>
+      <span>${escapeHtml(body.name || out.name)} is in ${escapeHtml(body.folder_name || 'the container folder')}`
+      + `${body.created ? ' (folder made)' : ''}${downloaded ? ', and downloaded' : ''}.</span>`,
+      body.folder ? { href: body.folder, label: 'Open folder' } : null);
     setSteps({ download: ['done', `${out.name} · in SharePoint`] });
     checkExistingPL();
   } catch (err) {
     console.error(err);
     showStatus(`${downloaded ? '✓ Packing list downloaded, but it' : 'The packing list'} could not be saved to SharePoint: ${err.message}.` + note, 'error');
+    spNotice('bad', `<strong>Not saved to SharePoint</strong><span>${escapeHtml(err.message)}${downloaded ? ' — the file was downloaded.' : ''}</span>`);
   }
+}
+
+// A notice beside the buttons, where the eye is after clicking: saved, and
+// where; or not, and why. It stays until closed, or 12 seconds after a save.
+let spNoticeTimer = null;
+function spNotice(kind, html, link = null) {
+  let el = document.getElementById('plSpNotice');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'plSpNotice';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    document.querySelector('.pl-btn-row').before(el);
+  }
+  clearTimeout(spNoticeTimer);
+  el.className = `pl-sp-notice pl-sp-notice-${kind}`;
+  el.innerHTML = `<span class="pl-sp-notice-icon" aria-hidden="true">${kind === 'ok' ? '✓' : '!'}</span>
+    <span class="pl-sp-notice-text">${html}</span>
+    ${link ? `<a class="pl-sp-notice-link" href="${escapeHtml(link.href)}" target="_blank" rel="noopener">${escapeHtml(link.label)} ↗</a>` : ''}
+    <button type="button" class="pl-sp-notice-x" aria-label="Close" title="Close"></button>`;
+  el.hidden = false;
+  el.querySelector('.pl-sp-notice-x').addEventListener('click', () => { el.hidden = true; });
+  if (kind === 'ok') spNoticeTimer = setTimeout(() => { el.hidden = true; }, 12000);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -877,7 +906,7 @@ function addExtraSheet() {
   let name = 'Extra info';
   for (let n = 2; sheetNameProblem(name); n++) name = `Extra info ${n}`;
   pushEditHistory();
-  extraSheets = [...extraSheets, { id: ++extraSeq, name, cells: new Map() }];
+  extraSheets = [...extraSheets, { id: ++extraSeq, name, cells: new Map(), images: [] }];
   previewTab = extraSeq;
   renderSheets();
   syncBandTools();
@@ -930,9 +959,10 @@ function renderSheetTabs() {
   const tab = (id, name, removable) => `
     <div class="pl-xl-tab${previewTab === id ? ' active' : ''}" role="tab" tabindex="0"
          aria-selected="${previewTab === id}" data-tab="${id}"
-         title="${removable ? 'Double-click to rename' : 'The packing list'}">
+         title="${removable ? 'Rename with ✎, a double-click or a right-click' : 'The packing list'}">
       <span class="pl-xl-tab-name">${escapeHtml(name)}</span>${removable
-        ? `<button type="button" class="pl-xl-tab-x" data-remove="${id}" aria-label="Remove sheet ${escapeHtml(name)}" title="Remove this sheet"></button>`
+        ? `<button type="button" class="pl-xl-tab-ren" data-rename="${id}" aria-label="Rename sheet ${escapeHtml(name)}" title="Rename this sheet">✎</button>`
+          + `<button type="button" class="pl-xl-tab-x" data-remove="${id}" aria-label="Remove sheet ${escapeHtml(name)}" title="Remove this sheet"></button>`
         : ''}
     </div>`;
   sheetTabs.innerHTML = tab('PL', 'PL', false)
@@ -947,7 +977,12 @@ function renderExtraSheet(sh) {
     rows = Math.max(rows, r + 6);
     cols = Math.max(cols, c + 3);
   }
-  let html = '<table><thead><tr><th class="pl-xl-corner" aria-hidden="true"></th>';
+  for (const im of sh.images || []) rows = Math.max(rows, im.at.r + imgRows(im) + 3);
+  let html = `<div class="pl-xl-sheetbar">
+      <button type="button" class="pl-xl-imgbtn" data-addimg="1">🖼 Add image</button>
+      <span>or drop image files on the sheet, or paste a screenshot (Ctrl+V / ⌘V) — it goes at the selected cell.
+        Rename the sheet with ✎ on its tab.</span>
+    </div><table><thead><tr><th class="pl-xl-corner" aria-hidden="true"></th>`;
   for (let c = 0; c < cols; c++) html += `<th>${colLetter(c)}</th>`;
   html += '<th class="pl-fill" aria-hidden="true"></th></tr></thead><tbody>';
   for (let r = 0; r < rows; r++) {
@@ -962,7 +997,139 @@ function renderExtraSheet(sh) {
     html += '<td class="pl-fill"></td></tr>';
   }
   extraBox.innerHTML = html + '</tbody></table>';
+  placeImages(sh);
 }
+
+// ─────────────────────────────────────────────────────────────
+// Pictures on a blank sheet
+// Each picture is kept as { id, name, dataUrl, ext, dw, dh, at: {r, c} }:
+// its top-left corner on a cell, its size as it goes into the file (480px
+// wide at most). The preview shows it there at the preview's scale.
+// ─────────────────────────────────────────────────────────────
+const IMG_MAX_W   = 480;     // in the file
+const IMG_SCALE   = 0.6;     // in the preview
+const EXCEL_ROW_PX = 20;     // a default Excel row
+let imgSeq = 0;
+const imgRows = im => Math.ceil(im.dh / EXCEL_ROW_PX);
+
+function placeImages(sh) {
+  extraBox.querySelectorAll('.pl-xl-img').forEach(el => el.remove());
+  const box = extraBox.getBoundingClientRect();
+  for (const im of sh.images || []) {
+    const td = extraBox.querySelector(`td[data-row="${im.at.r}"][data-col="${im.at.c}"]`);
+    if (!td) continue;
+    const r = td.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'pl-xl-img';
+    el.style.left = `${r.left - box.left + extraBox.scrollLeft}px`;
+    el.style.top  = `${r.top - box.top + extraBox.scrollTop}px`;
+    el.style.width  = `${Math.round(im.dw * IMG_SCALE)}px`;
+    el.style.height = `${Math.round(im.dh * IMG_SCALE)}px`;
+    el.title = `${im.name} — at ${colLetter(im.at.c)}${im.at.r + 1}`;
+    el.innerHTML = `<img src="${im.dataUrl}" alt="">
+      <button type="button" class="pl-xl-img-x" data-imgdel="${im.id}" title="Remove this picture" aria-label="Remove picture"></button>`;
+    extraBox.appendChild(el);
+  }
+}
+
+// A file read into a picture the file can carry: drawn again as PNG (or
+// JPEG for a photo) and no more than 1600px wide, so the PL stays small.
+function readPicture(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error(`could not read ${file.name}`));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error(`${file.name} is not a picture this browser can open (try PNG or JPG)`));
+      img.onload = () => {
+        const k = Math.min(1, 1600 / img.naturalWidth);
+        const w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const g = cv.getContext('2d');
+        const png = /png|gif/i.test(file.type);
+        if (!png) { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); }
+        g.drawImage(img, 0, 0, w, h);
+        const ext = png ? 'png' : 'jpeg';
+        const dw = Math.min(IMG_MAX_W, w), dh = Math.round(h * (dw / w));
+        resolve({ name: file.name || 'picture', dataUrl: cv.toDataURL(`image/${ext}`, 0.9), ext, dw, dh });
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+async function addPictures(files) {
+  const sh = extraSheets.find(x => x.id === previewTab);
+  const list = [...files].filter(f => /^image\//.test(f.type) || /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name || ''));
+  if (!sh || !list.length) return;
+  // At the selected cell of this sheet, else under the last picture.
+  const sel = rangeAnchor && rangeAnchor.table.isConnected && extraBox.contains(rangeAnchor.table)
+    ? { r: rangeAnchor.r, c: Math.max(0, rangeAnchor.c - 1) } : null;
+  let at = sel || (sh.images.length
+    ? (last => ({ r: last.at.r + imgRows(last) + 1, c: last.at.c }))(sh.images[sh.images.length - 1])
+    : { r: 0, c: 0 });
+  const added = [], failed = [];
+  for (const f of list) {
+    try {
+      const p = await readPicture(f);
+      added.push({ id: ++imgSeq, ...p, at: { ...at } });
+      at = { r: at.r + Math.ceil(p.dh / EXCEL_ROW_PX) + 1, c: at.c };
+    } catch (err) { failed.push(err.message); }
+  }
+  if (added.length) {
+    pushEditHistory();
+    sh.images = [...sh.images, ...added];
+    syncBandTools();
+    renderSheets();
+  }
+  showStatus((added.length ? `Added ${added.length} picture${added.length === 1 ? '' : 's'} to “${escapeHtml(sh.name)}”.` : '')
+    + (failed.length ? ' ' + failed.map(escapeHtml).join(' · ') : ''), failed.length ? 'error' : 'success');
+}
+
+const picPicker = Object.assign(document.createElement('input'), { type: 'file', accept: 'image/*', multiple: true, hidden: true });
+document.body.appendChild(picPicker);
+picPicker.addEventListener('change', () => { addPictures(picPicker.files); picPicker.value = ''; });
+
+extraBox.addEventListener('click', e => {
+  if (e.target.closest('[data-addimg]')) { picPicker.click(); return; }
+  const del = e.target.closest('[data-imgdel]');
+  if (del) {
+    const sh = extraSheets.find(x => x.id === previewTab);
+    if (!sh) return;
+    pushEditHistory();
+    sh.images = sh.images.filter(im => String(im.id) !== del.dataset.imgdel);
+    syncBandTools();
+    renderSheets();
+    showStatus('Removed the picture. Ctrl+Z brings it back.', 'info');
+  }
+});
+extraBox.addEventListener('dragover', e => {
+  if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); extraBox.classList.add('pl-xl-drop'); }
+});
+extraBox.addEventListener('dragleave', e => { if (!extraBox.contains(e.relatedTarget)) extraBox.classList.remove('pl-xl-drop'); });
+extraBox.addEventListener('drop', e => {
+  extraBox.classList.remove('pl-xl-drop');
+  if (!e.dataTransfer?.files?.length) return;
+  e.preventDefault();
+  // Dropped on a cell: it goes there.
+  const td = e.target.closest && e.target.closest('td.pl-edit');
+  if (td) rangeAnchor = { table: td.closest('table'), r: cellRC(td).r, c: cellRC(td).c };
+  addPictures(e.dataTransfer.files);
+});
+// A screenshot pasted on a blank sheet. Copied cells (text) still paste as cells.
+document.addEventListener('paste', e => {
+  if (previewTab === 'PL' || extraBox.hidden) return;
+  if (e.target && e.target.closest && e.target.closest('input, textarea, [contenteditable="true"]')) return;
+  const cd = e.clipboardData;
+  if (!cd || cd.getData('text/plain')) return;
+  const files = [...(cd.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+  if (!files.length) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  addPictures(files);
+}, true);
 
 function renderSheets() {
   if (previewTab !== 'PL' && !extraSheets.some(x => x.id === previewTab)) previewTab = 'PL';
@@ -974,6 +1141,13 @@ function renderSheets() {
 }
 
 sheetTabs.addEventListener('click', e => {
+  const ren = e.target.closest('[data-rename]');
+  if (ren) {
+    e.stopPropagation();
+    const tab = ren.closest('.pl-xl-tab');
+    renameExtraSheet(Number(ren.dataset.rename), tab.querySelector('.pl-xl-tab-name'));
+    return;
+  }
   const x = e.target.closest('[data-remove]');
   if (x) { e.stopPropagation(); removeExtraSheet(Number(x.dataset.remove)); return; }
   if (e.target.closest('.pl-xl-add')) { addExtraSheet(); return; }
@@ -984,6 +1158,16 @@ sheetTabs.addEventListener('click', e => {
   dropRange();
   previewTab = id;
   renderSheets();
+});
+sheetTabs.addEventListener('contextmenu', e => {
+  const tab = e.target.closest('.pl-xl-tab');
+  if (!tab || tab.dataset.tab === 'PL') return;
+  e.preventDefault();
+  const id = Number(tab.dataset.tab);
+  openPlMenu(e.pageX, e.pageY, 'Sheet', [
+    { label: 'Rename', onPick: () => renameExtraSheet(id, tab.querySelector('.pl-xl-tab-name')) },
+    { label: 'Remove', onPick: () => removeExtraSheet(id) },
+  ]);
 });
 sheetTabs.addEventListener('dblclick', e => {
   const tab = e.target.closest('.pl-xl-tab');
@@ -1186,4 +1370,35 @@ document.getElementById('plPreviewData').addEventListener('contextmenu', e => {
     });
   }
   openPlMenu(e.pageX, e.pageY, lines.length === 1 ? 'Load line' : `${lines.length} load lines`, items);
+});
+
+// ─────────────────────────────────────────────────────────────
+// Leaving columns out
+// × on a column's header leaves it out of the packing list (the preview and
+// the file) — Original Destination, a delivery address, whatever the client
+// sent that this PL does not need. "Show hidden" brings them all back.
+// ─────────────────────────────────────────────────────────────
+const showColsBtn = document.getElementById('btnShowCols');
+function syncShowCols() {
+  showColsBtn.hidden = !hiddenCols.size;
+  showColsBtn.textContent = `Show hidden (${hiddenCols.size})`;
+  showColsBtn.title = `Put back: ${[...hiddenCols].join(', ')}`;
+}
+document.getElementById('plPreviewData').addEventListener('click', e => {
+  const btn = e.target.closest('.pl-col-hide');
+  if (!btn) return;
+  const name = btn.dataset.col;
+  pushEditHistory();
+  hiddenCols = new Set([...hiddenCols, name]);
+  refreshPreview().then(() => showStatus(`Left “${escapeHtml(name)}” out of the packing list. `
+    + '“Show hidden” in the Loads bar, or Ctrl+Z, puts it back.', 'info'))
+    .catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
+});
+showColsBtn.addEventListener('click', () => {
+  if (!hiddenCols.size) return;
+  pushEditHistory();
+  const back = [...hiddenCols];
+  hiddenCols = new Set();
+  refreshPreview().then(() => showStatus(`Put back: ${back.map(escapeHtml).join(', ')}.`, 'info'))
+    .catch(err => { console.error(err); showStatus('Error: ' + err.message, 'error'); });
 });

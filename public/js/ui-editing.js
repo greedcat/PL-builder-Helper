@@ -9,10 +9,15 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
   headers.forEach(h => {
     const label = escapeHtml(h ?? '').replace(/\n/g, '<br>');
     // A column added by hand can be taken out again from its header.
+    // Any other column but the PL's own fields can be left out of the file.
+    const ROLE_COLS = ['Destination', 'Carton', 'FBA_ID', 'REF ID', 'JOB NO', 'Weight', 'CMB'];
     html += editKey === 'loads' && handCols.includes(h)
       ? `<th class="pl-hand-col">${label}<button type="button" class="pl-col-remove"`
         + ` data-col="${escapeHtml(h)}" title="Remove this column" aria-label="Remove column ${escapeHtml(h)}"></button></th>`
-      : `<th>${label}</th>`;
+      : editKey === 'loads' && h != null && !ROLE_COLS.includes(h) && !isCcnHeader(h)
+        ? `<th class="pl-hand-col">${label}<button type="button" class="pl-col-hide"`
+          + ` data-col="${escapeHtml(h)}" title="Leave this column out of the packing list" aria-label="Leave out column ${escapeHtml(h)}"></button></th>`
+        : `<th>${label}</th>`;
   });
   // Empty trailing column. It takes whatever width is left over, so the
   // real columns size to their content instead of one of them stretching
@@ -73,8 +78,9 @@ function editSnapshot() {
     summary: new Map(previewEdits.summary),
     renames: { ...destRenames },
     cols:    [...handCols],
-    extras:  extraSheets.map(x => ({ id: x.id, name: x.name, cells: new Map(x.cells) })),
+    extras:  extraSheets.map(x => ({ id: x.id, name: x.name, cells: new Map(x.cells), images: [...(x.images || [])] })),
     holds:   new Map(holdRows),
+    hidden:  new Set(hiddenCols),
   };
 }
 
@@ -91,7 +97,8 @@ function applySnapshot(s) {
   destRenames  = { ...s.renames };
   handCols     = [...s.cols];
   holdRows     = new Map(s.holds || []);
-  extraSheets  = s.extras.map(x => ({ id: x.id, name: x.name, cells: new Map(x.cells) }));
+  hiddenCols   = new Set(s.hidden || []);
+  extraSheets  = s.extras.map(x => ({ id: x.id, name: x.name, cells: new Map(x.cells), images: [...(x.images || [])] }));
   if (previewTab !== 'PL' && !extraSheets.some(x => x.id === previewTab)) previewTab = 'PL';
 }
 
@@ -116,6 +123,7 @@ function resetAllEdits() {
   clearDestRenames();
   handCols = [];
   holdRows = new Map();
+  hiddenCols = new Set();
   extraSheets = [];
   previewTab  = 'PL';
 }
@@ -135,7 +143,7 @@ function clearEditHistory() {
 function hasAnyChange() {
   return previewEdits.loads.size > 0 || previewEdits.summary.size > 0
     || Object.keys(destRenames).length > 0 || handCols.length > 0 || extraSheets.length > 0
-    || holdRows.size > 0;
+    || holdRows.size > 0 || hiddenCols.size > 0;
 }
 
 // The buttons live in the Loads band and are wired once, since the band is

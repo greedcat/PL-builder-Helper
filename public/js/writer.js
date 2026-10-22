@@ -387,6 +387,12 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
     for (const [c, len] of Object.entries(widths)) {
       ws.getColumn(Number(c) + 1).width = Math.min(Math.max(len * 1.15 + 2, 9), 60);
     }
+    // Pictures placed on the sheet, each with its top-left corner on the
+    // cell it was put at, at the size it was shown.
+    for (const im of sh.images || []) {
+      const id = wb.addImage({ base64: im.dataUrl, extension: im.ext });
+      ws.addImage(id, { tl: { col: im.at.c, row: im.at.r }, ext: { width: im.dw, height: im.dh } });
+    }
   });
 
   // ── Original sheets ───────────────────────────────────────

@@ -147,6 +147,7 @@ function setExcelFile(file, dt) {
   clearDestRenames();
   clearLearnQueue();
   handCols = [];
+  hiddenCols = new Set();
   extraSheets = [];
   previewTab  = 'PL';
   ccnOrder = [];
@@ -351,6 +352,7 @@ async function setActiveSheet(name) {
   clearDestRenames();
   clearLearnQueue();
   handCols = [];
+  hiddenCols = new Set();
   extraSheets = [];
   previewTab  = 'PL';
   hdrRowInput.value  = '';
@@ -386,6 +388,11 @@ let previewEdits = { loads: new Map(), summary: new Map() };
 // start empty, are filled like any other cell, and go into the file after
 // the sheet's own columns. A new file starts without them.
 let handCols = [];
+
+// Columns taken out of the packing list from the preview (× on a header):
+// they are read as usual but neither shown nor written. By name, so they
+// stay out when the range changes; a new file starts with none.
+let hiddenCols = new Set();
 
 // Blank sheets added under the preview for anything else the PL should
 // carry, each { id, name, cells: Map "<row>\u0000<col>" → value }, written
