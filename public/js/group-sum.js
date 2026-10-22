@@ -51,17 +51,30 @@
     fr.readAsArrayBuffer(file);
   }
 
-  // Cells copied in Excel arrive as tab-separated text: one sheet of it.
-  paste.addEventListener('paste', e => {
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-    if (!text || !text.includes('\t') && !text.includes('\n')) return;
-    e.preventDefault();
-    const rows = parseTsv(text);
-    if (!rows.length) return;
+  // A paste is read the way the PL builder reads one (shared/paste.js): a
+  // copied file, the cells as text, or the table some apps copy instead.
+  function loadClipboard(cd) {
+    const got = clipboardRows(cd);
+    if (got.file) { readFile(got.file); return; }
+    if (got.error) { say(got.error, 'error'); return; }
+    loadRows(got.rows);
+  }
+  function loadRows(rows) {
     wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Pasted');
     paste.value = '';
     loaded('Pasted from Excel');
+  }
+  paste.addEventListener('paste', e => { e.preventDefault(); loadClipboard(e.clipboardData); paste.blur(); });
+  // Typed or dropped text lands in the box without a paste event.
+  paste.addEventListener('change', () => { const rows = parseTsv(paste.value); if (hasCells(rows)) loadRows(rows); });
+  // Ctrl/⌘+V anywhere on the page, when not typing in a field.
+  document.addEventListener('paste', e => {
+    if (e.defaultPrevented || !e.clipboardData) return;
+    if (e.target && e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return;
+    if (!looksLikeTable(e.clipboardData)) return;
+    e.preventDefault();
+    loadClipboard(e.clipboardData);
   });
 
   function loaded(name) {
@@ -101,15 +114,19 @@
   const filled = v => v != null && String(v).trim() !== '';
   const lastFilled = r => { for (let i = (r || []).length - 1; i >= 0; i--) if (filled(r[i])) return i; return -1; };
 
-  // The header is the first row about as wide as the widest row (a title
-  // above it is one or two cells); the data runs to the last filled row.
+  // The table, found the way the PL builder finds it (detect.js): the header
+  // row, then the rows down to where the table ends — a run of blank rows,
+  // a totals line, the notes under it — not the last filled cell.
   function autoRange() {
-    const counts = raw.map(r => (r || []).filter(filled).length);
-    const widest = Math.max(...counts);
-    let r1 = counts.findIndex(n => n >= Math.max(2, Math.ceil(widest * 0.6)));
-    if (r1 < 0) r1 = 0;
-    let r2 = raw.length - 1;
-    while (r2 > r1 && !counts[r2]) r2--;
+    const cleaned = [], idx = [];
+    raw.forEach((r, i) => { if (r && r.some(filled)) { cleaned.push(r); idx.push(i); } });
+    let r1 = 0, r2 = Math.max(0, raw.length - 1);
+    if (cleaned.length) {
+      const h = detectHeader(cleaned);
+      const l = detectTableEnd(cleaned, h)[0];
+      r1 = idx[h] ?? 0;
+      r2 = idx[Math.max(l, h)] ?? r1;
+    }
     const hdr = raw[r1] || [];
     let c1 = hdr.findIndex(filled), c2 = lastFilled(hdr);
     if (c1 < 0) { c1 = 0; c2 = maxCols - 1; }

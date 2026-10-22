@@ -35,56 +35,12 @@ fileInput.addEventListener('change', () => { if (fileInput.files[0]) setExcelFil
 // copied into the output as its source sheet.
 const pasteBox = document.getElementById('pasteBox');
 
-// Some apps put only a formatted table on the clipboard, with no plain text
-// beside it — Numbers, WPS and some browser spreadsheets among them. Read
-// the table's cells straight from its HTML. A merged cell counts once, in
-// its top-left position, as it does in a plain-text copy.
-function rowsFromHtml(html) {
-  const doc   = new DOMParser().parseFromString(html, 'text/html');
-  const table = doc.querySelector('table');
-  if (!table) return [];
-  const grid  = [];
-  [...table.rows].forEach((tr, r) => {
-    grid[r] = grid[r] || [];
-    let c = 0;
-    for (const td of tr.cells) {
-      while (grid[r][c] !== undefined) c++;
-      td.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-      const text = td.textContent.replace(/\u00a0/g, ' ').replace(/[ \t]*\n[ \t]*/g, '\n').trim();
-      const rs = Math.max(1, td.rowSpan || 1), cs = Math.max(1, td.colSpan || 1);
-      for (let dr = 0; dr < rs; dr++) {
-        grid[r + dr] = grid[r + dr] || [];
-        for (let dc = 0; dc < cs; dc++) grid[r + dr][c + dc] = dr || dc ? null : pastedValue(text);
-      }
-      c += cs;
-    }
-  });
-  return grid.map(row => Array.from(row, v => (v === undefined ? null : v)));
-}
-
-const hasCells = rows => rows.some(r => r.some(v => v != null));
-
-// Everything a paste can carry, best source first: a copied .xlsx file,
-// tab-separated text, then an HTML table.
+// Everything a paste can carry, best source first (shared/paste.js).
 function loadClipboard(cd) {
-  const file = [...(cd.files || [])].find(f => /\.(xlsx|xls|xlsm|csv)$/i.test(f.name));
-  if (file) { setExcelFile(file, true); return; }
-
-  let rows = parseTsv(cd.getData('text/plain'));
-  if (!hasCells(rows) || rows.every(r => r.length < 2)) {
-    const fromHtml = rowsFromHtml(cd.getData('text/html'));
-    if (hasCells(fromHtml)) rows = fromHtml;
-  }
-  if (!hasCells(rows)) {
-    const kinds = [...(cd.types || [])].filter(t => t !== 'Files');
-    const what  = cd.files && cd.files.length ? 'a file that is not a spreadsheet'
-                : kinds.length ? kinds.join(', ') : 'nothing';
-    showStatus(`Nothing to read in what was pasted (the clipboard held ${escapeHtml(what)}). `
-             + 'Select the cells in Excel, press Ctrl+C / ⌘C, then paste here — '
-             + 'or drop the Excel file in the box above.', 'error');
-    return;
-  }
-  loadPastedRows(rows);
+  const got = clipboardRows(cd);
+  if (got.file) { setExcelFile(got.file, true); return; }
+  if (got.error) { showStatus(got.error, 'error'); return; }
+  loadPastedRows(got.rows);
 }
 
 function loadPastedRows(rows) {
@@ -117,10 +73,7 @@ document.addEventListener('paste', e => {
   if (t && t.closest && t.closest('input, textarea, [contenteditable], .pl-table-wrap')) return;
   if (previewSec.style.display === 'block' && anchorCell()) return;
   const cd = e.clipboardData;
-  const looksLikeTable = (cd.files && cd.files.length)
-    || (cd.getData('text/plain') || '').includes('\t')
-    || /<table/i.test(cd.getData('text/html') || '');
-  if (!looksLikeTable) return;                 // a single word isn't a table
+  if (!looksLikeTable(cd)) return;             // a single word isn't a table
   e.preventDefault();
   loadClipboard(cd);
 });

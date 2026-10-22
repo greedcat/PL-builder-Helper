@@ -22,3 +22,19 @@ test('pastedValue turns figures into numbers and keeps codes as text', () => {
   assert.equal(pastedValue('8JN5TTZO'), '8JN5TTZO');
   assert.equal(pastedValue('  '), null);
 });
+
+const { clipboardRows, looksLikeTable } = require('../public/js/shared/paste.js');
+const clip = (text, extra = {}) => ({ files: [], types: ['text/plain'], getData: t => (t === 'text/plain' ? text : ''), ...extra });
+
+test('clipboardRows reads copied cells as rows, numbers as numbers', () => {
+  assert.deepEqual(clipboardRows(clip('Dest\tCtn\nYYZ9\t12\n')).rows, [['Dest', 'Ctn'], ['YYZ9', 12]]);
+});
+
+test('clipboardRows says what was on the clipboard when there are no cells', () => {
+  assert.match(clipboardRows(clip('')).error, /Nothing to read/);
+});
+
+test('looksLikeTable tells copied cells from a word', () => {
+  assert.equal(looksLikeTable(clip('a\tb')), true);
+  assert.equal(looksLikeTable(clip('hello')), false);
+});
