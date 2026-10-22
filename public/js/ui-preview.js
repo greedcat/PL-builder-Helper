@@ -485,16 +485,6 @@ async function buildPackingList({ download }) {
     showStatus('Reading file…', 'info', true);
     const { wbIn, modH, modR, sumH, sumR, ccnSections } = await runPipeline(file);
 
-    // The client's job number is required on every PL: a column of the
-    // sheet picked as Job No, or one added in the preview named JOB NO.
-    if (!modH.includes('JOB NO')) {
-      setSteps({ download: ['warn', 'Pick the Job No column'] });
-      showStatus('The Job No column (the client\'s job number) is required. Pick its column for <strong>Job No</strong> in '
-        + '<strong>Column mapping</strong> above the grid — "Remember this header" then finds it on its own. '
-        + 'If the sheet has none, add a column named <strong>JOB NO</strong> in the preview with + Column and type it in.', 'error');
-      return;
-    }
-
     showStatus('Building Excel file…', 'info', true);
     const out = await writePackingList(modH, modR, sumH, sumR, cName, containerName, wbIn,
                                        outName, readFileNo(),

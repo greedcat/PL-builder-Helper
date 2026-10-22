@@ -11,8 +11,8 @@ const PL_ROLES = [
   { role: 'REF ID',      cls: 'po',     label: 'REF ID',      color: '#db2777' },
   { role: 'Weight',      cls: 'weight', label: 'Weight',      color: '#7c3aed' },
   { role: 'CMB',         cls: 'cbm',    label: 'CBM',         color: '#0891b2' },
-  // The client's job number: required, see buildPackingList.
-  { role: 'JOB NO',      cls: 'job',    label: 'Job No',      color: '#0f766e' },
+  // The client's job number: used when the sheet has one, never required.
+  { role: 'JOB NO',      cls: 'job',    label: 'Job No',      color: '#0f766e', optional: true },
 ];
 
 // Works out what the pipeline will make of each column in the selected range.
@@ -71,7 +71,7 @@ function classifyColumns(data, range) {
     }
   }
 
-  const missing = PL_ROLES.filter(r => !matchDict[r.role]).map(r => r.label);
+  const missing = PL_ROLES.filter(r => !r.optional && !matchDict[r.role]).map(r => r.label);
   // Columns the user can choose from, in sheet order.
   const choices = [];
   for (let c = firstCol; c <= lastCol; c++) {
@@ -125,7 +125,8 @@ function renderSheetLegend(info, range, data) {
       .map(c => `<option value="${c.col}"${c.col === abs ? ' selected' : ''}>${c.letter} — ${escapeHtml(String(c.name))}</option>`))
       .join('');
     let how, howCls = '';
-    if (abs == null) { how = picked(r.role) ? 'Set to none' : 'Not found — pick its column'; howCls = ' pl-map-bad'; }
+    if (abs == null && r.optional) how = picked(r.role) ? 'Set to none' : 'Not in this sheet (optional)';
+    else if (abs == null) { how = picked(r.role) ? 'Set to none' : 'Not found — pick its column'; howCls = ' pl-map-bad'; }
     else if (picked(r.role)) how = 'Picked by you';
     else how = listKey ? 'Found by its header' : 'Found by its values';
     let next = '<span class="pl-map-muted">—</span>';
@@ -138,7 +139,7 @@ function renderSheetLegend(info, range, data) {
       next = '<span class="pl-map-muted">Found from the values each time</span>';
     }
     return `
-      <tr${abs == null ? ' class="pl-map-missing"' : ''}>
+      <tr${abs == null && !r.optional ? ' class="pl-map-missing"' : ''}>
         <th scope="row"><i class="pl-dot" style="background:${abs != null ? r.color : '#cbd5e1'}"></i>${escapeHtml(r.label)}</th>
         <td><select class="pl-map-select" data-role="${escapeHtml(r.role)}" aria-label="Sheet column for ${escapeHtml(r.label)}">${options}</select>
           ${picked(r.role) ? `<button type="button" class="pl-map-auto" data-auto="${escapeHtml(r.role)}" title="Let the app find this column again">↺ automatic</button>` : ''}</td>

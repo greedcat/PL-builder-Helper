@@ -225,7 +225,7 @@ function updateLoadStatus(data) {
   if (nData < 1) {
     setSteps({ table: ['error', 'No data rows found'] });
     showStatus('Sheet loaded, but no data rows were found below the header. Drag the box\'s corners on the grid, or highlight the table and right-click → Use as data range.', 'error');
-  } else if (missing.length === PL_ROLES.length) {
+  } else if (missing.length === PL_ROLES.filter(r => !r.optional).length) {
     setSteps({ table: ['error', 'No columns recognised'] });
     showStatus('Sheet loaded, but no columns were recognised. The header row is probably wrong — highlight the table on the grid and right-click → Use as data range.', 'error');
   } else if (missing.length === 1 && missing[0] === 'Destination') {
