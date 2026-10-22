@@ -229,7 +229,11 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
   // Width units are ~one character of the 11pt default font, so scale by
   // font size and count CJK / full-width characters as two.
   const CJK       = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]/;
-  const dispLen   = str => [...str].reduce((n, ch) => n + (CJK.test(ch) ? 2 : 1), 0);
+  // Widths in "average characters". Times New Roman capitals are about a
+  // third wider than that, so an FBA id or a container number (all
+  // capitals and digits) counted as plain characters ran edge to edge.
+  const charW     = ch => (CJK.test(ch) ? 2 : /[A-Z]/.test(ch) ? 1.3 : /[0-9]/.test(ch) ? 1.05 : /[mwMW@%]/.test(ch) ? 1.4 : 1);
+  const dispLen   = str => [...str].reduce((n, ch) => n + charW(ch), 0);
   // Longest run Excel cannot break: whitespace and CJK characters are break points.
   const longestRun = str => Math.max(0, ...str.split(new RegExp(`[\\s${CJK.source.slice(1, -1)}]+`)).map(dispLen));
   const measure   = (r, c) => {
@@ -244,7 +248,7 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
       : Math.max(...lines.map(dispLen));
     // The trailing margin is what keeps a value off the cell border. At 2 a
     // long FBA id ran edge to edge and the sheet read as a solid block.
-    return need * (size / 11) * 1.1 + 4.5;
+    return need * (size / 11) * 1.1 + 6;
   };
   for (let c = 1; c <= sectionCols; c++) {
     let w = 12;
@@ -312,12 +316,18 @@ async function writePackingList(dataHeaders, dataRows, sumHeaders, sumRows, cNam
       const v = cl.value;
       if (v == null || v === '') continue;
       const w = wsPL.getColumn(c).width || 12;
-      const need = dispLen(String(v)) * (size / 11) * 1.1;
-      if (need <= w) continue;
+      // Each line the cell already has (an address, a name, a phone on
+      // lines of their own) counts, and each wraps on its own; counting the
+      // characters alone left such a row short and clipped top and bottom.
+      const parts = String(v).split('\n');
+      const room  = Math.max(w - 2, 4);
+      const n = parts.reduce((sum, part) => sum + Math.max(1, Math.ceil(dispLen(part) * (size / 11) * 1.1 / room)), 0);
+      if (n <= 1) continue;
       cl.alignment = { ...cl.alignment, wrapText: true };
-      lines = Math.max(lines, Math.min(12, Math.ceil(need / Math.max(w - 1, 4))));
+      lines = Math.max(lines, Math.min(16, n));
     }
-    if (lines > 1) wsPL.getRow(r).height = Math.min(409, Math.max(base, lines * size * 1.5));
+    // A line of 16pt text is about 19pt high; with room above and below.
+    if (lines > 1) wsPL.getRow(r).height = Math.min(409, Math.max(base, lines * size * 1.35 + 10));
   };
   for (const r of loadDataRows) growRow(r, visH.length, 16, 30);
   for (const r of sumDataRows)  growRow(r, sumCols, 16, 85);
