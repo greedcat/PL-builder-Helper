@@ -3,80 +3,95 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Excel Group & Sum</title>
+<title>Excel Group &amp; Sum</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="css/packing-list.css">
 <link rel="stylesheet" href="css/group-sum.css">
 </head>
 <body>
-<div class="container">
-  <h1>Excel — Group By &amp; Sum</h1>
+<div class="card gs-card">
+  <h1>Excel Group &amp; Sum</h1>
+  <p class="subtitle">Load a sheet, choose its range, group by columns and add up the numbers.</p>
 
-  <!-- ── Upload card ── -->
-  <div class="card">
-    <div class="drop-zone" id="drop-zone">
-      <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
-      <div class="icon">📊</div>
-      <p><strong>Click to upload</strong> or drag &amp; drop your Excel / CSV file</p>
-      <small>.xlsx · .xls · .csv</small>
-    </div>
-    <div id="status"></div>
-
-    <!-- controls (hidden until file loaded) -->
-    <div class="controls" id="controls" style="display:none;">
-      <div class="field" id="sheet-select-wrap">
-        <label for="sheet-select">Sheet</label>
-        <select id="sheet-select"></select>
+  <!-- 1. Source -->
+  <div class="form-group">
+    <label>Source</label>
+    <div class="pl-source-row">
+      <div class="drop-zone" id="gsDrop">
+        <div class="drop-icon">📂</div>
+        <div class="drop-text"><strong>Click to browse</strong> or drag &amp; drop an Excel / CSV file</div>
+        <div id="gsBadge" style="display:none"></div>
+        <input type="file" id="gsFile" accept=".xlsx,.xls,.csv">
       </div>
+      <textarea id="gsPaste" class="pl-paste-box" rows="6" spellcheck="false"
+        placeholder="…or copy cells in Excel (header row included) and paste them here — Ctrl+V / ⌘V"></textarea>
+    </div>
+  </div>
 
-      <!-- multi-column group-by -->
-      <div class="field">
-        <label>Group By Columns</label>
-        <div class="tag-input-wrap" id="group-tags">
-          <select class="tag-picker" id="group-picker">
-            <option value="">+ add column</option>
-          </select>
+  <div id="gsStatus" class="gs-status" hidden></div>
+
+  <!-- 2. Range -->
+  <section class="gs-section" id="gsRangeSec" hidden>
+    <div class="gs-section-head">
+      <h2>Range</h2>
+      <span class="pl-range-ref" id="gsRef"></span>
+      <span class="gs-explain" id="gsExplain"></span>
+      <span class="gs-grow"></span>
+      <span class="pl-sheet-pick" id="gsSheetWrap" hidden>Sheet <select id="gsSheet"></select></span>
+      <label class="gs-num">Header row <input type="number" id="gsHdr" min="1"></label>
+      <label class="gs-num">Last row <input type="number" id="gsLast" min="1"></label>
+      <button type="button" class="pl-range-reset" id="gsAuto">Find automatically</button>
+    </div>
+    <p class="pl-range-hint">Drag the blue corners to change the range — its top row is the header.
+      Or drag across cells to highlight them and right-click → <strong>Use as range</strong>.</p>
+    <div class="pl-table-wrap gs-grid" id="gsGrid"></div>
+  </section>
+
+  <!-- 3. Group and sum -->
+  <section class="gs-section" id="gsSetupSec" hidden>
+    <div class="gs-section-head"><h2>Group &amp; sum</h2></div>
+    <div class="gs-setup">
+      <div class="gs-field">
+        <span class="gs-label">Group by</span>
+        <div class="gs-tags" id="gsGroupTags">
+          <select id="gsGroupPick" aria-label="Add a column to group by"><option value="">+ add column</option></select>
         </div>
+        <span class="gs-hint">In this order. Pick none to total the whole range.</span>
       </div>
-
-      <div class="field">
-        <label for="sum-col">Sum Column</label>
-        <select id="sum-col"><option value="">All numeric</option></select>
+      <div class="gs-field">
+        <span class="gs-label">Add up</span>
+        <div class="gs-sums" id="gsSums"></div>
       </div>
+      <div class="gs-field gs-opts">
+        <label><input type="checkbox" id="gsCount" checked> Count the rows in each group</label>
+        <label><input type="checkbox" id="gsFill" checked> A blank group cell takes the value above it</label>
+        <label><input type="checkbox" id="gsSkipTotals" checked> Skip rows that say Total / 合计 / 小计</label>
+      </div>
+    </div>
+  </section>
 
-      <button id="run-btn" disabled>Run</button>
+  <!-- 4. Result -->
+  <section class="gs-section" id="gsResultSec" hidden>
+    <div class="gs-section-head">
+      <h2 id="gsResultTitle">Result</h2>
+      <span class="gs-badge" id="gsResultCount"></span>
+      <span class="gs-grow"></span>
+      <button type="button" class="btn-secondary gs-act" id="gsCopy">Copy</button>
+      <button type="button" class="btn-secondary gs-act" id="gsCsv">CSV</button>
+      <button type="button" class="btn gs-act" id="gsXlsx">Download .xlsx</button>
     </div>
-  </div>
-
-  <!-- ── Raw data preview (shown after upload) ── -->
-  <div class="card" id="preview-card" style="display:none;">
-    <div class="section-header">
-      <strong>Data Preview</strong>
-      <span class="badge" id="preview-count"></span>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead id="preview-head"></thead>
-        <tbody id="preview-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- ── Group-by result ── -->
-  <div class="card" id="result-card" style="display:none;">
-    <div class="section-header">
-      <strong id="result-title">Results</strong>
-      <span class="badge" id="row-count"></span>
-      <button id="export-btn" style="margin-left:auto; background:#28a745; padding:7px 16px;">⬇ Export CSV</button>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead id="result-head"></thead>
-        <tbody id="result-body"></tbody>
-      </table>
-    </div>
-  </div>
+    <div class="pl-table-wrap gs-result" id="gsResult"></div>
+  </section>
 </div>
 
+<!-- Count / Sum / Average of what is highlighted in the grid -->
+<div id="plQuickSum" class="pl-quick-sum" role="status" aria-live="polite" hidden></div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/shared/paste.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/quick-sum.js"></script>
 <script src="js/group-sum.js"></script>
 </body>
 </html>
