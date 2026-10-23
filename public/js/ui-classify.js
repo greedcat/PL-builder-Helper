@@ -13,6 +13,8 @@ const PL_ROLES = [
   { role: 'CMB',         cls: 'cbm',    label: 'CBM',         color: '#0891b2' },
   // The client's job number: used when the sheet has one, never required.
   { role: 'JOB NO',      cls: 'job',    label: 'Job No',      color: '#0f766e', optional: true },
+  // The pieces (units) in a line: used when the sheet has them, never required.
+  { role: 'PCS',         cls: 'pcs',    label: 'PCS',         color: '#ea580c', optional: true },
 ];
 
 // Works out what the pipeline will make of each column in the selected range.
@@ -33,6 +35,7 @@ function classifyColumns(data, range) {
     'Weight':      detectWeightColumn(headers),
     'CMB':         detectCBMColumn(headers),
     'JOB NO':      detectJobColumn(headers),
+    'PCS':         detectPcsColumn(headers, detectCartonColumn(headers)),
   };
   const matchDict = { ...autoDict };
   for (const role of Object.keys(matchDict)) {
@@ -381,7 +384,7 @@ function reapply() {
 // rather than saved silently.
 // ─────────────────────────────────────────────────────────────
 const ROLE_KEYWORD_LIST = { Carton: 'CARTON_KEYWORDS', Weight: 'WEIGHT_KEYWORDS', CMB: 'CBM_KEYWORDS',
-  'JOB NO': 'JOB_KEYWORDS' };
+  'JOB NO': 'JOB_KEYWORDS', PCS: 'PCS_KEYWORDS' };
 
 /* Wordings the user has asked the app to learn, held until the packing
    list is actually written. Nothing reaches the shared lists on the

@@ -75,6 +75,13 @@ function detectJobColumn(headers) {
   return headers.find(h => h && (/^job/.test(normJob(h)) || normJob(h).includes('分货号'))) || null;
 }
 
+// PCS: the pieces in a line, by its header on PCS_KEYWORDS — never the
+// column the cartons were read from (some sheets word both alike).
+function detectPcsColumn(headers, cartonCol = null) {
+  const kw = new Set(PCS_KEYWORDS.map(normJob).filter(Boolean));
+  return headers.find(h => h && h !== cartonCol && kw.has(normJob(h))) || null;
+}
+
 function detectCartonColumn(headers) {
   for (const col of headers) {
     if (!col) continue;

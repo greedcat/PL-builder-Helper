@@ -906,6 +906,12 @@ input[type="number"]:focus {
 .pl-grid-colhdr.pl-k-cbm .pl-th-role {
   color: #0891b2;
 }
+.pl-grid-colhdr.pl-k-pcs {
+  border-bottom-color: #ea580c;
+}
+.pl-grid-colhdr.pl-k-pcs .pl-th-role {
+  color: #ea580c;
+}
 .pl-grid-colhdr.pl-k-job {
   border-bottom-color: #0f766e;
 }

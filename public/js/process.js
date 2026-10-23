@@ -14,6 +14,7 @@ function readExcel(headers, rows, overrides = {}, dropIdx = new Set(), mergedMas
     'JOB NO':      detectJobColumn(headers),
     'Weight':      detectWeightColumn(headers),
     'CMB':         detectCBMColumn(headers),
+    'PCS':         detectPcsColumn(headers, detectCartonColumn(headers)),
   };
   for (const role of Object.keys(matchDict)) {
     if (Object.prototype.hasOwnProperty.call(overrides, role)) matchDict[role] = overrides[role];
@@ -25,7 +26,7 @@ function readExcel(headers, rows, overrides = {}, dropIdx = new Set(), mergedMas
   // still reads on every line it covers. Deciding this by the look of the
   // value instead would take a mark like 260800665 for a quantity.
   if (mergedMask) {
-    const SUMMED = ['Carton', 'Weight', 'CMB'];
+    const SUMMED = ['Carton', 'PCS', 'Weight', 'CMB'];
     const cols = SUMMED.map(r => headers.indexOf(matchDict[r])).filter(i => i >= 0);
     if (cols.length) {
       rows = rows.map((row, ri) => {
@@ -39,7 +40,7 @@ function readExcel(headers, rows, overrides = {}, dropIdx = new Set(), mergedMas
   }
 
   // Use indices to preserve null/empty-header columns
-  const ROLE_ORDER = ['Destination', 'Carton', 'FBA_ID', 'REF ID', 'JOB NO', 'Weight', 'CMB'];
+  const ROLE_ORDER = ['Destination', 'Carton', 'PCS', 'FBA_ID', 'REF ID', 'JOB NO', 'Weight', 'CMB'];
   const mainNames  = ROLE_ORDER.map(r => matchDict[r]).filter(Boolean);
   const mainIdx   = mainNames.map(h => headers.indexOf(h));
   const otherIdx  = headers

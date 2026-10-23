@@ -23,6 +23,11 @@ let WEIGHT_KEYWORDS = [
 let JOB_KEYWORDS = [
   'job no','job number','job#','job','分货号','job no(分货号)','job=外箱唛头'
 ];
+// PCS: the pieces (units) in a line — optional, used when the sheet has it
+// (user, 2026-10-23). Headers compared like the job number's.
+let PCS_KEYWORDS = [
+  'pcs','pc','pieces','piece','qty','quantity','units','total pcs','总件数','产品数量','sku数量','单品数量','pcs/件'
+];
 let NO_NEED_COL = ['序号','战略客户标记','派送邮编','柜号','是否FBA','派送方式','渠道名'];
 
 const CFG_SECTIONS = [
@@ -31,6 +36,7 @@ const CFG_SECTIONS = [
   { key: 'CBM_KEYWORDS',    label: 'CBM_KEYWORDS',    color: '#fef9c3', text: '#854d0e' },
   { key: 'WEIGHT_KEYWORDS', label: 'WEIGHT_KEYWORDS', color: '#fce7f3', text: '#9d174d' },
   { key: 'JOB_KEYWORDS',    label: 'JOB_KEYWORDS',    color: '#ccfbf1', text: '#115e59' },
+  { key: 'PCS_KEYWORDS',    label: 'PCS_KEYWORDS',    color: '#ffedd5', text: '#9a3412' },
   { key: 'NO_NEED_COL',     label: 'NO_NEED_COL',     color: '#f1f5f9', text: '#475569' },
 ];
 
@@ -41,6 +47,7 @@ function getCfgList(key) {
     case 'CBM_KEYWORDS':    return CBM_KEYWORDS;
     case 'WEIGHT_KEYWORDS': return WEIGHT_KEYWORDS;
     case 'JOB_KEYWORDS':    return JOB_KEYWORDS;
+    case 'PCS_KEYWORDS':    return PCS_KEYWORDS;
     case 'NO_NEED_COL':     return NO_NEED_COL;
     default: return null;
   }
@@ -53,6 +60,7 @@ function setCfgList(key, values) {
     case 'CBM_KEYWORDS':    CBM_KEYWORDS    = values; break;
     case 'WEIGHT_KEYWORDS': WEIGHT_KEYWORDS = values; break;
     case 'JOB_KEYWORDS':    JOB_KEYWORDS    = values; break;
+    case 'PCS_KEYWORDS':    PCS_KEYWORDS    = values; break;
     case 'NO_NEED_COL':     NO_NEED_COL     = values; break;
   }
 }

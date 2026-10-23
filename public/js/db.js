@@ -39,7 +39,7 @@ async function loadConfigFromDB() {
 // five in DB_FIELDS), kept by this app's own server instead. Where that
 // server has no database yet, a list is kept in this browser, so what was
 // saved still works here, and is merged in once the server has one.
-const OWN_FIELDS = ['JOB_KEYWORDS'];
+const OWN_FIELDS = ['JOB_KEYWORDS', 'PCS_KEYWORDS'];
 const ownLocalKey = key => `pl-builder.${key}`;
 
 function readLocalList(key) {

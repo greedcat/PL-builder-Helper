@@ -10,7 +10,7 @@ function tableHtml(headers, rows, { splitAfter = null, editKey = null, rowIds = 
     const label = escapeHtml(h ?? '').replace(/\n/g, '<br>');
     // A column added by hand can be taken out again from its header.
     // Any other column but the PL's own fields can be left out of the file.
-    const ROLE_COLS = ['Destination', 'Carton', 'FBA_ID', 'REF ID', 'JOB NO', 'Weight', 'CMB'];
+    const ROLE_COLS = ['Destination', 'Carton', 'PCS', 'FBA_ID', 'REF ID', 'JOB NO', 'Weight', 'CMB'];
     html += editKey === 'loads' && handCols.includes(h)
       ? `<th class="pl-hand-col">${label}<button type="button" class="pl-col-remove"`
         + ` data-col="${escapeHtml(h)}" title="Remove this column" aria-label="Remove column ${escapeHtml(h)}"></button></th>`

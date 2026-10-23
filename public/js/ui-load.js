@@ -527,7 +527,7 @@ function dropTypedDestinations() {
 function withCcnColumn(headers, rows) {
   let ci = headers.findIndex(isCcnHeader);
   if (ci < 0) {
-    const ROLES = ['Destination', 'Carton', 'FBA_ID', 'REF ID', 'Weight', 'CMB'];
+    const ROLES = ['Destination', 'Carton', 'PCS', 'FBA_ID', 'REF ID', 'Weight', 'CMB'];
     ci = headers.reduce((at, h, i) => (ROLES.includes(h) ? i + 1 : at), 0);
     headers = [...headers.slice(0, ci), 'CCN', ...headers.slice(ci)];
     rows    = rows.map(r => [...r.slice(0, ci), null, ...r.slice(ci)]);
