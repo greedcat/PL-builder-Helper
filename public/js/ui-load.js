@@ -40,12 +40,16 @@ function loadClipboard(cd) {
   const got = clipboardRows(cd);
   if (got.file) { setExcelFile(got.file, true); return; }
   if (got.error) { showStatus(got.error, 'error'); return; }
-  loadPastedRows(got.rows);
+  loadPastedRows(got.rows, got.merges);
 }
 
-function loadPastedRows(rows) {
+// The pasted cells as a sheet; Excel's merged cells (from its HTML copy)
+// kept as merges, so the original page shows them merged as for a file.
+function loadPastedRows(rows, merges) {
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Source');
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  if (merges && merges.length) ws['!merges'] = merges;
+  XLSX.utils.book_append_sheet(wb, ws, 'Source');
   const buf  = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   const file = new File([buf], 'Pasted from Excel.xlsx',
     { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -690,6 +694,10 @@ async function runPipeline(file) {
     const d = modH.indexOf('Destination'), id = modH.indexOf('_Row');
     if (d >= 0 && id >= 0) for (const r of modR0) sheetDest.set(String(r[id]), r[d]);
   }
+  // Each line's place before any change made here: a rename, a typed or
+  // held destination keeps the line where it was instead of moving it.
+  const placeOf = new Map();
+  { const id = modH.indexOf('_Row'); if (id >= 0) modR0.forEach((r, i) => placeOf.set(String(r[id]), i)); }
 
   const modR = applyEdits(modH, modR0, previewEdits.loads);
 
@@ -742,16 +750,6 @@ async function runPipeline(file) {
     // Held lines get their -HOLD names now, after any short name, so a held
     // PA line reads "PA - 1399 Kennedy Rd-HOLD".
     const held = holdNames(modH, modR, destIdx);
-    // A destination that was changed by hand — renamed here, typed over in
-    // the preview or held — goes to the end of the loads, where it can be
-    // checked against the paperwork instead of being lost among the codes
-    // it now sorts next to.
-    const destChanged = (row) => {
-      if (destByHand) return isEmpty(row[destIdx]);   // not typed yet: last
-      if (rowIdIdx < 0) return false;
-      const id = String(row[rowIdIdx]);
-      return renamed.has(id) || held.has(id) || previewEdits.loads.has(`${id}\u0000Destination`);
-    };
     const changedLines = rowIdIdx < 0 ? [] : modR.filter(r => {
       const was = sheetDest.get(String(r[rowIdIdx]));
       return !isEmpty(was) && String(was).trim() !== String(r[destIdx] ?? '').trim();
@@ -769,13 +767,16 @@ async function runPipeline(file) {
         r[oi] = sheetDest.get(String(r[rowIdIdx]));
       }
     }
-    // Renaming can reorder groups, so sort again by destination.
-    modR.sort((a, b) => {
-      const ca = destChanged(a) ? 1 : 0, cb = destChanged(b) ? 1 : 0;
-      if (ca !== cb) return ca - cb;                 // changed ones last
-      const x = String(a[destIdx] ?? ''), y = String(b[destIdx] ?? '');
-      return x < y ? -1 : x > y ? 1 : 0;
-    });
+    // A changed destination stays in its place: the lines keep the order
+    // they had before any rename (only lines whose destination is still to
+    // be typed by hand go last). Lines without a place keep their order.
+    if (rowIdIdx >= 0) {
+      const at = (r) => { const p = placeOf.get(String(r[rowIdIdx])); return p === undefined ? Infinity : p; };
+      modR.sort((a, b) => {
+        if (destByHand) { const ea = isEmpty(a[destIdx]) ? 1 : 0, eb = isEmpty(b[destIdx]) ? 1 : 0; if (ea !== eb) return ea - eb; }
+        return at(a) - at(b);
+      });
+    }
   }
 
   const { headers: sumH, rows: sumR0 } = getSummaryDF(modH, modR);
