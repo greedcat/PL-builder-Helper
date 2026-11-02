@@ -124,6 +124,10 @@ It is loaded in the page, and Node tests can `require` it, the same pattern as `
     - the CCN order is 1870, 0097, 0099;
     - the check is 1060 + 17 = 1077 ok;
     - in bond = true.
+- More fixtures, from the history test, each built from its table parts only:
+  - **CMAU8584800:** private addresses (`HWC` → Private Address 1 = 360, Private Address 2 = 124). It also has a PL that covers another job through 箱唛 `EJFBTOR26S1796QM` (1818 = 119, with 1796 not added again).
+  - **TLLU4625944:** a row whose cartons equal the sum above it is **not** the total row. The PL reads 486 cartons.
+  - **TCKU9024600:** other containers' loading lists, PLs and EMFs in the same drop are ignored.
 - Existing tests still pass.
 - Browser check: drop the CIMU files on the local server.
   - The preview should match the correct PL's rows and merges.
