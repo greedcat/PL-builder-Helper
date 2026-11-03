@@ -1,6 +1,6 @@
 # Cartons → shipments → loads: design
 
-Date: 2026-11-03. Status: structure approved in chat; waiting for review of this written spec.
+Date: 2026-11-03. Status: structure approved. Its Flow section and PL-export lines are replaced by 2026-11-03-build-space-design.md; Records, Bonded or general, Header names and Evidence still hold.
 
 This spec supersedes `2026-11-02-pl-from-emails-design.md`. That spec built the PL in the browser from dropped files. The user then changed the flow to **customer files → records in the system → PL export**. The reading rules it learned (header detection, merges, total rows, private addresses, covered jobs) carry over unchanged.
 
