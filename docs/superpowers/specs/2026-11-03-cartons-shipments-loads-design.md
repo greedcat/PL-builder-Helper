@@ -23,6 +23,13 @@ The FBA app's load view and the PL read the same records, so they cannot disagre
 - Estimated skids keep the builder's rule `ceil(CBM/1.7 − 0.05)`.
 - Decisions made in email text (self pick-up, relabel, HOLD) are applied by ops in the review screen, not read automatically.
 
+## Where it is built (user, 2026-11-03)
+- **Neither the live database nor the working test copy is touched.**
+- Everything is built and tested on a **separate local database, `fba_cartons`**:
+  - it is a dump/restore copy of `fba_test` (2,385 containers / 11,024 loads at copy time);
+  - the new tables and columns are added only there.
+- Moving to the online database happens only after the whole thing is done, tested, and the user says so.
+
 ## Bonded or general
 - **Bonded:** the file no. contains `-SUF-` (e.g. `2018-SUF-26063`), or the BD record has `if_bonded`. Loads are per **CCN# × destination**. The load file is the customer PL(s) (派送资料 / 清关资料), plus the 拼箱配载清单 and the EMF CLOSE PDFs. The rules are in the superseded spec, "Components", and were tested on 13 containers.
 - **General:** loads are per **destination**. The load file is **one Excel file from the agent or customer**, found by its **content** (FBA IDs + Amazon FC codes + cartons), never by its name. Names seen: 派送指引, 派送指示, 货物明细, 出库, 操作指令, 分货明细, FBA TRACKING REPORT, `<container>--<ctns>.xls`. The 清关资料 is **not** the load file for general containers: it has no FBA IDs. It was tested on 11 containers from 11 clients: 9 had the file in the archive and 2 did not.
