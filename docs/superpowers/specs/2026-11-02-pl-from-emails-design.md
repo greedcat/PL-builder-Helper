@@ -1,6 +1,6 @@
 # PL from email attachments: design
 
-Date: 2026-11-02. Status: approved in chat; updated after a test on 13 past containers (see "History test"); waiting for review of this written spec.
+Date: 2026-11-02. Status: SUPERSEDED by 2026-11-03-cartons-shipments-loads-design.md (the user moved the flow to customer files → system records → PL export). Its reading rules carry over.
 
 ## Goal
 
