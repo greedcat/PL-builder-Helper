@@ -1,25 +1,32 @@
-# Cartons → Shipments → Loads, Part 1 (records + reader, local only) Implementation Plan
+# Build Space, Part 1 (records, reader, Build page: Files + Records; local only) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** For one container, the customer's load file is read into load → shipment → carton → carton item records in the local `fba_cartons` database, and shown read-only in a page of the FBA app.
+**Goal:** In the FBA app's new **Build** page, ops pick a container from the to-do list, confirm its load file(s) from the email archive, read them into load → shipment → carton → item records in the local `fba_cartons` database, then review, move, split, edit and confirm those records.
 
 **Architecture:**
 - Pure reader modules in `backend/lib/` turn sheets (arrays of rows plus merges) into a neutral `Parsed` structure. They have no database and no I/O.
 - An import service writes `Parsed` into the new tables beside the existing `shipments` (load) table, and rolls the totals up.
-- A small route and a static page show the result.
+- Build routes list containers to build, fetch attachments through the existing mail-archive client (`workerFetch`), read the confirmed files, and apply moves and edits (all logged in `edit_history`).
+- The Build page has three parts: the to-do list, ① Files and ② Records.
 - A regression script runs the reader over the 24 real containers from the history test.
 
-Part 2 (a later plan) covers: moving shipments and cartons between loads (HOLD / relabel / self pick-up), the PL export, starting automatically when a container email arrives, and the move online.
+Part 2 (a later plan) covers: ③ PL (preview, export with ExcelJS through the PL builder's writer logic, save to the SharePoint test folder, "PL out of date"), the PL check against saved PLs, and the move online.
 
 **Tech Stack:** Node ≥ 22.12 ESM (`.mjs`), `node:test`, the app's `db` (Postgres via `DATABASE_URL`, SQLite in tests), and the app's zero-dependency `readXlsxSheets`.
 
-**Spec:** `docs/superpowers/specs/2026-11-03-cartons-shipments-loads-design.md` (PL-builder-Helper repo). Read it first. The code goes in the **FBA_DATABASE** repo.
+**Spec:** `docs/superpowers/specs/2026-11-03-build-space-design.md`, plus the parts of `docs/superpowers/specs/2026-11-03-cartons-shipments-loads-design.md` it keeps (Records, Bonded or general, Header names, Evidence). Both are in the PL-builder-Helper repo; read both first. The code goes in the **FBA_DATABASE** repo.
 
 ## Global Constraints
 
 - **Never touch the live database or `fba_test`.** Every run uses `DATABASE_URL=postgres:///fba_cartons` (the local copy), or the SQLite temp DB in tests.
-- **Work in a new git worktree** of FBA_DATABASE, branch `cartons-shipments-loads`, cut from `main`. The main checkout is on `invoices-truck-view` with someone's uncommitted work: leave it alone. Do not push without the user saying so.
+- **Work in a new git worktree** of FBA_DATABASE, branch `cartons-shipments-loads`, cut from **`release-was-hold`**. That is the live line, with the mail-archive client; `main` is two commits old. The main checkout is on `invoices-truck-view` with someone's uncommitted work: leave it alone. Do not push without the user saying so.
+- **Mail archive:** read only, through `workerFetch(path, { att })` in `backend/app/mail-archive.mjs`:
+  - `GET /containers/<container id>/threads?possible=1` lists the threads;
+  - `GET /threads/<id>` returns a thread with its attachments `{ id, post_id, name, type, size, sha256, link_only }`;
+  - `GET /att/<sha256>` returns the bytes.
+  Skip `link_only`. A post `from_addr` ending `@maplesupplychain.ca` is Maple's own.
+- **Nothing is read until ops press Read** (spec ① Files).
 - **The existing `shipments` table is the load.** Add columns to it; never rename it.
 - **New tables:** `fba_shipments`, `cartons`, `carton_items`.
 - **No placeholder cartons.** `cartons` rows exist only when the file has a carton list.
@@ -57,11 +64,11 @@ Part 2 (a later plan) covers: moving shipments and cartons between loads (HOLD /
 | `backend/lib/load-file/bonded.mjs` | loading list + customer PLs → CCN blocks (covered jobs, Self Pick Up, private address) |
 | `backend/lib/load-file/pick.mjs` | choose the load file(s) among attachments by content |
 | `backend/lib/load-file/index.mjs` | `parseLoadFiles(files, { containerNo, bonded }) → Parsed` |
-| `backend/services/carton-import.mjs` | write `Parsed` to the DB, roll totals up |
-| `backend/routes/cartons.mjs` | `POST /api/cartons/import`, `GET /api/cartons` |
-| `frontend/cartons.html` + `frontend/app/cartons-view.js` | read-only load → shipment → carton page |
+| `backend/services/carton-import.mjs` | write `Parsed` to the DB, roll totals up; move / split / edit / confirm |
+| `backend/routes/build.mjs` | `/api/build/*`: to-do list, files (via the mail archive), read, records, move/edit/confirm |
+| `frontend/app/views/build.js` + `build-records.js` | the Build page: to-do list, ① Files, ② Records |
 | `bin/cartons-history.mjs` | regression over `testdata/cartons/<box>/` |
-| `tests/load-file-*.test.mjs`, `tests/carton-import.test.mjs`, `tests/fixtures/cartons/*.json` | tests and fixtures |
+| `tests/load-file-*.test.mjs`, `tests/carton-import.test.mjs`, `tests/build-route.test.mjs`, `tests/build-view.test.mjs`, `tests/fixtures/cartons/*.json` | tests and fixtures |
 
 ### Shared types (JSDoc in `backend/lib/load-file/index.mjs`)
 
@@ -96,8 +103,12 @@ Part 2 (a later plan) covers: moving shipments and cartons between loads (HOLD /
   - Table `cartons(id, shipment_id → fba_shipments.id, load_id → shipments.id, mark, kgs, nw_kgs, cbm, l, w, h, pallet_no, tracking_no, loading_order)`.
   - Table `carton_items(id, carton_id → cartons.id, sku, fnsku, desc_en, desc_cn, pcs int)`.
   - Indexes on `load_id`, `container_id` and `shipment_id`.
+  - `containers` gains:
+    - `build_state text`: `null` (to build) / `'read'` (in progress) / `'confirmed'` / `'built'`;
+    - `build_by text, build_at text`;
+    - `records_changed_at text, pl_exported_at text` (Part 2 uses the last two for "PL out of date").
 
-- [ ] **Step 1:** Create the worktree with `superpowers:using-git-worktrees`: repo `/Users/mingyiwu/Desktop/github_hub/fba/FBA_DATABASE`, branch `cartons-shipments-loads` from `main`.
+- [ ] **Step 1:** Create the worktree with `superpowers:using-git-worktrees`: repo `/Users/mingyiwu/Desktop/github_hub/fba/FBA_DATABASE`, branch `cartons-shipments-loads` from **`release-was-hold`**.
 - [ ] **Step 2:** Write the failing test `tests/carton-schema.test.mjs`:
   - Use `tempDb('carton-schema')`, then import `backend/app/migrate.mjs`.
   - Insert one load, one `fba_shipments` row, one carton and two items.
@@ -310,7 +321,15 @@ Tests:
 - Consumes: `Parsed` (Task 6), and the tables (Task 1).
 - Produces:
   - `importParsed(containerId:number, parsed:Parsed, { by:string }) → { loads:number, shipments:number, cartons:number, flags:string[] }`
-  - `containerRecords(containerId) → { loads:[{…load, shipments:[{…, cartons:[{…, items}]}]}] }`
+  - `containerRecords(containerId) → { container, bonded, loads:[{…load, shipments:[{…, cartons:[{…, items}]}]}], checks:{name, ok, detail}[], handFixes:number }`
+  - `moveShipment(shipmentId, { toLoadId? , toDestination?, toCcn?, count?, cartonIds? }, { by }) → { fromLoadId, toLoadId, newShipmentId? }`
+    - `count` (no carton list) splits the shipment into two rows with the same FBA–PO;
+    - `cartonIds` moves those cartons, with their shipment row duplicated into the target load when needed;
+    - `toDestination` finds or makes the load (`HOLD`, `SELF PICKUP`, an FC, `PA`).
+  - `editShipment(shipmentId, patch, { by })` / `editCarton(cartonId, patch, { by })` / `addShipment(loadId, values, { by })` / `removeShipment(shipmentId, { by })`
+  - `confirmRecords(containerId, { by })`: writes load totals + `est_pallets`, sets `build_state 'confirmed'`.
+
+  Every change writes one `edit_history` row (subject = container no., kind `build`), recomputes the affected loads' totals, and stamps `records_changed_at`.
 
 Rules:
 - Everything runs in one transaction (`withTx`).
@@ -326,49 +345,121 @@ Tests (SQLite temp DB):
 - `reimport replaces, never doubles`: import twice → still 15 shipments / 19 cartons; load count unchanged.
 - `carton sum wins and is flagged`: a shipment line says 14 ctns, but its cartons sum to 13 → shipment cartons 13, mismatch 1, one flag.
 - `bonded import keys loads by CCN and destination`: CIMU-shaped → 5 loads (1870×YOO1/YYZ4/YYZ7, 0097 SELF PICKUP, 0099 SELF PICKUP), `ccn` set on each.
+- `move to HOLD by count splits`: FBA19QVWYSLT 385 → move 20 to `HOLD` → YOO1 load 365, HOLD load 20, two rows with the same FBA–PO; one `edit_history` row.
+- `move chosen cartons`: FBA19Q3QYJ6R, move cartons U000005–6 to `SELF PICKUP` → XYY4 load drops 2 cartons and 0.2001 CBM; the mixed carton's items stay with their carton.
+- `edit updates totals`: set a shipment's cartons 13 → 12 → its load `total_cartons` drops by 1.
+- `handFixes counted for read again`: after two edits, `containerRecords(...).handFixes === 2`.
+- `confirm writes est. skids`: YYZ7 6.1677 CBM → `est_pallets 4`; `build_state 'confirmed'`.
 
-- [ ] **Step 1:** Write the four tests.
+- [ ] **Step 1:** Write the nine tests.
 - [ ] **Step 2:** Run `node --test tests/carton-import.test.mjs`. Expected: FAIL.
-- [ ] **Step 3:** Implement `importParsed` and `containerRecords`.
+- [ ] **Step 3:** Implement the functions in Produces. Each one runs in `withTx`.
 - [ ] **Step 4:** Run the test. Expected: PASS.
-- [ ] **Step 5:** Commit: `Cartons: write load file records, totals rolled up`.
+- [ ] **Step 5:** Commit: `Cartons: write records; move, split, edit, confirm`.
 
-### Task 8: Route, page, and the local check on real containers
+### Task 8: Build routes
 
 **Files:**
-- Create: `backend/routes/cartons.mjs`, `frontend/cartons.html`, `frontend/app/cartons-view.js`, `bin/cartons-history.mjs`
-- Modify: `backend/app/handler.mjs`: register `cartonsRoutes` next to `loadsRoutes`.
-- Test: `tests/cartons-route.test.mjs`
+- Create: `backend/routes/build.mjs`
+- Modify: `backend/app/handler.mjs`: register `buildRoutes` next to `mailRoutes`.
+- Test: `tests/build-route.test.mjs` (stub `workerFetch` by passing a fake through `buildRoutes.__setArchive(fn)`, exported for tests)
 
 **Interfaces:**
-- Consumes: `parseLoadFiles` and `importParsed` / `containerRecords`.
+- Consumes: `workerFetch`, `parseLoadFiles` (Task 6), and the Task 7 functions.
+- Produces (all `/api/build/*`; they need a signed-in user, and the writes need the `loads_edit` capability or whichever the Loads grid's edits use; check `permissions.mjs` and reuse it):
+
+  | Route | Answers |
+  |---|---|
+  | `GET /api/build/list?tab=todo\|progress\|built&q=` | `{ rows:[{ container_id, container_no, file_no, client, bonded, eta, build_state, build_by, build_at, files:number, flag }] }`. `todo` = has archive threads, `build_state` null, `load_type='container'`; ETA order |
+  | `GET /api/build/files?container_id=` | `{ files:[{ sha256, name, from, at, ours:boolean, readable:boolean, score:{fbaIds, fcCodes, cartons}, kind:'load'\|'loadingList'\|'customerPL'\|'other', ticked:boolean, why:string }] }`. `ticked` is the pick of Task 6 |
+  | `POST /api/build/read` `{ container_id, sha256s:[], uploads:[{name, base64}] }` | runs `parseLoadFiles` + `importParsed`; `{ result, files, checks }`; sets `build_state 'read'`. If records already exist and `confirm_replace` is not `true` → 409 `{ handFixes }` |
+  | `GET /api/build/records?container_id=` | `containerRecords` |
+  | `POST /api/build/move`, `/edit`, `/add`, `/remove`, `/confirm` | the Task 7 functions; each answers the fresh `containerRecords` |
+
+- [ ] **Step 1:** Write the failing tests:
+  - `list shows a container with emails and no records under todo`;
+  - `files pre-ticks the 分货明细 sheet and folds Maple's own replies` (a fake archive of one customer xlsx, one BOL xlsx, one `@maplesupplychain.ca` reply);
+  - `read then read again asks first` (second read → 409 with `handFixes`; with `confirm_replace` → 200);
+  - `a user without edit rights gets 403 on move`.
+- [ ] **Step 2:** Run `node --test tests/build-route.test.mjs`. Expected: FAIL.
+- [ ] **Step 3:** Implement `build.mjs`. The archive container id is `containers.id`. Bytes come from `workerFetch('/att/' + sha, { att: true })`.
+- [ ] **Step 4:** Run the test. Expected: PASS.
+- [ ] **Step 5:** Commit: `Build: routes for the to-do list, files, read, records and changes`.
+
+### Task 9: The Build page (to-do list, ① Files, ② Records)
+
+**Files:**
+- Create: `frontend/app/views/build.js` (view module, the same shape as the other `views/*.js`), `frontend/app/views/build-records.js` (the records table and Move menu)
+- Modify: the view registry and menu where the other views are registered (`frontend/app/views/base.js` / `app.js`; follow how `invoices` is added); the Loads grid row menu: "Open in Build" → `#build/<container_id>`.
+- Test: `tests/build-view.test.mjs`: pure helpers loaded with `node:vm`, as in `tests/invoices-truck-view.test.mjs`.
+
+**Interfaces:**
+- Consumes: the Task 8 routes.
 - Produces:
-  - `POST /api/cartons/import?container=<container_no>`: body is multipart or a JSON `{ files:[{name, base64}] }` (pick the simpler of the two given `http.mjs`). Answers `{ parsed:{files, checks}, result }`. **Admin only.**
-  - `GET /api/cartons?container=<container_no>` → `containerRecords`.
-  - `bin/cartons-history.mjs [--db]`: for each `testdata/cartons/<box>/`, it reads `mail/*` and `fba_loads.tsv`, runs `parseLoadFiles`, and prints per box: shipments, cartons vs the file total, FBA–PO pairs found in the app, and destinations matching the app's cartons. It ends with totals, like the prototype's scoreboard. `--db` also imports into `fba_cartons`.
+  - pure helpers `recordRows(records) → row[]`, with each row `{ kind:'load'|'shipment'|'carton'|'item', cells:Record<col, value>, … }`;
+  - `BUILD_COLS`: the 16 user columns in this order: Job #, FBA#, PO#, Total pcs, Pcs, Cartons, Kgs, CBM, Destination, Remark, Shipping mark, SKU, FNSKU, L, W, H;
+  - `checkBadges(checks)`.
 
-- [ ] **Step 1:** Write the failing route test:
-  - a non-admin → 403;
-  - admin import of the TRHU-shaped fixture → 200 with `result.shipments 15`;
-  - GET → 9 loads.
-- [ ] **Step 2:** Run `node --test tests/cartons-route.test.mjs`. Expected: FAIL.
-- [ ] **Step 3:** Implement the route. The page is the prototype's carton page (`/Users/mingyiwu/…/scratchpad/testpage/carton_template.html`) ported to the app's style:
-  - destination bars → shipment rows (click to open) → carton rows with mixed-SKU rows;
-  - the user's 16 columns;
-  - every cell bordered and centred;
-  - the container picker at the top.
-- [ ] **Step 4:** Run the test. Expected: PASS. Then run all tests with `node --test tests/`. Expected: PASS, and no existing test newly failing (note any that already fail on `main`).
-- [ ] **Step 5:** Copy the history data into the worktree's `testdata/cartons/`. Source: the PL-builder session scratchpad `hist/` and `gen/` folders (`<box>/mail/*` and `fba_loads.tsv` each).
-  - Run `node bin/cartons-history.mjs`. Expected at least:
-    - general: 9/9 load files found, all destinations matching the app on TRHU6779290 and the 8 others whose file was found;
-    - bonded: cartons equal the loading-list total 13/13.
+Look (from the spec and the user's earlier asks):
+- the container list at the top or left with the three tabs and counts;
+- the three steps ① ② ③ (③ greyed "Part 2");
+- every table cell bordered and **centred**;
+- destination bars in blue, shipment rows in purple (click to open cartons), mixed-SKU rows in yellow;
+- `—` for a value the file didn't have.
 
-    Paste the scoreboard into the commit message.
-  - Run `DATABASE_URL=postgres:///fba_cartons node bin/cartons-history.mjs --db`, then open http://localhost:8789/cartons.html?container=TRHU6779290 with `preview_start cartons-local` and take a screenshot.
-- [ ] **Step 6:** Commit: `Cartons: import route, read-only page, history check on fba_cartons`.
+- [ ] **Step 1:** Write the failing tests:
+  - `BUILD_COLS order is the user's 16`;
+  - `recordRows nests load → shipment → carton → item` (TRHU sample: YYZ7 bar, FBA19Q1XPK2Z row, 13 carton rows);
+  - `a mixed item row follows its carton`.
+- [ ] **Step 2:** Run `node --test tests/build-view.test.mjs`. Expected: FAIL.
+- [ ] **Step 3:** Implement the view.
+  - ① Files: the list, with ticks; "not a load file" folded; + Add a file; **Read**. The 409 answer shows "This replaces the records and N hand fixes. Replace?"
+  - ② Records: the table, check badges, **Move ▾** (to load / HOLD / SELF PICKUP / new FC / part of it…), cell edit, + Add / ⋯ Remove, **Confirm records**.
+- [ ] **Step 4:** Run the test. Expected: PASS.
+- [ ] **Step 5:** Browser check on `cartons-local` (port 8789, `fba_cartons`):
+  1. Open Build; TRHU6779290 is under To build.
+  2. ① shows `DSF260920865_分货明细.xlsx` ticked with "15 FBA · 9 FC · 734 ctns".
+  3. Read → ② shows 9 loads, with the check "734 = file total" ✓.
+  4. Move 20 of FBA19QVWYSLT to HOLD → YOO1 365, HOLD 20.
+  5. Confirm → YYZ7 `est_pallets 4` (`psql -d fba_cartons`).
+
+  Take screenshots. Confirm `fba_test` has no `fba_shipments` table.
+- [ ] **Step 6:** Commit: `Build: the Build page — to-do list, files, records`.
+
+### Task 10: History check on real containers
+
+**Files:**
+- Create: `bin/cartons-history.mjs`
+
+**Interfaces:**
+- Consumes: `parseLoadFiles`, `importParsed`.
+- Produces: `node bin/cartons-history.mjs [--db]`. For each `testdata/cartons/<box>/` (`mail/*` + `fba_loads.tsv`), it prints:
+  - shipments;
+  - cartons vs the file total (bonded: vs the loading-list total);
+  - FBA–PO pairs found in the app;
+  - destinations whose cartons match the app.
+
+  It ends with totals. `--db` also imports into the database in `DATABASE_URL` (only ever `fba_cartons`; refuse any other name).
+
+- [ ] **Step 1:** Copy the history data into the worktree's `testdata/cartons/` (gitignored). Source: the PL-builder session scratchpad's `hist/` and `gen/` folders (`<box>/mail/*`, `fba_loads.tsv`).
+- [ ] **Step 2:** Run `node bin/cartons-history.mjs`. Expected at least:
+  - bonded: cartons equal the loading-list total 13/13;
+  - FBA–PO pairs 96/105, or better;
+  - general: the load file is found for the 9 whose file is in the archive, and TRHU6779290's 9 destinations all match the app.
+
+  `.xls`-only boxes are reported "not read (.xls)", not as failures.
+- [ ] **Step 3:** Run `DATABASE_URL=postgres:///fba_cartons node bin/cartons-history.mjs --db`, and spot-check two containers in the Build page.
+- [ ] **Step 4:** Commit with the scoreboard in the message: `Cartons: history check over 24 containers`.
 
 ---
 
 ## Handoff notes for the user (after Part 1)
 - `.xls` files (some agents' loading lists and load files) are listed as "not read" until a choice is made: add SheetJS (one dependency), or have the mail archive convert them.
-- Part 2 plan: moving shipments/cartons between loads (HOLD / relabel / self pick-up), the PL export from the records, starting automatically when a container email arrives, and the move online. The move online happens only when the user says so.
+- Part 2 plan: ③ PL in the Build page:
+  - preview, and Export via ExcelJS (pinned) with the PL builder's `public/js/writer.js` logic ported;
+  - Cartons sheet + the original file sheet;
+  - save to the SharePoint **test** folder;
+  - "PL out of date";
+  - the PL check against the 13 saved bonded PLs.
+
+  Then the move online, only when the user says so, after comparing the live copy with the branch.
