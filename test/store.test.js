@@ -48,3 +48,11 @@ test('pg store without PG_URL is not ready', () => {
 test('mongo store without MONGO_URI is not ready', () => {
   assert.equal(createStore({}).ready, false);
 });
+
+test('pool: max 3, gives up connecting after 8 s', () => {
+  const { poolOptions } = require('../lib/store');
+  const c = poolOptions({ PG_URL: 'postgres://u@db.example.com/x?sslmode=require' });
+  assert.strictEqual(c.max, 3);
+  assert.strictEqual(c.connectionTimeoutMillis, 8000);
+  assert.ok(!c.connectionString.includes('sslmode'));
+});
