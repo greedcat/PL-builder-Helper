@@ -4,9 +4,24 @@
     {
       "name": "pl-builder",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["start"],
+      "runtimeArgs": [
+        "start"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "pl-builder-pg",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "server.js"
+      ],
+      "port": 3201,
+      "env": {
+        "DATA_STORE": "pg",
+        "PG_URL": "postgres://localhost/fba_check",
+        "PORT": "3201"
+      }
     }
   ]
 }
