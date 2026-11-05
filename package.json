@@ -4,7 +4,9 @@
   "private": true,
   "description": "Warehouse paperwork toolkit: packing list builder, match helpers, group & sum. One server (server.js) serves the app from public/ and the shared-config API; MongoDB is optional.",
   "main": "server.js",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.js",
     "test": "node --test \"test/**/*.test.js\""
@@ -13,6 +15,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "mongodb": "^6.8.0"
+    "mongodb": "^6.8.0",
+    "pg": "^8.23.1"
   }
 }

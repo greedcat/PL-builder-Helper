@@ -9,13 +9,9 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const { MongoClient } = require('mongodb');
+const { createStore } = require('./lib/store');
 
 const PORT       = process.env.PORT || 3000;
-const MONGO_URI  = process.env.MONGO_URI;
-const MONGO_DB   = process.env.MONGO_DB;
-const COLLECTION = 'PL_cols';
-const DOC_ID     = 'pl-builder-config';
 const FIELDS     = ['DEST_LIST', 'CARTON_KEYWORDS', 'CBM_KEYWORDS', 'WEIGHT_KEYWORDS', 'NO_NEED_COL', 'JOB_KEYWORDS', 'PCS_KEYWORDS'];
 
 // fba-app puts each PL made here into its container's SharePoint folder.
@@ -23,30 +19,26 @@ const FIELDS     = ['DEST_LIST', 'CARTON_KEYWORDS', 'CBM_KEYWORDS', 'WEIGHT_KEYW
 const FBA_APP_URL    = (process.env.FBA_APP_URL || '').replace(/\/+$/, '');
 const PL_BUILDER_KEY = process.env.PL_BUILDER_KEY || '';
 
-const MATCH_HELPER_DB     = 'match_helper';
-const MATCH_HELPER_DOC_ID = 'container-match-config';
-
 const app = express();
-let collection     = null; // PL config collection, null until Mongo connects
-let matchHelperCol = null;
+const store = createStore(process.env); // Mongo or Postgres (DATA_STORE); store.ready once connected
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/api/health', (req, res) => res.json({ ok: true, db: !!collection }));
+app.get('/api/health', (req, res) => res.json({ ok: true, db: store.ready }));
 
 // Every data endpoint goes through this gate so a missing database reads as
 // one consistent, non-fatal condition on the client.
-function requireDb(res, col) {
-  if (!col) { res.status(503).json({ error: 'Database not configured' }); return false; }
+function requireDb(res) {
+  if (!store.ready) { res.status(503).json({ error: 'Database not configured' }); return false; }
   return true;
 }
 
 app.get('/api/config', async (req, res) => {
-  if (!requireDb(res, collection)) return;
+  if (!requireDb(res)) return;
   try {
-    const doc = await collection.findOne({ _id: DOC_ID });
+    const doc = await store.getConfig();
     res.json(doc || {});
   } catch (err) {
     console.error(err);
@@ -55,7 +47,7 @@ app.get('/api/config', async (req, res) => {
 });
 
 app.put('/api/config', async (req, res) => {
-  if (!requireDb(res, collection)) return;
+  if (!requireDb(res)) return;
   try {
     const set = {};
     for (const key of FIELDS) {
@@ -64,9 +56,7 @@ app.put('/api/config', async (req, res) => {
     if (Object.keys(set).length === 0) {
       return res.status(400).json({ error: 'No valid config fields provided' });
     }
-    await collection.updateOne({ _id: DOC_ID }, { $set: set }, { upsert: true });
-    const doc = await collection.findOne({ _id: DOC_ID });
-    res.json(doc);
+    res.json(await store.saveConfig(set));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save config' });
@@ -74,10 +64,9 @@ app.put('/api/config', async (req, res) => {
 });
 
 app.get('/api/match-helper/dest-order', async (req, res) => {
-  if (!requireDb(res, matchHelperCol)) return;
+  if (!requireDb(res)) return;
   try {
-    const doc = await matchHelperCol.findOne({ _id: MATCH_HELPER_DOC_ID });
-    res.json({ destOrder: (doc && doc.destOrder) || [] });
+    res.json({ destOrder: await store.getDestOrder() });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to load destination order' });
@@ -85,17 +74,13 @@ app.get('/api/match-helper/dest-order', async (req, res) => {
 });
 
 app.put('/api/match-helper/dest-order', async (req, res) => {
-  if (!requireDb(res, matchHelperCol)) return;
+  if (!requireDb(res)) return;
   try {
     if (!Array.isArray(req.body.destOrder)) {
       return res.status(400).json({ error: 'destOrder must be an array' });
     }
     const destOrder = req.body.destOrder.map(s => String(s).trim()).filter(Boolean);
-    await matchHelperCol.updateOne(
-      { _id: MATCH_HELPER_DOC_ID },
-      { $set: { destOrder, updatedAt: new Date() } },
-      { upsert: true }
-    );
+    await store.saveDestOrder(destOrder);
     res.json({ destOrder });
   } catch (err) {
     console.error(err);
@@ -172,21 +157,4 @@ app.get('/api/sharepoint-pl/content', async (req, res) => {
   res.set('content-type', PL_TYPE).send(Buffer.from(await up.arrayBuffer()));
 });
 
-async function connectDb() {
-  if (!MONGO_URI || !MONGO_DB) {
-    console.warn('MONGO_URI / MONGO_DB not set — serving the app without the config API.');
-    return;
-  }
-  try {
-    const client = new MongoClient(MONGO_URI);
-    await client.connect();
-    collection     = client.db(MONGO_DB).collection(COLLECTION);
-    matchHelperCol = client.db(MATCH_HELPER_DB).collection('config');
-    console.log(`Connected to MongoDB database "${MONGO_DB}"`);
-  } catch (err) {
-    console.error('MongoDB connection failed — continuing without the config API:', err.message);
-  }
-}
-
 app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
-connectDb();
